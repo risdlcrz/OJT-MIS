@@ -1,0 +1,32 @@
+{
+	"offices": [
+		{
+			"code": "ITO",
+			"name": "AS - INFORMATION TECHNOLOGY OFFICE"
+		},
+		{
+			"code": "ISDMD",
+			"name": "ISDMD - INFORMATION SYSTEMS DEVELOPMENT"
+		},
+		{
+			"code": "HR",
+			"name": "HR - HUMAN RESOURCES OFFICE"
+		},
+		{
+			"code": "FIN",
+			"name": "FIN - FINANCE OFFICE"
+		},
+		{
+			"code": "ADMIN",
+			"name": "ADMIN - ADMINISTRATIVE SERVICES"
+		},
+		{
+			"code": "LIBRARY",
+			"name": "LIBRARY - LIBRARY SERVICES"
+		},
+		{
+			"code": "REGISTRAR",
+			"name": "REGISTRAR - OFFICE OF THE REGISTRAR"
+		}
+	]
+}

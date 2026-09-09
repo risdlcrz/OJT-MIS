@@ -1,0 +1,103 @@
+﻿{
+  "navbar": {
+    "user": {
+      "name": "User",
+      "menu": [
+        {
+          "name": "Change Password",
+          "icon": "fas fa-key",
+          "link": "#"
+        },
+        {
+          "name": "Logout",
+          "icon": "fas fa-power-off",
+          "link": "login.html"
+        }
+      ]
+    }
+  },
+
+  "menu": [
+    {
+      "name": "Dashboard",
+      "icon": "fas fa-home",
+      "link": "dashboard.html"
+    },
+
+    {
+      "name": "Request",
+      "icon": "fas fa-exchange-alt",
+      "submenu": [
+        {
+          "name": "List of Requests",
+          "link": "requests.html"
+        }
+      ]
+    },
+
+    {
+      "name": "Applicants",
+      "icon": "fas fa-hdd",
+      "submenu": [
+        {
+          "name": "List of Applicants",
+          "link": "applicants.html"
+        },
+        {
+          "name": "Schedule Orientation",
+          "link": "schedule-orientation.html"
+        }
+      ]
+    },
+
+    {
+      "name": "Intern List",
+      "icon": "fas fa-list",
+      "link": "intern-list.html"
+    },
+
+    {
+      "name": "Forms",
+      "icon": "fas fa-file",
+      "submenu": [
+        {
+          "name": "Issuance of COC",
+          "link": "coc.html"
+        },
+        {
+          "name": "Daily Time Records",
+          "link": "dtr.html"
+        },
+        {
+          "name": "ID Generation",
+          "link": "id-generate.html"
+        }
+      ]
+    },
+
+    {
+      "name": "Utility",
+      "icon": "fas fa-tools",
+      "link": "utility.html"
+    },
+
+    {
+      "name": "System Settings",
+      "icon": "fas fa-cogs",
+      "submenu": [
+        {
+          "name": "Programs / Strands",
+          "link": "programs.html"
+        },
+        {
+          "name": "Schools",
+          "link": "schools.html"
+        },
+        {
+          "name": "Signatories",
+          "link": "signatories.html"
+        }
+      ]
+    }
+  ]
+}

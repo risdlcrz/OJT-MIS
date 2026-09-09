@@ -1,0 +1,447 @@
+﻿.nav-sidebar .nav-link {
+    margin-bottom: 5px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.nav-sidebar .nav-link:hover,
+.nav-sidebar .nav-link.active {
+    background-color: #FFA500 !important;
+    color: #fff !important;
+}
+
+body {
+    background: #f4f7fb;
+}
+
+.main-header {
+    background: linear-gradient(135deg, #ff8c1a 0%, #ff6b00 100%);
+}
+
+.content-wrapper {
+    background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+}
+
+.requests-content {
+    width: 100%;
+    max-width: none;
+    padding: 1rem;
+}
+
+.modern-card {
+    border: 0;
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+}
+
+.requests-card {
+    overflow: visible;
+}
+
+.modern-card-header {
+    background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.modern-card-header .card-tools {
+    margin-left: auto;
+}
+
+.card-title {
+    font-weight: 700;
+    color: #111827;
+}
+
+.card-subtitle {
+    margin: 0.2rem 0 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.modern-btn {
+    border-radius: 999px;
+    padding: 0.55rem 1rem;
+    font-weight: 600;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.16);
+}
+
+button[data-target="#modalInternRequest"],
+button[data-target="#modalInternRequest"].btn-primary,
+.modern-card-header .modern-btn.btn-primary {
+    background: #06402b !important;
+    border-color: #06402b !important;
+    color: #fff !important;
+}
+
+button[data-target="#modalInternRequest"]:hover,
+.modern-card-header .modern-btn.btn-primary:hover {
+    background: #0b5d57 !important;
+    border-color: #0b5d57 !important;
+}
+
+.modern-modal {
+    border: 0;
+    border-radius: 20px;
+    overflow: visible;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+}
+
+.modern-modal .modal-body {
+    max-height: min(65vh, 560px);
+    overflow-y: auto;
+}
+
+.modern-modal .form-group,
+.modern-modal .row {
+    overflow: visible;
+}
+
+.modern-modal-header {
+    background: linear-gradient(135deg, #ff8c1a, #ff6b00);
+    color: #fff;
+    padding: 1rem 1.2rem;
+}
+
+.modern-modal-header .close {
+    color: #fff;
+    opacity: 1;
+    font-size: 1.3rem;
+}
+
+.modern-modal .form-control,
+.modern-modal .form-select,
+.modern-modal textarea {
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    min-height: 46px;
+    line-height: 1.4;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+#requestOffice {
+    min-height: 50px;
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+    line-height: 1.4;
+}
+
+
+.modern-modal .form-group label,
+.modern-modal .col-form-label,
+.modern-modal label {
+    color: #334155;
+    font-weight: 600;
+}
+
+.modern-modal .modal-footer {
+    padding: 1rem 1.2rem 1.2rem;
+    background: #fcfdff;
+}
+
+.modern-table {
+    width: 100%;
+    min-width: 760px;
+    border-radius: 14px;
+    overflow: visible;
+}
+
+.requests-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.requests-card > .card-body {
+    padding: 1rem;
+    overflow: visible;
+}
+
+.requests-card .modal {
+    z-index: 1060;
+}
+
+.requests-card .modal-backdrop {
+    z-index: 1050;
+}
+
+.modern-table thead th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modern-table tbody td {
+    vertical-align: middle;
+}
+
+.modern-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.btn-success, .btn-danger {
+    border-radius: 10px;
+}
+
+.bannerWrapper {
+    position: relative;
+    background-color: #f4f6f9;
+    overflow: hidden;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    width: 100%; /* Ensures the wrapper fills the card width */
+}
+
+/* 1. The container must be relative so images can stack inside it */
+.bannerImageWrapper {
+    position: relative;
+    width: 100%;
+    height: 340px;
+    overflow: hidden;
+    background-color: #fff;
+    display: block !important; /* Forces images to ignore side-by-side rules */
+}
+
+/* Base style for the overlapping photos */
+.banner-col {
+    position: absolute; /* This is the key to stacking */
+    top: 0;
+    height: 100%;
+    width: 35%; /* Wider than 25% so they overlap significantly */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* White border and shadow create the physical photo look */
+    border-right: 4px solid #fff;
+    box-shadow: 10px 0 20px rgba(0,0,0,0.3);
+}
+
+/* Add your image URLs here */
+.banner-col-1 {
+    background-image: url('../images/1.png');
+    left: 0;
+    z-index: 10;
+}
+
+.banner-col-2 {
+    background-image: url('../images/2.png');
+    left: 22%;
+    z-index: 9;
+}
+
+.banner-col-3 {
+    background-image: url('../images/3.png');
+    left: 44%;
+    z-index: 8;
+}
+
+.banner-col-4 {
+    background-image: url('../images/4.png');
+    left: 66%;
+    z-index: 1;
+    width: 40%;
+    border-right: none;
+}
+
+.quote-Theme {
+    z-index: 10 !important;
+}
+
+/* The "Paper" overlapping effect on the right */
+.bannerPaper {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(2px);
+    transform: skewX(-10deg);
+    transform-origin: top right;
+    z-index: 2;
+}
+
+.paper1 {
+    right: 0px;
+    background: rgba(255,255,255,0.4);
+}
+
+.paper2 {
+    right: 30px;
+    background: rgba(255,255,255,0.2);
+}
+
+.paper3 {
+    right: 60px;
+    background: rgba(255,255,255,0.1);
+}
+
+/* The Text Overlay (Quote-Theme) */
+.quote-Theme {
+    position: absolute;
+    bottom: 20%;
+    left: 0;
+    width: 60%; /* Matches the approximate length in the image */
+    /* This creates the fade from 70% black to completely transparent */
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+    padding: 15px 40px; /* Extra padding to push text away from the orange bar */
+    border-left: 10px solid #ff851b; /* The thick orange accent line from the image */
+    margin: 0;
+    z-index: 5;
+    /* Ensures the flex container doesn't squash the text */
+    display: flex;
+    align-items: center;
+}
+
+.logoSysName {
+    color: white;
+    font-family: sans-serif;
+    letter-spacing: 1px;
+}
+
+.card-body blockquote {
+    margin: 0;
+    border-radius: 8px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-body h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.card-body small {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.stat-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30px 20px; /* Increased padding for the larger look in image */
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow from the mockup */
+    height: 100px; /* Set a fixed height for uniformity */
+}
+
+.stat-label {
+    color: #333;
+    font-size: 1rem;
+    font-weight: 500;
+    flex: 1;
+}
+
+.stat-number {
+    color: #333;
+    font-size: 2.5rem; /* Large, bold numbers as seen in the image */
+    font-weight: 800;
+}
+
+/* Forces the 'Show' and 'Search' containers to opposite ends */
+.dataTables_wrapper .row:first-child {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 0.25rem;
+}
+
+/* Fixes the "Show entries" wrapping issue */
+.dataTables_length label {
+    display: inline-flex !important;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.dataTables_length select {
+    margin: 0 8px !important; /* Adds space around the dropdown */
+}
+
+/* Forces the Search bar to the far right */
+.dataTables_filter {
+    text-align: right !important;
+}
+
+    .dataTables_filter label {
+        display: inline-flex !important;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .dataTables_filter input {
+        margin-left: 8px !important; /* Space between "Search:" and the box */
+    }
+
+/* 1. Normal: Solid Green Background */
+.btn-action-tile.btn-action-tile {
+    background-color: #28a745 !important;
+    border: 2px solid #28a745 !important;
+    color: #ffffff !important;
+    border-radius: 4px; /* Optional: matches your image */
+    transition: all 0.2s ease-in-out;
+}
+
+    /* 2. Hover: Light Green Background */
+    .btn-action-tile.btn-action-tile:hover {
+        background-color: #34ce57 !important; /* Lighter Green */
+        border-color: #34ce57 !important;
+        color: #ffffff !important;
+    }
+
+    /* 3. Clicked: Dark Green Background */
+    .btn-action-tile.btn-action-tile:active {
+        background-color: #1e7e34 !important; /* Darker Green */
+        border-color: #1c7430 !important;
+        color: #ffffff !important;
+        transform: scale(0.95); /* Shrinks slightly when clicked */
+    }
+
+        /* Force icons and text inside to stay white */
+        .btn-action-tile.btn-action-tile *,
+        .btn-action-tile.btn-action-tile:hover *,
+        .btn-action-tile.btn-action-tile:active * {
+            color: #ffffff !important;
+        }
+
+/* Parent Item Style (The white background in your image) */
+.nav-item.menu-open > .nav-link.active-parent {
+    background-color: #f4f6f9 !important; /* Very light gray/white background */
+    color: #f39c12 !important; /* Orange text and icon */
+    border-radius: 4px;
+}
+
+/* Sub-link Active Style (The orange background in your image) */
+.nav-treeview > .nav-item > .nav-link.active {
+    background-color: #f39c12 !important; /* Solid orange background */
+    color: #ffffff !important; /* White text */
+    border-radius: 4px;
+    margin-left: 10px; /* Indentation to match your image */
+    margin-right: 10px;
+}
+
+/* Ensure sub-links that are NOT active have white text */
+.nav-treeview > .nav-item > .nav-link {
+    color: #ced4da;
+    padding-left: 2rem;
+}

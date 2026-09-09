@@ -1,0 +1,16 @@
+﻿.text-theme {
+    color: var(--bs-primary);
+}
+
+.myLogo {
+    font-size: 19px;
+}
+
+    .myLogo.light {
+        color: #e9ecef;
+    }
+
+
+    .myLogo.dark {
+        color: #212529;
+    }

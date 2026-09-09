@@ -1,0 +1,640 @@
+﻿.nav-sidebar .nav-link {
+    margin-bottom: 5px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.nav-sidebar .nav-link:hover,
+.nav-sidebar .nav-link.active {
+    background-color: #FFA500 !important;
+    color: #fff !important;
+}
+
+body {
+    background: #f4f7fb;
+}
+
+.main-header {
+    background: linear-gradient(135deg, #ff8c1a 0%, #ff6b00 100%);
+}
+
+.content-wrapper {
+    background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+}
+
+.modern-card {
+    border: 0;
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    overflow: visible;
+}
+
+.modern-card-header {
+    background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1.05rem 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    font-weight: 700;
+    color: #111827;
+}
+
+.card-subtitle {
+    margin: 0.2rem 0 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.modern-btn {
+    border-radius: 999px;
+    padding: 0.55rem 1rem;
+    font-weight: 600;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.16);
+}
+
+#addApplicantBtn,
+#addApplicantBtn.btn-primary {
+    background: #06402b !important;
+    border-color: #06402b !important;
+    color: #fff !important;
+}
+
+#addApplicantBtn:hover {
+    background: #0b5d57 !important;
+    border-color: #0b5d57 !important;
+}
+
+.modern-modal {
+    border: 0;
+    border-radius: 20px;
+    overflow: visible;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+}
+
+.modern-modal .modal-body {
+    overflow: visible;
+}
+
+#ojtModal .modal-dialog {
+    max-height: calc(100vh - 2rem);
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+#ojtModal .modal-content {
+    max-height: calc(100vh - 2rem);
+}
+
+#ojtModal .modal-body {
+    max-height: calc(100vh - 12rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#ojtModal .modal-body::-webkit-scrollbar {
+    width: 9px;
+}
+
+#ojtModal .modal-body::-webkit-scrollbar-track {
+    background: #eef2f7;
+    border-radius: 10px;
+}
+
+#ojtModal .modal-body::-webkit-scrollbar-thumb {
+    background: #0f766e;
+    border-radius: 10px;
+}
+
+#ojtModal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #06402b;
+}
+
+.modern-modal .form-group,
+.modern-modal .row {
+    overflow: visible;
+}
+
+.modern-modal-header {
+    background: linear-gradient(135deg, #ff8c1a, #ff6b00);
+    color: #fff;
+    padding: 1rem 1.2rem;
+}
+
+.modern-modal-header .close {
+    color: #fff;
+    opacity: 1;
+    font-size: 1.3rem;
+}
+
+.modern-modal .form-control,
+.modern-modal .form-select,
+.modern-modal textarea {
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    min-height: 46px;
+    line-height: 1.4;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+#evaluationModal .evaluation-modal-dialog,
+#hireModal .hire-modal-dialog {
+    width: min(520px, calc(100% - 2rem));
+    max-width: 520px;
+}
+
+#evaluationModal .evaluation-modal-content,
+#hireModal .hire-modal-content {
+    min-height: 0;
+    border-radius: 0;
+}
+
+#evaluationModal #evaluationOffice,
+#hireModal #hireRequestNo {
+    height: 64px;
+    min-height: 64px;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    line-height: 1.5;
+}
+
+#ojtModal #coordName {
+    background-color: #f1f3f5;
+    cursor: not-allowed;
+}
+
+#ojtModal #requiredHours {
+    background-color: #fff;
+    cursor: text;
+}
+
+#schoolName {
+    min-height: 50px;
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+    line-height: 1.4;
+}
+
+
+.modern-modal label {
+    color: #334155;
+    font-weight: 600;
+}
+
+.modern-modal .modal-footer {
+    padding: 1rem 1.2rem 1.2rem;
+    background: #fcfdff;
+}
+
+.card-body {
+    overflow: visible;
+}
+
+.modern-table {
+    border-radius: 14px;
+    overflow: visible;
+}
+
+.modern-table thead th {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.btn-orange-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    background: #ff8c1a;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 16px rgba(255, 140, 26, 0.18);
+}
+
+.btn-orange-action i {
+    margin-right: 0.35rem;
+}
+
+.btn-orange-action:hover,
+.btn-orange-action:focus {
+    background: #ff9c3d;
+    color: #fff;
+}
+
+.req-btn {
+    white-space: nowrap;
+}
+
+.req-count {
+    margin-left: 0.4rem;
+    background: rgba(255, 255, 255, 0.95);
+    color: #1f2937;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.btn-group {
+    position: relative;
+}
+
+.btn-group .dropdown-menu {
+    top: calc(100% + 0.35rem) !important;
+    right: 0;
+    left: auto;
+    min-width: 11rem;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+    z-index: 1051;
+}
+
+.action-dropdown-menu {
+    position: fixed !important;
+    top: auto;
+    left: auto;
+    right: auto !important;
+    bottom: auto;
+    margin: 0;
+}
+
+.dropdown-menu-right {
+    right: 0 !important;
+    left: auto !important;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.modern-table tbody td {
+    vertical-align: middle;
+    position: relative;
+    overflow: visible;
+}
+
+.modern-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* Remove duplicate broken rule and keep the button styles declared above */
+
+.bannerWrapper {
+    position: relative;
+    background-color: #f4f6f9;
+    overflow: hidden;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    width: 100%; /* Ensures the wrapper fills the card width */
+}
+
+/* 1. The container must be relative so images can stack inside it */
+.bannerImageWrapper {
+    position: relative;
+    width: 100%;
+    height: 340px;
+    overflow: hidden;
+    background-color: #fff;
+    display: block !important; /* Forces images to ignore side-by-side rules */
+}
+
+/* Base style for the overlapping photos */
+.banner-col {
+    position: absolute; /* This is the key to stacking */
+    top: 0;
+    height: 100%;
+    width: 35%; /* Wider than 25% so they overlap significantly */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* White border and shadow create the physical photo look */
+    border-right: 4px solid #fff;
+    box-shadow: 10px 0 20px rgba(0,0,0,0.3);
+}
+
+/* Add your image URLs here */
+.banner-col-1 {
+    background-image: url('../images/1.png');
+    left: 0;
+    z-index: 10;
+}
+
+.banner-col-2 {
+    background-image: url('../images/2.png');
+    left: 22%;
+    z-index: 9;
+}
+
+#addApplicantBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+}
+#addApplicantBtn:hover {
+    filter: brightness(0.95);
+    text-decoration: none;
+}
+
+.card-header .header-title {
+    margin: 0;
+    padding-right: 1rem;
+    white-space: nowrap;
+}
+.card-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.modal-lg-centered {
+    max-width: 900px;
+}
+
+.form-group .form-control {
+    min-height: 40px;
+}
+
+.action-form {
+    background: #fafafa;
+    border: 1px solid #d2d6de;
+    border-radius: 0.35rem;
+}
+.action-form .form-control {
+    min-height: 38px;
+}
+
+.dataTables_filter {
+    display: flex !important;
+    align-items: center;
+    gap: .5rem;
+    justify-content: flex-end;
+}
+.dataTables_filter label {
+    display: inline-flex !important;
+    align-items: center;
+    white-space: nowrap;
+    margin: 0;
+}
+.dataTables_filter input {
+    margin-left: 6px !important;
+    margin-right: 6px !important;
+    height: 34px;
+    padding: .35rem .5rem;
+    border-radius: 4px;
+}
+.dataTables_filter .btn {
+    margin-left: 6px;
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: .25rem .6rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+.dataTables_filter .btn i {
+    transform: translateY(0.5px);
+}
+
+#example1 thead th,
+#example1 tbody td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+#actionOffice,
+.tall-select {
+    min-height: 66px;
+    height: 66px;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+    line-height: 1.4;
+}
+
+#actionOffice {
+    font-weight: 600;
+}
+
+.modal-title-semibold {
+    font-weight: 600;
+}
+
+.req-item {
+    margin-bottom: 4px;
+}
+
+.swal-html-content {
+    text-align: left;
+    line-height: 1.4;
+}
+
+.swal-heading {
+    margin-top: 0;
+}
+
+.swal-requirements,
+.swal-detail-list {
+    margin-left: 1rem;
+}
+
+.swal-details {
+    text-align: left;
+    line-height: 1.4;
+}
+
+.swal-detail-title {
+    margin-top: 0;
+}
+
+.req-status.provided {
+    color: green;
+}
+
+.req-status.missing {
+    color: orange;
+}
+
+.status-accepted {
+    color: green;
+}
+
+.status-rejected {
+    color: red;
+}
+
+.status-pending {
+    color: gray;
+}
+
+.banner-col-3 {
+    background-image: url('../images/3.png');
+    left: 44%;
+    z-index: 8;
+}
+
+.banner-col-4 {
+    background-image: url('../images/4.png');
+    left: 66%;
+    z-index: 1;
+    width: 40%;
+    border-right: none;
+}
+
+.quote-Theme {
+    z-index: 10 !important;
+}
+
+/* The "Paper" overlapping effect on the right */
+.bannerPaper {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(2px);
+    transform: skewX(-10deg);
+    transform-origin: top right;
+    z-index: 2;
+}
+
+.paper1 {
+    right: 0px;
+    background: rgba(255,255,255,0.4);
+}
+
+.paper2 {
+    right: 30px;
+    background: rgba(255,255,255,0.2);
+}
+
+.paper3 {
+    right: 60px;
+    background: rgba(255,255,255,0.1);
+}
+
+/* The Text Overlay (Quote-Theme) */
+.quote-Theme {
+    position: absolute;
+    bottom: 20%;
+    left: 20px;
+    width: 60%; /* Matches the approximate length in the image */
+    /* This creates the fade from 70% black to completely transparent */
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+    padding: 15px 40px; /* Extra padding to push text away from the orange bar */
+    border-left: 10px solid #ff851b; /* The thick orange accent line from the image */
+    margin: 0;
+    z-index: 5;
+    /* Ensures the flex container doesn't squash the text */
+    display: flex;
+    align-items: center;
+}
+
+.logoSysName {
+    color: white;
+    font-family: sans-serif;
+    letter-spacing: 1px;
+}
+
+.card-body blockquote {
+    margin: 0;
+    border-radius: 8px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-body h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.card-body small {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.stat-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30px 20px; /* Increased padding for the larger look in image */
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle shadow from the mockup */
+    height: 100px; /* Set a fixed height for uniformity */
+}
+
+.stat-label {
+    color: #333;
+    font-size: 1rem;
+    font-weight: 500;
+    flex: 1;
+}
+
+.stat-number {
+    color: #333;
+    font-size: 2.5rem; /* Large, bold numbers as seen in the image */
+    font-weight: 800;
+}
+
+/* Custom styling for the action tile */
+.btn-action-tile {
+    border: 2px solid #28a745;
+    background-color: #fff;
+    color: #28a745;
+    transition: all 0.3s ease;
+}
+
+    .btn-action-tile:hover {
+        background-color: #28a745;
+        color: #fff;
+    }
+
+/* Parent Item Style (The white background in your image) */
+.nav-item.menu-open > .nav-link.active-parent {
+    background-color: #f4f6f9 !important; /* Very light gray/white background */
+    color: #f39c12 !important; /* Orange text and icon */
+    border-radius: 4px;
+}
+
+/* Sub-link Active Style (The orange background in your image) */
+.nav-treeview > .nav-item > .nav-link.active {
+    background-color: #f39c12 !important; /* Solid orange background */
+    color: #ffffff !important; /* White text */
+    border-radius: 4px;
+    margin-left: 10px; /* Indentation to match your image */
+    margin-right: 10px;
+}
+
+/* Ensure sub-links that are NOT active have white text */
+.nav-treeview > .nav-item > .nav-link {
+    color: #ced4da;
+    padding-left: 2rem;
+}
+
+/* Action Buttons (View/Print) */
+.action-btn {
+    border-radius: 4px !important;
+    min-width: 65px;
+    height: 48px; /* Matching height to the orange button */
+    justify-content: center;
+    transition: 0.2s;
+}
+
+/* Ensure icons don't shrink */
+.action-btn i {
+    font-size: 1.1rem;
+}
