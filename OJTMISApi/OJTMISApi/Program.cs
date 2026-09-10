@@ -55,6 +55,9 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 
+// Map API controllers (attribute-routed endpoints like [Route("api/[controller]")])
+app.MapControllers();
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")

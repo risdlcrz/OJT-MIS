@@ -43,61 +43,154 @@ apiClient.interceptors.response.use(
 
 // Applicants API
 export const applicantsAPI = {
-  getAll: () => apiClient.get('/applicants'),
-  getById: (id) => apiClient.get(`/applicants/${id}`),
-  create: (data) => apiClient.post('/applicants', data),
-  update: (id, data) => apiClient.put(`/applicants/${id}`, data),
-  delete: (id) => apiClient.delete(`/applicants/${id}`)
+  getAll: async () => {
+    const response = await apiClient.get('/applicants')
+    return response.data
+  },
+  getById: async (id) => {
+    const response = await apiClient.get(`/applicants/${id}`)
+    return response.data
+  },
+  create: async (data) => {
+    const response = await apiClient.post('/applicants', data)
+    return response.data
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/applicants/${id}`, data)
+    return response.data
+  },
+  delete: async (id) => {
+    const response = await apiClient.delete(`/applicants/${id}`)
+    return response.data
+  }
 }
 
 // Programs API
 export const programsAPI = {
-  getAll: () => apiClient.get('/programs'),
-  getById: (id) => apiClient.get(`/programs/${id}`),
-  create: (data) => apiClient.post('/programs', data),
-  update: (id, data) => apiClient.put(`/programs/${id}`, data),
-  delete: (id) => apiClient.delete(`/programs/${id}`)
+  getAll: async () => {
+    const response = await apiClient.get('/programs')
+    return response.data
+  },
+  getById: async (id) => {
+    const response = await apiClient.get(`/programs/${id}`)
+    return response.data
+  },
+  create: async (data) => {
+    const response = await apiClient.post('/programs', data)
+    return response.data
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/programs/${id}`, data)
+    return response.data
+  },
+  delete: async (id) => {
+    const response = await apiClient.delete(`/programs/${id}`)
+    return response.data
+  }
 }
 
 // Schools API
 export const schoolsAPI = {
-  getAll: () => apiClient.get('/schools'),
-  getById: (id) => apiClient.get(`/schools/${id}`),
-  create: (data) => apiClient.post('/schools', data),
-  update: (id, data) => apiClient.put(`/schools/${id}`, data),
-  delete: (id) => apiClient.delete(`/schools/${id}`)
+  getAll: async () => {
+    const response = await apiClient.get('/schools')
+    return response.data
+  },
+  getById: async (id) => {
+    const response = await apiClient.get(`/schools/${id}`)
+    return response.data
+  },
+  create: async (data) => {
+    const response = await apiClient.post('/schools', data)
+    return response.data
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/schools/${id}`, data)
+    return response.data
+  },
+  delete: async (id) => {
+    const response = await apiClient.delete(`/schools/${id}`)
+    return response.data
+  }
 }
 
 // Signatories API
 export const signatoriesAPI = {
-  getAll: () => apiClient.get('/signatories'),
-  getById: (id) => apiClient.get(`/signatories/${id}`),
-  create: (data) => apiClient.post('/signatories', data),
-  update: (id, data) => apiClient.put(`/signatories/${id}`, data),
-  delete: (id) => apiClient.delete(`/signatories/${id}`)
+  getAll: async () => {
+    const response = await apiClient.get('/signatories')
+    return response.data
+  },
+  getById: async (id) => {
+    const response = await apiClient.get(`/signatories/${id}`)
+    return response.data
+  },
+  create: async (data) => {
+    const response = await apiClient.post('/signatories', data)
+    return response.data
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/signatories/${id}`, data)
+    return response.data
+  },
+  delete: async (id) => {
+    const response = await apiClient.delete(`/signatories/${id}`)
+    return response.data
+  }
 }
 
 // Requests API
 export const requestsAPI = {
-  getAll: () => apiClient.get('/requests'),
-  getById: (id) => apiClient.get(`/requests/${id}`),
-  create: (data) => apiClient.post('/requests', data),
-  update: (id, data) => apiClient.put(`/requests/${id}`, data),
-  delete: (id) => apiClient.delete(`/requests/${id}`)
+  getAll: async () => {
+    const response = await apiClient.get('/requests')
+    return response.data
+  },
+  getById: async (id) => {
+    const response = await apiClient.get(`/requests/${id}`)
+    return response.data
+  },
+  create: async (data) => {
+    const response = await apiClient.post('/requests', data)
+    return response.data
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/requests/${id}`, data)
+    return response.data
+  },
+  delete: async (id) => {
+    const response = await apiClient.delete(`/requests/${id}`)
+    return response.data
+  }
 }
 
 // Interns API
 export const internsAPI = {
-  getAll: () => apiClient.get('/interns'),
-  getById: (id) => apiClient.get(`/interns/${id}`),
-  create: (data) => apiClient.post('/interns', data),
-  update: (id, data) => apiClient.put(`/interns/${id}`, data),
-  delete: (id) => apiClient.delete(`/interns/${id}`)
+  getAll: async () => {
+    const response = await apiClient.get('/interns')
+    return response.data
+  },
+  getById: async (id) => {
+    const response = await apiClient.get(`/interns/${id}`)
+    return response.data
+  },
+  create: async (data) => {
+    const response = await apiClient.post('/interns', data)
+    return response.data
+  },
+  update: async (id, data) => {
+    const response = await apiClient.put(`/interns/${id}`, data)
+    return response.data
+  },
+  delete: async (id) => {
+    const response = await apiClient.delete(`/interns/${id}`)
+    return response.data
+  }
 }
 
 // Dashboard API
 export const dashboardAPI = {
-  getStats: () => apiClient.get('/dashboard/stats')
+  getStats: async () => {
+    const response = await apiClient.get('/dashboard/stats')
+    return response.data
+  }
 }
 
 export default apiClient

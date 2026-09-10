@@ -11,11 +11,12 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.AspNetCore.Identity.UI.UIFrameworkAttribute("Bootstrap5")]
 [assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("aspnet-OJTMISApi-3da320f6-fed6-4c2b-b34e-6ffacbda6dc4")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("OJTMISApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+84699d2cf914a32bef0a88e9063bd4540acfb6e9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+76dbe4fafa24460e4a4cc621d573511424c4a263")]
 [assembly: System.Reflection.AssemblyProductAttribute("OJTMISApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OJTMISApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
