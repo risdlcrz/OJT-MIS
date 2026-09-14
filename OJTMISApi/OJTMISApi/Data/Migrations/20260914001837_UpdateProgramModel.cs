@@ -23,10 +23,18 @@ namespace OJTMISApi.Data.Migrations
                 table: "Programs",
                 newName: "Level");
 
-            migrationBuilder.RenameColumn(
-                name: "DurationMonths",
+            migrationBuilder.AddColumn<string>(
+                name: "Abbrev",
                 table: "Programs",
-                newName: "Abbrev");
+                type: "nvarchar(max)",
+                nullable: true);
+
+            migrationBuilder.Sql(
+                "UPDATE [Programs] SET [Abbrev] = CONVERT(nvarchar(max), [DurationMonths]) WHERE [DurationMonths] IS NOT NULL");
+
+            migrationBuilder.DropColumn(
+                name: "DurationMonths",
+                table: "Programs");
         }
 
         /// <inheritdoc />
@@ -37,10 +45,18 @@ namespace OJTMISApi.Data.Migrations
                 table: "Programs",
                 newName: "Status");
 
-            migrationBuilder.RenameColumn(
-                name: "Abbrev",
+            migrationBuilder.AddColumn<int>(
+                name: "DurationMonths",
                 table: "Programs",
-                newName: "DurationMonths");
+                type: "int",
+                nullable: true);
+
+            migrationBuilder.Sql(
+                "UPDATE [Programs] SET [DurationMonths] = TRY_CONVERT(int, [Abbrev])");
+
+            migrationBuilder.DropColumn(
+                name: "Abbrev",
+                table: "Programs");
 
             migrationBuilder.AddColumn<string>(
                 name: "Code",

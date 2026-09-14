@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\patricia\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj": {}
+    "C:\\Users\\luis\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\patricia\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj": {
+    "C:\\Users\\luis\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\patricia\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj",
+        "projectUniqueName": "C:\\Users\\luis\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj",
         "projectName": "OJTMISApi",
-        "projectPath": "C:\\Users\\patricia\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj",
-        "packagesPath": "C:\\Users\\patricia\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\patricia\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\obj\\",
+        "projectPath": "C:\\Users\\luis\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\OJTMISApi.csproj",
+        "packagesPath": "C:\\Users\\luis\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\luis\\source\\repos\\OJT-MIS\\OJTMISApi\\OJTMISApi\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\patricia\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\luis\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
