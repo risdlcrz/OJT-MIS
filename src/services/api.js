@@ -68,11 +68,11 @@ export const applicantsAPI = {
 // Programs API
 export const programsAPI = {
   getAll: async () => {
-    const response = await apiClient.get('/programs', { timeout: 0 })
+    const response = await apiClient.get('/programs')
     return response.data
   },
   getById: async (id) => {
-    const response = await apiClient.get(`/programs/${id}`, { timeout: 0 })
+    const response = await apiClient.get(`/programs/${id}`)
     return response.data
   },
   create: async (data) => {
