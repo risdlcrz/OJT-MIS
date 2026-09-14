@@ -1,34 +1,32 @@
-import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+import VueDevTools from 'vite-plugin-vue-devtools'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
-    ],
-
-  // Prevent Vite from watching Visual Studio's .vs folder which can contain
-  // locked/index files (e.g. .vsidx) and cause EBUSY errors on Windows.
+    VueDevTools(),
+  ],
   server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    },
     watch: {
-      // ignore the .vs folder and any .vsidx files
-      // include both glob patterns and regex to match Windows backslashes
-      ignored: [
-        '**/.vs/**',
-        '**/*.vsidx',
-        /(^|[\\/])\.vs([\\/]|$)/,
-        /\.vsidx$/i
-      ]
+      ignored: ['**/.vs/**', '**/node_modules/**', '**/.git/**']
     }
   },
-
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name]-[hash].js',
+        chunkFileNames: '[name]-[hash].js',
+        assetFileNames: '[name]-[hash][extname]'
+      }
+    }
+  }
 })

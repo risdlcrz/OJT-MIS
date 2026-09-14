@@ -10,7 +10,20 @@
         </div>
       </div>
       <div class="card-body">
-        <div class="table-responsive">
+        <!-- Error Alert -->
+        <div v-if="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+          {{ errorMessage }}
+        </div>
+
+        <!-- Loading Spinner -->
+        <div v-if="isLoading" class="text-center py-4">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+
+        <!-- Table (only show when not loading) -->
+        <div v-if="!isLoading" class="table-responsive">
           <table class="table table-hover table-bordered">
             <thead>
               <tr class="text-center">
@@ -84,31 +97,30 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { programsAPI } from '../src/services/api'
 
-const PROGRAMS_KEY = 'ojt_programs_v1'
-const defaultPrograms = [
-  { id: 1, name: 'Science, Technology, Engineering and Mathematics', abbrev: 'STEM', level: 'Senior High School' },
-  { id: 2, name: 'Humanities and Social Sciences', abbrev: 'HUMSS', level: 'Senior High School' },
-  { id: 3, name: 'General Academic Strand', abbrev: 'GAS', level: 'Senior High School' },
-  { id: 4, name: 'Technical-Vocational-Livelihood', abbrev: 'TVL', level: 'Senior High School' }
-]
 const programs = ref([])
 const isModalOpen = ref(false)
+const isLoading = ref(false)
+const errorMessage = ref('')
 const editingProgram = ref(null)
 const form = ref({ name: '', abbrev: '', level: 'Senior High School' })
 
-function loadPrograms() {
+// Fetch programs from backend API
+async function loadPrograms() {
+  isLoading.value = true
+  errorMessage.value = ''
   try {
-    const raw = localStorage.getItem(PROGRAMS_KEY)
-    programs.value = raw ? JSON.parse(raw) : defaultPrograms.map((program) => ({ ...program }))
+    const response = await programsAPI.getAll()
+    // Handle both array response and paginated response
+    programs.value = Array.isArray(response) ? response : (response.data || [])
+    console.log('Programs loaded:', programs.value)
   } catch (error) {
     console.error('Failed to load programs:', error)
-    programs.value = defaultPrograms.map((program) => ({ ...program }))
+    errorMessage.value = `Failed to load programs: ${error.message}`
+  } finally {
+    isLoading.value = false
   }
-}
-
-function persistPrograms() {
-  localStorage.setItem(PROGRAMS_KEY, JSON.stringify(programs.value))
 }
 
 function openCreate() {
@@ -125,23 +137,42 @@ function openEdit(program) {
 
 function closeModal() {
   isModalOpen.value = false
+  form.value = { name: '', abbrev: '', level: 'Senior High School' }
 }
 
-function saveProgram() {
-  if (editingProgram.value === null) {
-    programs.value.push({ id: Date.now(), ...form.value })
-  } else {
-    const index = programs.value.findIndex((program) => program.id === editingProgram.value)
-    if (index !== -1) programs.value[index] = { id: editingProgram.value, ...form.value }
+async function saveProgram() {
+  try {
+    if (!form.value.name.trim() || !form.value.abbrev.trim()) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    if (editingProgram.value === null) {
+      // Create new program
+      await programsAPI.create(form.value)
+    } else {
+      // Update existing program
+      await programsAPI.update(editingProgram.value, form.value)
+    }
+
+    await loadPrograms()
+    closeModal()
+  } catch (error) {
+    console.error('Failed to save program:', error)
+    alert(`Failed to save program: ${error.message}`)
   }
-  persistPrograms()
-  closeModal()
 }
 
-function removeProgram(program) {
+async function removeProgram(program) {
   if (!window.confirm(`Are you sure you want to remove "${program.name}"?`)) return
-  programs.value = programs.value.filter((item) => item.id !== program.id)
-  persistPrograms()
+
+  try {
+    await programsAPI.delete(program.id)
+    await loadPrograms()
+  } catch (error) {
+    console.error('Failed to delete program:', error)
+    alert(`Failed to delete program: ${error.message}`)
+  }
 }
 
 onMounted(loadPrograms)
