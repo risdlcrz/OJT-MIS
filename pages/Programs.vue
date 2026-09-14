@@ -12,7 +12,15 @@
       <div class="card-body">
         <!-- Error Alert -->
         <div v-if="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
-          {{ errorMessage }}
+          <strong><i class="fas fa-exclamation-triangle"></i> {{ errorMessage }}</strong>
+          <button type="button" class="close" aria-label="Close" @click="errorMessage = ''">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <div class="mt-2">
+            <button type="button" class="btn btn-sm btn-danger" @click="loadPrograms">
+              <i class="fas fa-sync-alt"></i> Retry
+            </button>
+          </div>
         </div>
 
         <!-- Loading Spinner -->
@@ -117,7 +125,15 @@ async function loadPrograms() {
     console.log('Programs loaded:', programs.value)
   } catch (error) {
     console.error('Failed to load programs:', error)
-    errorMessage.value = `Failed to load programs: ${error.message}`
+    if (error.code === 'ECONNABORTED') {
+      errorMessage.value = 'The request took too long to complete. Please try again.'
+    } else if (error.response?.status === 404) {
+      errorMessage.value = 'The programs endpoint could not be found. Please check the API configuration.'
+    } else if (error.response?.status >= 500) {
+      errorMessage.value = 'The server encountered an error. Please try again later.'
+    } else {
+      errorMessage.value = `Failed to load programs: ${error.message}`
+    }
   } finally {
     isLoading.value = false
   }
