@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OJTMISApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+76dbe4fafa24460e4a4cc621d573511424c4a263")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+452b9fd45a7ed31eb0c03c37e33c5bf42415a495")]
 [assembly: System.Reflection.AssemblyProductAttribute("OJTMISApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OJTMISApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

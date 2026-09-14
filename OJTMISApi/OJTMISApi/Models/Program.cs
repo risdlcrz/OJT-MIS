@@ -11,13 +11,9 @@ namespace OJTMISApi.Models
         [Required]
         public string Name { get; set; } = string.Empty;
 
-        public string? Description { get; set; }
+        public string? Abbrev { get; set; }
 
-        public string? Code { get; set; }
-
-        public string? DurationMonths { get; set; }
-
-        public string? Status { get; set; }
+        public string? Level { get; set; }
 
         public DateTime? DateCreated { get; set; }
 
