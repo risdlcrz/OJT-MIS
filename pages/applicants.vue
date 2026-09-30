@@ -552,9 +552,11 @@
                                 type="submit"
                                 id="saveOjtApplicant"
                                 class="btn btn-success px-4 modern-btn"
+                                :disabled="isSavingApplicant"
                             >
                                 <i class="fas fa-save mr-1"></i>
-                                Save
+                                <span v-if="isSavingApplicant">Saving...</span>
+                                <span v-else>Save</span>
                             </button>
 
                             <button
@@ -1254,6 +1256,8 @@ const reqLabels = [
 
 const isApplicantModalOpen = ref(false)
 
+const isSavingApplicant = ref(false)
+
 const applicants = ref([])
 
 const openDropdown = ref(null)
@@ -1381,22 +1385,31 @@ async function loadApplicants() {
  * I-save ang isang applicant sa backend (upsert: POST kung wala pa,
  * PUT kung may id na). Tinatanggap ang buong object para hindi na
  * kailangang ide-deserialize ang bawat field.
+ * Returns the saved record on success.
  */
 async function persist(applicant) {
     if (!applicant) return
 
-    try {
-        const saved = applicant.id
-            ? await applicantsAPI.update(applicant.id, applicant)
-            : await applicantsAPI.create(applicant)
+    const saved = applicant.id
+        ? await applicantsAPI.update(applicant.id, applicant)
+        : await applicantsAPI.create(applicant)
 
-        // Ibalik ang nai-save na record (may bagong id at normalized fields).
-        const index = applicants.value.findIndex((a) => a.id === saved.id)
-        if (index > -1) applicants.value[index] = saved
-    } catch (error) {
-        console.error('Failed to save applicant:', error)
-        alert(getApiErrorMessage(error, 'Failed to save the applicant.'))
+    // Ipalit sa table ang nai-save na record.
+    // Sa create (walang id), idagdag ang bagong record.
+    // Sa update, palitan ang existing record by reference o id.
+    if (!applicant.id) {
+        applicants.value.push(saved)
+    } else {
+        const index = applicants.value.findIndex((a) => a === applicant)
+        if (index > -1) {
+            applicants.value[index] = saved
+        } else {
+            const byId = applicants.value.findIndex((a) => a.id === saved.id)
+            if (byId > -1) applicants.value[byId] = saved
+        }
     }
+
+    return saved
 }
 
 
@@ -1484,6 +1497,8 @@ function closeActionPanels() {
 
 
 async function saveApplicant() {
+    if (isSavingApplicant.value) return
+
     const value = (id) =>
         document.getElementById(id)?.value?.trim() || ''
 
@@ -1538,16 +1553,26 @@ async function saveApplicant() {
         createdAt: new Date().toISOString()
     }
 
-    applicants.value.push(applicant)
+    isSavingApplicant.value = true
 
-    await persist(applicant)
+    try {
+        const saved = await persist(applicant)
 
-    /* Reset form */
-    document.getElementById('ojtForm')?.reset()
+        /* Reset form */
+        document.getElementById('ojtForm')?.reset()
 
-    isApplicantModalOpen.value = false
+        isApplicantModalOpen.value = false
 
-    alert('Applicant saved successfully.')
+        alert('Applicant saved successfully.')
+
+        return saved
+    } catch (error) {
+        console.error('Failed to save applicant:', error)
+        alert(getApiErrorMessage(error, 'Failed to save the applicant.'))
+        throw error
+    } finally {
+        isSavingApplicant.value = false
+    }
 }
 
 
