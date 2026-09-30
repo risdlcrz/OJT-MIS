@@ -157,7 +157,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal } from 'bootstrap'
-import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, signatoriesAPI } from '../src/services/api'
+import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, signatoriesAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {

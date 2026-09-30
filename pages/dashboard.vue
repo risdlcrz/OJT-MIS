@@ -35,7 +35,7 @@
             <div class="stat-card stat-orange">
               <div>
                 <span class="stat-label">Active Intern</span>
-                <span class="stat-number">11</span>
+                <span class="stat-number">{{ activeInterns }}</span>
               </div>
               <i class="fas fa-user-graduate"></i>
             </div>
@@ -45,7 +45,7 @@
             <div class="stat-card stat-blue">
               <div>
                 <span class="stat-label">Intern Request</span>
-                <span class="stat-number">79</span>
+                <span class="stat-number">{{ internRequests }}</span>
               </div>
               <i class="fas fa-file-alt"></i>
             </div>
@@ -55,7 +55,7 @@
             <div class="stat-card stat-green">
               <div>
                 <span class="stat-label">Office Requested</span>
-                <span class="stat-number">18</span>
+                <span class="stat-number">{{ officesRequested }}</span>
               </div>
               <i class="fas fa-building"></i>
             </div>
@@ -65,7 +65,7 @@
             <div class="stat-card stat-purple">
               <div>
                 <span class="stat-label">Intern Applicant</span>
-                <span class="stat-number">10</span>
+                <span class="stat-number">{{ internApplicants }}</span>
               </div>
               <i class="fas fa-users"></i>
             </div>
@@ -76,9 +76,33 @@
   </section>
 </template>
 
-
 <script setup>
+import { onMounted, ref } from 'vue'
+import { internsAPI, internRequestsAPI, applicantsAPI } from '@/services/api'
 import '../assets/css/Dashboard.css'
+
+const activeInterns = ref(0)
+const internRequests = ref(0)
+const officesRequested = ref(0)
+const internApplicants = ref(0)
+
+async function loadStats() {
+  try {
+    const [interns, requests, applicants] = await Promise.all([
+      internsAPI.getAll(),
+      internRequestsAPI.getAll(),
+      applicantsAPI.getAll()
+    ])
+    activeInterns.value = interns.length
+    internRequests.value = requests.length
+    officesRequested.value = new Set(requests.map(r => r.officeCode)).size
+    internApplicants.value = applicants.length
+  } catch (error) {
+    console.error('Failed to load dashboard stats:', error)
+  }
+}
+
+onMounted(loadStats)
 </script>
 
 

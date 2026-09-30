@@ -243,7 +243,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Modal } from 'bootstrap'
-import { getApiErrorMessage, schoolsAPI } from '../src/services/api'
+import { getApiErrorMessage, schoolsAPI } from '@/services/api'
 
 const schools = ref([])
 const isLoading = ref(false)

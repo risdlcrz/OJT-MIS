@@ -112,7 +112,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { getApiErrorMessage, internRequestsAPI } from '../src/services/api'
+import { getApiErrorMessage, internRequestsAPI } from '@/services/api'
 import '../assets/css/Request.css'
 
 const isRequestModalOpen = ref(false)

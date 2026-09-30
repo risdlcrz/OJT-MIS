@@ -120,7 +120,7 @@ import { onMounted, ref } from 'vue'
 import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
-import { authAPI, getApiErrorMessage } from '../src/services/api'
+import { authAPI, getApiErrorMessage } from '@/services/api'
 
 const mode = ref('login')
 const email = ref('')

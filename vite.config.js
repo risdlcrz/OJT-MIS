@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
     plugins: [vue()],
+    resolve: {
+        alias: {
+            '@': resolve(__dirname, './src')
+        }
+    },
     server: {
         // Ipinapasa ang /api papunta sa .NET backend. Kaya hindi na kailangan
         // ng hard-coded na port sa src/services/api.js at walang CORS problem.

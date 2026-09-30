@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { currentUser, clearSession } from '../src/services/api'
+import { currentUser, clearSession } from '@/services/api'
 
 const user = currentUser()
 

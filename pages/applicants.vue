@@ -1200,7 +1200,7 @@ import {
     computed
 } from 'vue'
 
-import { applicantsAPI, getApiErrorMessage, internRequestsAPI } from '../src/services/api'
+import { applicantsAPI, getApiErrorMessage, internRequestsAPI } from '@/services/api'
 
 import '../assets/css/Applicants.css'
 

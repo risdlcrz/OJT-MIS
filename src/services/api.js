@@ -40,7 +40,8 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken')
-      window.location.href = '/login.html'
+      window.history.pushState({}, '', '/login.html')
+      window.dispatchEvent(new PopStateEvent('popstate'))
     }
 
     const data = error.response?.data
