@@ -430,17 +430,9 @@
                                             Select School
                                         </option>
 
-                                        <option> Philippine Science High School </option>
-                                        <option> National High School </option>
-                                        <option> Metro Business College </option>
-                                        <option> De La Salle University </option>
-                                        <option> Ateneo De Manila University </option>
-                                        <option> Far Eastern University </option>
-                                        <option> University of Santo Tomas </option>
-                                        <option> University of the Philippinnes </option>
-                                        <option> Polytechnic University </option>
-                                        <option> Local State University </option>
-                                        <option> Other </option>
+                                        <option v-for="school in schools" :key="school.id" :value="school.name">
+                                            {{ school.name }}
+                                        </option>
                                     </select>
                                 </div>
 
@@ -813,18 +805,21 @@
 
                             <div class="form-group">
                                 <label for="hireDuration">
-                                    OJT Duration (working days)
+                                    OJT Duration (hours)
                                 </label>
                                 <input
                                     id="hireDuration"
                                     v-model.number="hireDuration"
                                     type="number"
                                     min="1"
-                                    max="3660"
+                                    max="29280"
                                     class="form-control"
                                     :disabled="isHiring"
                                     required
                                 />
+                                <div class="form-text text-muted">
+                                    Total hours required. End date is calculated by dividing hours by 8 (hours per working day), excluding weekends and optionally Fridays.
+                                </div>
                             </div>
 
                             <div class="form-check mb-3">
@@ -859,7 +854,7 @@
                                             <div class="fw-bold">{{ hireEstimate.endDate }}</div>
                                         </div>
                                         <div class="col-4">
-                                            <div class="text-muted small">Days</div>
+                                            <div class="text-muted small">Working Days</div>
                                             <div class="fw-bold">{{ hireEstimate.durationDays }}</div>
                                         </div>
                                     </div>
@@ -1200,11 +1195,14 @@ import {
     computed
 } from 'vue'
 
-import { applicantsAPI, getApiErrorMessage, internRequestsAPI } from '@/services/api'
+import { applicantsAPI, getApiErrorMessage, internRequestsAPI, schoolsAPI } from '@/services/api'
 
 import '../assets/css/Applicants.css'
 
 const OFFICES_JSON = '/assets/json/offices.json'
+
+/* Schools loaded from API for the school dropdown */
+const schools = ref([])
 
 /* Fallback office list, used if offices.json is missing or empty,
    so the Office field is never stuck with nothing to pick from. */
@@ -1382,6 +1380,17 @@ async function loadApplicants() {
     } catch (error) {
         console.error('Failed to load applicants:', error)
         applicants.value = []
+    }
+}
+
+
+/* Load schools from API for the school dropdown */
+async function loadSchools() {
+    try {
+        schools.value = await schoolsAPI.getAll()
+    } catch (error) {
+        console.error('Failed to load schools:', error)
+        schools.value = []
     }
 }
 
@@ -1716,9 +1725,8 @@ async function openHire(applicant, presetData = {}) {
     hireApplicantNo.value = applicant.applicantNo
     hireRequestNo.value = presetData.requestNo || applicant.requestNo || ''
     hireDate.value = presetData.date || ''
-    hireDuration.value = applicant.requiredHours > 0
-        ? Math.max(1, Math.ceil(applicant.requiredHours / 8))
-        : 60
+    // Use requiredHours directly (in hours), default to 480 hours (60 days * 8 hours)
+    hireDuration.value = applicant.requiredHours > 0 ? applicant.requiredHours : 480
     hireExcludeFriday.value = true
     hireError.value = ''
     hireEstimate.value = null
@@ -1759,6 +1767,7 @@ function onHireDatePicked(e) {
 /**
  * Hinihingi sa backend ang tinatantyang start at end date.
  * Dito nakikita kung paano naaapektuhan ng "Exclude Fridays" ang bilang.
+ * Duration is converted from hours to working days (hours / 8).
  */
 async function refreshHireEstimate() {
     if (!hireDate.value || isNaN(Date.parse(hireDate.value))) {
@@ -1766,10 +1775,13 @@ async function refreshHireEstimate() {
         return
     }
 
+    // Convert hours to working days (8 hours per day)
+    const durationDays = Math.ceil((Number(hireDuration.value) || 1) / 8)
+
     try {
         hireEstimate.value = await applicantsAPI.estimateDates({
             hireDate: hireDate.value,
-            durationDays: Number(hireDuration.value) || 1,
+            durationDays: durationDays,
             excludeFriday: hireExcludeFriday.value
         })
     } catch (error) {
@@ -1816,10 +1828,12 @@ async function submitHire() {
     try {
         // Ang backend ang gumagawa ng conversion: profile -> Intern profile,
         // kinakalkula ang start/end date, at kinakain ang slot sa request.
+        // Convert hours to working days (8 hours per day)
+        const durationDays = Math.ceil((Number(hireDuration.value) || 1) / 8)
         const result = await applicantsAPI.hire(applicant.id, {
             requestId: Number(hireRequestNo.value),
             hireDate: hireDate.value,
-            durationDays: Number(hireDuration.value) || 1,
+            durationDays: durationDays,
             excludeFriday: hireExcludeFriday.value,
             office: pendingAction?.office || applicant.applicantOffice || '',
             remarks: pendingAction?.remarks || applicant.remarks || ''
@@ -1996,6 +2010,7 @@ function confirmOrientation(applicant) {
 onMounted(async () => {
     readTabFromUrl()
     await loadApplicants()
+    await loadSchools()
     loadScheduleOffices()
 
     document.addEventListener('click', handleOutsideClick)

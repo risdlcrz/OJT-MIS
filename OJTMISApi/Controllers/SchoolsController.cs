@@ -90,7 +90,10 @@ namespace OJTMISApi.Controllers
             }
 
             var name = school.Name?.Trim() ?? string.Empty;
+            var abbreviation = school.Abbreviation?.Trim() ?? string.Empty;
             var address = school.Address?.Trim() ?? string.Empty;
+            var moaStatus = school.MoaStatus;
+            var moaExpiry = school.MoaExpiry;
 
             var nameExists = await _context.Schools
                 .AnyAsync(s => s.Name != null && s.Name.ToLower() == name.ToLower());
@@ -104,7 +107,10 @@ namespace OJTMISApi.Controllers
             var newSchool = new School
             {
                 Name = name,
+                Abbreviation = abbreviation,
                 Address = address,
+                MoaStatus = moaStatus,
+                MoaExpiry = moaExpiry,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -149,7 +155,10 @@ namespace OJTMISApi.Controllers
             }
 
             var name = school.Name?.Trim() ?? string.Empty;
+            var abbreviation = school.Abbreviation?.Trim() ?? string.Empty;
             var address = school.Address?.Trim() ?? string.Empty;
+            var moaStatus = school.MoaStatus;
+            var moaExpiry = school.MoaExpiry;
 
             try
             {
@@ -168,7 +177,10 @@ namespace OJTMISApi.Controllers
                 }
 
                 existing.Name = name;
+                existing.Abbreviation = abbreviation;
                 existing.Address = address;
+                existing.MoaStatus = moaStatus;
+                existing.MoaExpiry = moaExpiry;
                 existing.UpdatedAt = DateTime.Now;
 
                 await _context.SaveChangesAsync();

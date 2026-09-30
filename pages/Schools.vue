@@ -32,7 +32,10 @@
               <tr>
                 <th scope="col" class="text-center" style="width: 80px;">#</th>
                 <th scope="col">School Name</th>
+                <th scope="col">Abbreviation</th>
                 <th scope="col">Address</th>
+                <th scope="col">MOA Status</th>
+                <th scope="col">MOA Expiry</th>
                 <th scope="col" style="width: 190px;">Last Updated</th>
                 <th scope="col" class="text-center" style="width: 130px;">Actions</th>
               </tr>
@@ -41,7 +44,14 @@
               <tr v-for="(school, index) in schools" :key="school.id">
                 <td class="text-center">{{ index + 1 }}</td>
                 <td class="fw-semibold">{{ school.name }}</td>
+                <td>{{ school.abbreviation || '-' }}</td>
                 <td>{{ school.address }}</td>
+                <td>
+                  <span :class="school.moaStatus ? 'badge badge-success' : 'badge badge-secondary'">
+                    {{ school.moaStatus ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td>{{ school.moaExpiry ? formatDate(school.moaExpiry) : '-' }}</td>
                 <td class="text-muted small">{{ formatDate(school.updatedAt) }}</td>
                 <td class="text-center text-nowrap">
                   <button
@@ -65,7 +75,7 @@
                 </td>
               </tr>
               <tr v-if="schools.length === 0">
-                <td colspan="5" class="text-center text-muted py-4">
+                <td colspan="8" class="text-center text-muted py-4">
                   No schools saved yet.
                 </td>
               </tr>
@@ -120,7 +130,20 @@
                 <div class="invalid-feedback">School name is required.</div>
               </div>
 
-              <div class="mb-0">
+              <div class="mb-3">
+                <label for="schoolAbbreviation" class="form-label fw-semibold">Abbreviation</label>
+                <input
+                  id="schoolAbbreviation"
+                  v-model.trim="form.abbreviation"
+                  type="text"
+                  class="form-control"
+                  maxlength="20"
+                  placeholder="Input Abbreviation (e.g., DLSU, ADMU)"
+                  :disabled="isSaving"
+                />
+              </div>
+
+              <div class="mb-3">
                 <label for="schoolAddress" class="form-label fw-semibold">Address</label>
                 <textarea
                   id="schoolAddress"
@@ -133,6 +156,32 @@
                   :disabled="isSaving"
                 ></textarea>
                 <div class="invalid-feedback">Address is required.</div>
+              </div>
+
+              <div class="mb-3">
+                <div class="form-check form-switch">
+                  <input
+                    id="schoolMoaStatus"
+                    v-model="form.moaStatus"
+                    type="checkbox"
+                    class="form-check-input"
+                    :disabled="isSaving"
+                  />
+                  <label class="form-check-label fw-semibold" for="schoolMoaStatus">
+                    MOA Status (Active/Inactive)
+                  </label>
+                </div>
+              </div>
+
+              <div class="mb-0">
+                <label for="schoolMoaExpiry" class="form-label fw-semibold">MOA Expiry Date</label>
+                <input
+                  id="schoolMoaExpiry"
+                  v-model="form.moaExpiry"
+                  type="date"
+                  class="form-control"
+                  :disabled="isSaving"
+                />
               </div>
             </div>
 
@@ -254,7 +303,7 @@ const submitted = ref(false)
 const notification = reactive({ message: '', variant: 'success' })
 const notificationTimeout = ref(null)
 
-const form = reactive({ id: 0, name: '', address: '' })
+const form = reactive({ id: 0, name: '', abbreviation: '', address: '', moaStatus: false, moaExpiry: '' })
 const isEditing = computed(() => form.id > 0)
 
 const formModalEl = ref(null)
@@ -270,7 +319,10 @@ const pendingDelete = ref(null)
 const emptyForm = () => {
   form.id = 0
   form.name = ''
+  form.abbreviation = ''
   form.address = ''
+  form.moaStatus = false
+  form.moaExpiry = ''
   submitted.value = false
   formError.value = ''
 }
@@ -329,7 +381,10 @@ function openEditModal(school) {
   emptyForm()
   form.id = school.id
   form.name = school.name
+  form.abbreviation = school.abbreviation || ''
   form.address = school.address
+  form.moaStatus = school.moaStatus || false
+  form.moaExpiry = school.moaExpiry ? school.moaExpiry.slice(0, 10) : ''
   formModal.show()
 }
 
@@ -349,7 +404,14 @@ async function saveSchool() {
 
   isSaving.value = true
 
-  const payload = { id: form.id, name: form.name, address: form.address }
+  const payload = {
+    id: form.id,
+    name: form.name,
+    abbreviation: form.abbreviation,
+    address: form.address,
+    moaStatus: form.moaStatus,
+    moaExpiry: form.moaExpiry || null
+  }
 
   try {
     if (isEditing.value) {
@@ -364,6 +426,8 @@ async function saveSchool() {
     await loadSchools()
   } catch (error) {
     formError.value = getApiErrorMessage(error, 'Failed to save the school.')
+    // Hide modal on error to prevent frozen backdrop
+    formModal.hide()
   } finally {
     isSaving.value = false
   }
