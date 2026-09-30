@@ -202,3 +202,28 @@
     .dataTables_filter input {
         margin-left: 8px !important; /* Space between "Search:" and the box */
     }
+
+/* ===== Intern List Table Subscript Row ===== */
+.subscript-row {
+  transition: background-color 0.15s ease;
+}
+
+.subscript-row:hover {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+.intern-updated-subscript {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: #888;
+  font-style: italic;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.intern-updated-subscript::before {
+  content: "⟳ ";
+  font-size: 0.65rem;
+  opacity: 0.7;
+}

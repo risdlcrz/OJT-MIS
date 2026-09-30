@@ -65,7 +65,7 @@
 
                             <tbody>
                                 <tr
-                                    v-for="applicant in applicants"
+                                    v-for="applicant in displayApplicants"
                                     :key="applicant.applicantNo"
                                 >
                                     <td>{{ applicant.applicantNo }}</td>
@@ -168,7 +168,7 @@
                                 </tr>
 
                                 <!-- Empty State -->
-                                <tr v-if="applicants.length === 0">
+                                <tr v-if="displayApplicants.length === 0">
                                     <td
                                         colspan="7"
                                         class="text-center text-muted py-4"
@@ -1260,6 +1260,11 @@ const isSavingApplicant = ref(false)
 
 const applicants = ref([])
 
+/* Filter out hired applicants from the list view */
+const displayApplicants = computed(() =>
+    applicants.value.filter(a => !a.hired)
+)
+
 const openDropdown = ref(null)
 
 const dropdownStyle = ref({})
@@ -1343,7 +1348,7 @@ const officesLoading = ref(true)
 /* Applicants who are accepted but not yet confirmed for orientation */
 const scheduleCandidates = computed(() =>
     applicants.value.filter(
-        a => a.accepted && !(a.orientation && a.orientation.confirmed)
+        a => !a.hired && a.accepted && !(a.orientation && a.orientation.confirmed)
     )
 )
 

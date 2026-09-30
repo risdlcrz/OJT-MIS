@@ -25,17 +25,13 @@
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
-                <th scope="col" class="text-center" style="width: 70px;">#</th>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
-                <th scope="col" style="width: 170px;">Last Updated</th>
                 <th scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(row, index) in rows" :key="row.id">
-                <td class="text-center">{{ index + 1 }}</td>
                 <td v-for="col in displayColumns" :key="col.prop">{{ cell(row, col) }}</td>
-                <td class="text-muted small">{{ formatDate(row.updatedAt) }}</td>
                 <td class="text-center text-nowrap">
                   <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
                           :disabled="isLoading || isSaving" @click="openEdit(row)">
@@ -48,7 +44,7 @@
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length + 3" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length + 1" class="text-center text-muted py-4">
                   No {{ config.title.toLowerCase() }} yet.
                 </td>
               </tr>
@@ -100,12 +96,28 @@
                 </select>
                 <div v-if="col.prop === 'requestId'" class="invalid-feedback">Please select an intern request.</div>
 
+                <template v-else-if="col.prop === 'status'">
+                  <!-- Status field: uneditable when editing, defaults to 'Hired' when creating -->
+                  <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" type="text" class="form-control"
+                         :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
+                         :placeholder="`Input ${col.label}`" :disabled="isSaving || isEditing" />
+                  <div class="invalid-feedback">{{ col.label }} is required.</div>
+                  <div v-if="isEditing" class="form-text text-muted">Status cannot be changed after hiring.</div>
+                </template>
+
                 <template v-else>
                   <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" type="text" class="form-control"
                          :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
                          :placeholder="`Input ${col.label}`" :disabled="isSaving" />
                   <div class="invalid-feedback">{{ col.label }} is required.</div>
                 </template>
+              </div>
+
+              <!-- Last updated field (read-only, only shown when editing) -->
+              <div v-if="isEditing && form.updatedAt" class="mb-3">
+                <label class="form-label fw-semibold">Last Updated</label>
+                <input type="text" class="form-control form-control-plaintext bg-light" readonly
+                       :value="formatDate(form.updatedAt)" />
               </div>
             </div>
             <div class="modal-footer">
@@ -166,16 +178,17 @@ const MODULES = {
     columns: [
       { prop: 'fullName', label: 'Full Name', max: 200 },
       { prop: 'school', label: 'School', max: 200 },
-      { prop: 'requestId', label: 'Request ID', type: 'text' }
+      { prop: 'requestId', label: 'Request ID', type: 'text' },
+      { prop: 'status', label: 'Status', max: 20 }
     ],
     /* Karagdagang column na hango sa profile: hindi ito lumalabas sa form. */
     display: [
-      { prop: 'fullName', label: 'Full Name' },
       { prop: 'applicantNo', label: 'Applicant No.' },
+      { prop: 'fullName', label: 'Full Name' },
       { prop: 'school', label: 'School' },
       { prop: 'program', label: 'Program' },
       { prop: 'contactNumber', label: 'Contact No.' },
-      { prop: 'requestId', label: 'Request', format: (v) => (v ? `#${v}` : null) },
+      { prop: 'requestId', label: 'Department', format: (_v, row) => row.requestOffice || (row.requestId ? `#${row.requestId}` : null) },
       { prop: 'durationDays', label: 'Days' },
       {
         prop: 'startDate',
@@ -190,7 +203,8 @@ const MODULES = {
         prop: 'excludeFriday',
         label: 'Fri',
         format: (v) => (v ? 'Excluded' : 'Included')
-      }
+      },
+      { prop: 'status', label: 'Status' }
     ]
   },
   'programs.html': {
@@ -257,6 +271,7 @@ let toastTimer = null
 function blankForm() {
   form.id = 0
   form.requestId = ''
+  form.updatedAt = null
   if (config.value) config.value.columns.forEach((c) => { form[c.prop] = '' })
   submitted.value = false
   formError.value = ''
@@ -287,6 +302,11 @@ async function load() {
     rows.value = await config.value.api.getAll()
     if (config.value.hiring) {
       availableRequests.value = await internRequestsAPI.available()
+      // Map requestId to officeName for Department column
+      const requestMap = new Map(availableRequests.value.map(r => [r.id, r.officeName]))
+      rows.value.forEach(row => {
+        row.requestOffice = requestMap.get(row.requestId) || null
+      })
     }
   } catch (e) {
     loadError.value = getApiErrorMessage(e, `Failed to load ${title.value}.`)
@@ -304,6 +324,8 @@ function openEdit(row) {
   blankForm()
   form.id = row.id
   config.value.columns.forEach((c) => { form[c.prop] = row[c.prop] ?? '' })
+  // Copy updatedAt for display in the modal (not in config.columns)
+  form.updatedAt = row.updatedAt
   formModal.show()
 }
 function closeForm() { if (!isSaving.value) formModal.hide() }
