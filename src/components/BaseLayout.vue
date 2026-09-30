@@ -299,7 +299,20 @@ const props = defineProps({
 const emit = defineEmits(['navigate'])
 
 /* Mga page na hawak ng App.vue. Ang iba ay normal na link. */
-const ALLOWED_PAGES = ['dashboard.html', 'requests.html', 'applicants.html']
+const ALLOWED_PAGES = [
+  'login.html',
+  'dashboard.html',
+  'requests.html',
+  'applicants.html',
+  'schools.html',
+  'internlist.html',
+  'forms.html',
+  'dtr.html',
+  'idgenerate.html',
+  'utility.html',
+  'programs.html',
+  'signatories.html'
+]
 
 /* Ang "#schedule" (o anumang hash) sa URL, halimbawa "/applicants.html#schedule".
    Ito ang nagsasabi kung List of Applicants o Schedule Orientation ang bukas. */
@@ -313,7 +326,15 @@ const pageMeta = computed(() => {
   return ({
     'dashboard.html': { title: 'Dashboard' },
     'requests.html': { title: 'List of Requests', section: 'Request', sectionIcon: 'fas fa-table' },
-    'applicants.html': { title: 'List of Applicants', section: 'Applicants', sectionIcon: 'far fa-file' }
+    'applicants.html': { title: 'List of Applicants', section: 'Applicants', sectionIcon: 'far fa-file' },
+    'schools.html': { title: 'List of Schools', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
+    'internlist.html': { title: 'Intern List' },
+    'forms.html': { title: 'Issuance of COC', section: 'Forms', sectionIcon: 'fas fa-file' },
+    'dtr.html': { title: 'Daily Time Records', section: 'Forms', sectionIcon: 'fas fa-file' },
+    'idgenerate.html': { title: 'ID Generation', section: 'Forms', sectionIcon: 'fas fa-file' },
+    'utility.html': { title: 'Utility' },
+    'programs.html': { title: 'Programs / Strands', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
+    'signatories.html': { title: 'Signatories', section: 'System Settings', sectionIcon: 'fas fa-cogs' }
   }[props.currentPage] || { title: 'OJTMIS' })
 })
 
@@ -423,6 +444,15 @@ function onUserMenuItemClick(event, item) {
     event.preventDefault()
     closeUserMenu()
     openChangePassword()
+    return
+  }
+
+  if (name === 'logout') {
+    // Huwag na ang full page reload: basta na ang SPA navigation para
+    // malinis ang session at hindi ma-trigger ang auto-redirect ng login.
+    event.preventDefault()
+    closeUserMenu()
+    navigate(event, 'login.html')
     return
   }
 

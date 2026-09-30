@@ -101,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
@@ -110,14 +110,29 @@ const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
 
+/* Ito ang tinatakdang token ng axios apiClient (src/services/api.js). */
+function setSession(user) {
+    localStorage.setItem('authToken', `ojt-${Date.now()}`)
+    localStorage.setItem('ojtUser', JSON.stringify({ email: user.email, loggedInAt: new Date().toISOString() }))
+}
+
 function handleLogin() {
     if (!email.value || !password.value) {
         errorMessage.value = 'Please enter your email and password.'
         return
     }
 
+    setSession({ email: email.value })
     errorMessage.value = ''
     window.history.pushState({}, '', '/dashboard.html')
     window.dispatchEvent(new PopStateEvent('popstate'))
 }
+
+/* Kung naka-login na, huwag na ipakita ang login form. */
+onMounted(() => {
+    if (localStorage.getItem('authToken')) {
+        window.history.replaceState({}, '', '/dashboard.html')
+        window.dispatchEvent(new PopStateEvent('popstate'))
+    }
+})
 </script>
