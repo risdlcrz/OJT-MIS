@@ -22,21 +22,11 @@ body {
     background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
 }
 
-.requests-content {
-    width: 100%;
-    max-width: none;
-    padding: 1rem;
-}
-
 .modern-card {
     border: 0;
     border-radius: 20px;
     box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
     overflow: hidden;
-}
-
-.requests-card {
-    overflow: visible;
 }
 
 .modern-card-header {
@@ -51,6 +41,19 @@ body {
 
 .modern-card-header .card-tools {
     margin-left: auto;
+}
+
+.modern-card-header .modern-btn {
+    background: #06402b;
+    border-color: #06402b;
+    color: #fff;
+}
+
+.modern-card-header .modern-btn:hover,
+.modern-card-header .modern-btn:focus {
+    background: #0b5d57;
+    border-color: #0b5d57;
+    color: #fff;
 }
 
 .card-title {
@@ -72,15 +75,13 @@ body {
 }
 
 button[data-target="#modalInternRequest"],
-button[data-target="#modalInternRequest"].btn-primary,
-.modern-card-header .modern-btn.btn-primary {
+button[data-target="#modalInternRequest"].btn-primary {
     background: #06402b !important;
     border-color: #06402b !important;
     color: #fff !important;
 }
 
-button[data-target="#modalInternRequest"]:hover,
-.modern-card-header .modern-btn.btn-primary:hover {
+button[data-target="#modalInternRequest"]:hover {
     background: #0b5d57 !important;
     border-color: #0b5d57 !important;
 }
@@ -93,8 +94,7 @@ button[data-target="#modalInternRequest"]:hover,
 }
 
 .modern-modal .modal-body {
-    max-height: min(65vh, 560px);
-    overflow-y: auto;
+    overflow: visible;
 }
 
 .modern-modal .form-group,
@@ -147,29 +147,8 @@ button[data-target="#modalInternRequest"]:hover,
 }
 
 .modern-table {
-    width: 100%;
-    min-width: 760px;
     border-radius: 14px;
-    overflow: visible;
-}
-
-.requests-table-wrapper {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: visible;
-}
-
-.requests-card > .card-body {
-    padding: 1rem;
-    overflow: visible;
-}
-
-.requests-card .modal {
-    z-index: 1060;
-}
-
-.requests-card .modal-backdrop {
-    z-index: 1050;
+    overflow: hidden;
 }
 
 .modern-table thead th {
@@ -185,6 +164,85 @@ button[data-target="#modalInternRequest"]:hover,
 
 .modern-table tbody tr:hover {
     background: #f8fafc;
+}
+
+.modal-backdrop {
+    z-index: 1040;
+}
+
+#modalInternRequest {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 1050;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+#modalInternRequest .modal-dialog {
+    width: 100%;
+    max-width: 680px;
+    margin: 1.75rem auto;
+}
+
+#modalInternRequest .modal-content {
+    max-height: calc(100vh - 3.5rem);
+}
+
+#modalInternRequest .modal-body {
+    overflow-y: auto;
+}
+
+@media (max-width: 767.98px) {
+    .modern-card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .modern-card-header .card-tools,
+    .modern-card-header .modern-btn {
+        width: 100%;
+    }
+
+    .modern-card-header .modern-btn {
+        justify-content: center;
+    }
+
+    .card-body {
+        overflow-x: auto;
+    }
+
+    .modern-table {
+        min-width: 760px;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    .modern-modal .form-group.row {
+        display: block;
+    }
+
+    .modern-modal .form-group.row > [class*="col-"] {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .modern-modal .modal-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .modern-modal .modal-footer .btn {
+        width: 100%;
+        margin: 0;
+    }
 }
 
 .btn-success, .btn-danger {

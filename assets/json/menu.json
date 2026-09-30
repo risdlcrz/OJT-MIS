@@ -45,7 +45,7 @@
         },
         {
           "name": "Schedule Orientation",
-          "link": "schedule-orientation.html"
+          "link": "ScheduleOrientation.aspx"
         }
       ]
     },
@@ -53,7 +53,7 @@
     {
       "name": "Intern List",
       "icon": "fas fa-list",
-      "link": "intern-list.html"
+      "link": "InternList.aspx"
     },
 
     {
@@ -62,15 +62,15 @@
       "submenu": [
         {
           "name": "Issuance of COC",
-          "link": "coc.html"
+          "link": "Forms.aspx"
         },
         {
           "name": "Daily Time Records",
-          "link": "dtr.html"
+          "link": "DTR.aspx"
         },
         {
           "name": "ID Generation",
-          "link": "id-generate.html"
+          "link": "IDGenerate.aspx"
         }
       ]
     },
@@ -78,7 +78,7 @@
     {
       "name": "Utility",
       "icon": "fas fa-tools",
-      "link": "utility.html"
+      "link": "Utility.aspx"
     },
 
     {
@@ -87,15 +87,15 @@
       "submenu": [
         {
           "name": "Programs / Strands",
-          "link": "programs.html"
+          "link": "ProgramsList.aspx"
         },
         {
           "name": "Schools",
-          "link": "schools.html"
+          "link": "Schools.aspx"
         },
         {
           "name": "Signatories",
-          "link": "signatories.html"
+          "link": "Signatories.aspx"
         }
       ]
     }

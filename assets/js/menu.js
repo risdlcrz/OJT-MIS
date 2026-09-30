@@ -31,11 +31,11 @@
 
                     sidebar.insertAdjacentHTML("beforeend", `
 <li class="nav-item has-treeview ${hasActive ? "menu-open" : ""}">
-  <a href="#" class="nav-link ${hasActive ? "active" : ""}" aria-expanded="${hasActive}">
+  <a href="#" class="nav-link ${hasActive ? "active" : ""}">
     <i class="nav-icon ${item.icon}"></i>
     <p>
       ${item.name}
-      <i class="right fas fa-angle-left ${hasActive ? "is-open" : ""}"></i>
+      <i class="right fas fa-angle-left"></i>
     </p>
   </a>
   <ul class="nav nav-treeview">
@@ -55,16 +55,6 @@
 </li>
 `);
                 }
-            });
-
-            sidebar.querySelectorAll(".has-treeview > .nav-link").forEach(toggle => {
-                toggle.addEventListener("click", event => {
-                    event.preventDefault();
-                    const parent = toggle.closest(".has-treeview");
-                    const isOpen = parent.classList.toggle("menu-open");
-                    toggle.setAttribute("aria-expanded", isOpen);
-                    toggle.querySelector(".right").classList.toggle("is-open", isOpen);
-                });
             });
 
             // Navbar user menu

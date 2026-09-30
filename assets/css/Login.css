@@ -1,11 +1,11 @@
 ﻿:root {
-    color-scheme: dark;
+    color-scheme: light;
 }
 
 body {
     margin: 0;
     min-height: 100vh;
-    font-family: "Segoe UI", sans-serif;
+    font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
     background: #ff8c1a;
     color: #0f172a;
     overflow-x: hidden;
@@ -132,4 +132,43 @@ body::after {
 
 .text-Theme {
     color: #f8fafc;
+}
+
+.login-error {
+    margin: 1rem 0 0;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 575.98px) {
+    .account-pages {
+        padding: 1rem;
+    }
+
+    .account-pages .card-body {
+        padding: 1rem;
+    }
+
+    .account-pages .row.mt-4 {
+        gap: 0.75rem;
+    }
+
+    .account-pages .row.mt-4 > [class*="col-"] {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+        text-align: left !important;
+    }
+
+    .account-pages .row.mt-4 .btn {
+        width: 100%;
+    }
+
+    .footer-note {
+        font-size: 0.78rem;
+    }
 }

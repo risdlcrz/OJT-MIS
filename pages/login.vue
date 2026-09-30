@@ -30,27 +30,23 @@
 
                             <div class="p-3">
 
-                                <form class="form-horizontal" id="loginForm" onsubmit="return false;">
+                                <form class="form-horizontal" id="loginForm" @submit.prevent="handleLogin">
                                     <div class="loginWrapper">
                                         <div class="mb-3">
-                                            <label class="form-label" for="username">Username</label>
-                                            <!-- maxlength 29 (allowed length < 30). oninput/keydown/paste handlers prevent excess typing/pasting -->
-                                            <input type="text" class="form-control" id="username" placeholder="Enter username" name="loginid" autocomplete="username" required
-                                                   maxlength="29"
-                                                   oninput="enforceMax(this,29)"
-                                                   onkeydown="blockIfMax(event,this,29)"
-                                                   onpaste="handlePaste(event,this,29)">
+                                            <label class="form-label" for="email">Email</label>
+                                            <input v-model.trim="email" type="text" class="form-control" id="email"
+                                                   placeholder="Enter email address" name="loginid" autocomplete="email"
+                                                   maxlength="29" required>
                                         </div>
 
                                         <div class="mb-3">
-                                            <label class="form-label" for="userpassword">Password</label>
-                                            <!-- maxlength 29 (allowed length < 30). oninput/keydown/paste handlers prevent excess typing/pasting -->
-                                            <input type="password" class="form-control" id="userpassword" placeholder="Enter password" name="password" autocomplete="current-password" required
-                                                   maxlength="29"
-                                                   oninput="enforceMax(this,29)"
-                                                   onkeydown="blockIfMax(event,this,29)"
-                                                   onpaste="handlePaste(event,this,29)">
+                                            <label class="form-label" for="emailpassword">Password</label>
+                                            <input v-model="password" type="password" class="form-control" id="emailpassword"
+                                                   placeholder="Enter password" name="password" autocomplete="current-password"
+                                                   maxlength="29" required>
                                         </div>
+
+                                        <p v-if="errorMessage" class="text-danger" role="alert">{{ errorMessage }}</p>
 
                                         <div class="row mt-4">
                                             <div class="col-sm-6">
@@ -62,7 +58,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-sm-6 text-end">
-                                                <button class="btn btn-primary w-md waves-effect waves-light" type="button" onclick="validateLogin();">Log In</button>
+                                                <button class="btn btn-primary w-md waves-effect waves-light" type="submit">Log In</button>
                                             </div>
                                         </div>
 
@@ -105,7 +101,23 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
+
+const email = ref('')
+const password = ref('')
+const errorMessage = ref('')
+
+function handleLogin() {
+    if (!email.value || !password.value) {
+        errorMessage.value = 'Please enter your email and password.'
+        return
+    }
+
+    errorMessage.value = ''
+    window.history.pushState({}, '', '/dashboard.html')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+}
 </script>

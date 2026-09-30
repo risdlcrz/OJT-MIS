@@ -1,32 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import VueDevTools from 'vite-plugin-vue-devtools'
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    VueDevTools(),
-  ],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    },
-    watch: {
-      ignored: ['**/.vs/**', '**/node_modules/**', '**/.git/**']
+    plugins: [vue()],
+    server: {
+        watch: {
+            ignored: [
+                '**/.vs/**',
+                '**/node_modules/**',
+                '**/dist/**'
+            ]
+        }
     }
-  },
-  build: {
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        entryFileNames: '[name]-[hash].js',
-        chunkFileNames: '[name]-[hash].js',
-        assetFileNames: '[name]-[hash][extname]'
-      }
-    }
-  }
 })
