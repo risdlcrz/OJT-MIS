@@ -28,6 +28,7 @@
           @click="openEditName"
         >
           <i class="fas fa-user mr-1"></i>{{ user.name }}
+          <span v-if="roleLabel" class="badge text-bg-secondary ms-2">{{ roleLabel }}</span>
         </button>
         <button
           type="button"
@@ -288,6 +289,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import '../../assets/css/navigation.css'
 import '../../assets/css/Dashboard.css'
 import menuConfig from '../../assets/json/menu.json'
+import { currentUser } from '../services/api'
 
 const props = defineProps({
   currentPage: {
@@ -339,7 +341,18 @@ const pageMeta = computed(() => {
 })
 
 const menu = ref([])
-const user = ref({ name: 'Orings', menu: [] })
+const user = ref({ name: 'User', menu: [] })
+
+/* Ang pangalan sa navbar ay galing sa naka-login na session
+   (First + Last), hindi na sa menu.json. */
+const ROLE_LABELS = { HRAdmin: 'HR Admin', Supervisor: 'Supervisor', Intern: 'Intern' }
+
+const sessionProfile = currentUser()
+
+const roleLabel = computed(() => {
+  const role = sessionProfile?.roles?.[0]
+  return role ? ROLE_LABELS[role] || role : ''
+})
 const isUserMenuOpen = ref(false)
 const openMenus = ref(new Set())
 const sidebarFullscreen = ref(false)
@@ -571,7 +584,11 @@ onMounted(() => {
   document.addEventListener('click', handleDocumentClick)
 
   menu.value = menuConfig.menu || []
-  user.value = menuConfig.navbar?.user || user.value
+  user.value = {
+    ...menuConfig.navbar?.user,
+    ...sessionProfile,
+    name: sessionProfile?.fullName || menuConfig.navbar?.user?.name || 'User'
+  }
 
   /* Ang pangalang binago via "Change Display Name" ay naka-save sa
      localStorage, kaya nananatili ito kahit mag-refresh o bumalik. */

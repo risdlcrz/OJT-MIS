@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./dev.ps1",
+    "dev:web": "vite",
+    "dev:api": "dotnet run --project ./OJTMISApi/OJTMISApi.csproj",
+    "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./stop.ps1",
     "build": "vite build",
     "preview": "vite preview"
   },

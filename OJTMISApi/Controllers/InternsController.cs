@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
@@ -7,6 +8,7 @@ namespace OJTMISApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = UserRoles.HRAdmin)]
     [Produces("application/json")]
     public class InternsController : ControllerBase
     {
@@ -21,12 +23,18 @@ namespace OJTMISApi.Controllers
 
         /// <summary>GET: api/interns</summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Intern>>> GetAll()
+        public async Task<ActionResult<IEnumerable<Intern>>> GetAll([FromQuery] string? status)
         {
             try
             {
-                var items = await _context.Interns
-                    .AsNoTracking()
+                var query = _context.Interns.AsNoTracking();
+
+                // Ang Intern List ay para lamang sa mga naka-"Hired".
+                query = string.IsNullOrWhiteSpace(status)
+                    ? query.Where(x => x.Status == "Hired")
+                    : query.Where(x => x.Status == status);
+
+                var items = await query
                     .OrderBy(x => x.FullName)
                     .ToListAsync();
                 return Ok(items);
@@ -70,10 +78,43 @@ namespace OJTMISApi.Controllers
             }
 
             var now = DateTime.Now;
-            var entity = new Intern { FullName = f1, School = f2, CreatedAt = now, UpdatedAt = now };
+            var status = string.IsNullOrWhiteSpace(item.Status) ? "Applicant" : item.Status.Trim();
+            var entity = new Intern
+            {
+                FullName = f1,
+                School = f2,
+                Status = status,
+                RequestId = null,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
             try
             {
+                // Kailangan ng request na may slot bago mag-hire.
+                if (status == "Hired")
+                {
+                    if (item.RequestId is null)
+                    {
+                        return BadRequest(new { message = "Please select an intern request." });
+                    }
+
+                    var request = await _context.InternRequests.FirstOrDefaultAsync(r => r.Id == item.RequestId.Value);
+                    if (request is null)
+                    {
+                        return BadRequest(new { message = "The selected intern request does not exist." });
+                    }
+
+                    if (!request.HasSlots)
+                    {
+                        return Conflict(new { message = $"Request from {request.OfficeName} has no available slots left." });
+                    }
+
+                    entity.RequestId = request.Id;
+                    request.Filled += 1;
+                    request.UpdatedAt = now;
+                }
+
                 _context.Interns.Add(entity);
                 await _context.SaveChangesAsync();
                 return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
@@ -128,6 +169,18 @@ namespace OJTMISApi.Controllers
                 if (entity is null) return NotFound(new { message = "Intern with id {id} was not found." });
 
                 _context.Interns.Remove(entity);
+
+                // Ibalik ang slot kung may kinuha siya na request.
+                if (entity.RequestId is not null)
+                {
+                    var request = await _context.InternRequests.FirstOrDefaultAsync(r => r.Id == entity.RequestId.Value);
+                    if (request is not null)
+                    {
+                        request.Filled = Math.Max(0, request.Filled - 1);
+                        request.UpdatedAt = DateTime.Now;
+                    }
+                }
+
                 await _context.SaveChangesAsync();
                 return NoContent();
             }
@@ -139,4 +192,5 @@ namespace OJTMISApi.Controllers
         }
     }
 }
+
 

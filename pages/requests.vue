@@ -52,8 +52,8 @@
                     </div>
                 </div>
 <div class="modal-footer border-0 justify-content-end">
-    <button type="submit" class="btn btn-primary px-4 modern-btn">
-        <i class="fas fa-plus"></i> Submit
+    <button type="submit" class="btn btn-primary px-4 modern-btn" :disabled="isSaving">
+        <i class="fas fa-plus"></i> {{ isSaving ? 'Submitting...' : 'Submit' }}
     </button>
     <button type="button" class="btn btn-outline-secondary px-4" @click="isRequestModalOpen = false">
         <i class="fas fa-times"></i> Close
@@ -78,20 +78,27 @@
                 </tr> 
            </thead> 
     <tbody id="requestsTbody">
-        <tr v-for="request in requests" :key="request.requestNo">
-            <td>{{ request.requestNo }}</td>
+        <tr v-for="request in requests" :key="request.id">
+            <td>{{ request.id }}</td>
             <td>{{ request.officeName || request.officeCode }}</td>
-            <td>{{ request.count }}</td>
+            <td>{{ request.count }} <span class="text-muted small">({{ request.remaining }} left)</span></td>
             <td>{{ request.skills }}<span v-if="request.description"> - {{ request.description }}</span></td>
-            <td><span class="badge badge-info">{{ request.status || 'pending' }}</span></td>
             <td>
-                <button type="button" class="btn btn-success btn-sm" title="Mark done" @click="removeRequest(request.requestNo)">
-                    <i class="fas fa-check"></i>
+                <span class="badge badge-info">{{ request.status }}</span>
+                <span v-if="request.hasSlots" class="badge badge-success">Has slots</span>
+                <span v-else class="badge badge-secondary">Full</span>
+            </td>
+            <td>
+                <button type="button" class="btn btn-danger btn-sm" title="Remove" :disabled="isLoading" @click="removeRequest(request.id)">
+                    <i class="fas fa-trash"></i>
                 </button>
             </td>
         </tr>
         <tr v-if="requests.length === 0">
-            <td colspan="6" class="text-center text-muted py-4">No requests saved yet.</td>
+            <td colspan="6" class="text-center text-muted py-4">{{ isLoading ? 'Loading requests...' : 'No requests saved yet.' }}</td>
+        </tr>
+        <tr v-if="loadError">
+            <td colspan="6" class="text-center py-3"><span class="text-danger">{{ loadError }}</span></td>
         </tr>
 </tbody>
 </table>
@@ -105,47 +112,77 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { getApiErrorMessage, internRequestsAPI } from '../src/services/api'
 import '../assets/css/Request.css'
 
 const isRequestModalOpen = ref(false)
 const requests = ref([])
 const offices = ref([])
+const isLoading = ref(false)
+const isSaving = ref(false)
+const loadError = ref('')
 const requestForm = ref({ officeCode: '', count: 1, skills: '', description: '' })
 
-function loadRequests() {
+/* Lahat ng datos ay galing sa backend, walang localStorage. */
+async function loadRequests() {
+    isLoading.value = true
+    loadError.value = ''
     try {
-        requests.value = JSON.parse(localStorage.getItem('ojt_intern_requests_v1') || '[]')
-    } catch (error) {
-        console.error('Failed to load saved requests:', error)
-        requests.value = []
+        requests.value = await internRequestsAPI.getAll()
+    } catch (e) {
+        loadError.value = getApiErrorMessage(e, 'Failed to load requests.')
+    } finally {
+        isLoading.value = false
     }
 }
 
-function saveRequest() {
-    const office = offices.value.find((item) => item.code === requestForm.value.officeCode)
-    requests.value.push({
-        requestNo: String(requests.value.length + 1),
-        officeCode: requestForm.value.officeCode,
-        officeName: office?.name || requestForm.value.officeCode,
-        count: requestForm.value.count,
-        skills: requestForm.value.skills.trim(),
-        description: requestForm.value.description.trim(),
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    })
-    localStorage.setItem('ojt_intern_requests_v1', JSON.stringify(requests.value))
-    requestForm.value = { officeCode: '', count: 1, skills: '', description: '' }
-    isRequestModalOpen.value = false
+async function saveRequest() {
+    const form = requestForm.value
+    if (!form.officeCode) { loadError.value = 'Please select a requesting office.'; return }
+    if (!form.count || form.count < 1) { loadError.value = 'Slots must be at least 1.'; return }
+
+    const office = offices.value.find((item) => item.code === form.officeCode)
+
+    isSaving.value = true
+    loadError.value = ''
+    try {
+        await internRequestsAPI.create({
+            id: 0,
+            officeCode: form.officeCode,
+            officeName: office?.name || form.officeCode,
+            count: Number(form.count),
+            skills: form.skills.trim(),
+            description: form.description.trim(),
+            status: 'Open'
+        })
+        requestForm.value = { officeCode: '', count: 1, skills: '', description: '' }
+        isRequestModalOpen.value = false
+        await loadRequests()
+    } catch (e) {
+        loadError.value = getApiErrorMessage(e, 'Failed to save request.')
+    } finally {
+        isSaving.value = false
+    }
 }
 
-function removeRequest(requestNo) {
-    requests.value = requests.value.filter((request) => request.requestNo !== requestNo)
-    localStorage.setItem('ojt_intern_requests_v1', JSON.stringify(requests.value))
+async function removeRequest(id) {
+    if (!confirm('Remove this intern request?')) return
+    loadError.value = ''
+    try {
+        await internRequestsAPI.remove(id)
+        await loadRequests()
+    } catch (e) {
+        loadError.value = getApiErrorMessage(e, 'Failed to remove request.')
+    }
 }
 
 onMounted(async () => {
-    loadRequests()
-    const response = await fetch('/assets/json/offices.json')
-    offices.value = (await response.json()).offices || []
+    await loadRequests()
+    try {
+        const response = await fetch('/assets/json/offices.json')
+        offices.value = (await response.json()).offices || []
+    } catch {
+        offices.value = []
+    }
 })
 </script>

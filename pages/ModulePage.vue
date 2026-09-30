@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <section class="content">
     <!-- ================= API-backed module ================= -->
     <div v-if="config" class="card shadow-sm">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h3 class="card-title mb-0">{{ config.title }}</h3>
-        <button type="button" class="btn btn-primary btn-sm" :disabled="isLoading" @click="openCreate">
+        <button type="button" class="btn btn-primary btn-sm" :disabled="isLoading || (config.hiring && availableRequests.length === 0)" :title="config.hiring && availableRequests.length === 0 ? 'No available intern request' : ''" @click="openCreate">
           <i class="fas fa-plus me-1"></i> Add {{ config.singular }}
         </button>
       </div>
@@ -26,7 +26,7 @@
             <thead class="table-light">
               <tr>
                 <th scope="col" class="text-center" style="width: 70px;">#</th>
-                <th v-for="col in config.columns" :key="col.prop" scope="col">{{ col.label }}</th>
+                <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
                 <th scope="col" style="width: 170px;">Last Updated</th>
                 <th scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
@@ -34,7 +34,7 @@
             <tbody>
               <tr v-for="(row, index) in rows" :key="row.id">
                 <td class="text-center">{{ index + 1 }}</td>
-                <td v-for="col in config.columns" :key="col.prop">{{ row[col.prop] }}</td>
+                <td v-for="col in displayColumns" :key="col.prop">{{ cell(row, col) }}</td>
                 <td class="text-muted small">{{ formatDate(row.updatedAt) }}</td>
                 <td class="text-center text-nowrap">
                   <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
@@ -48,7 +48,7 @@
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="config.columns.length + 3" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length + 3" class="text-center text-muted py-4">
                   No {{ config.title.toLowerCase() }} yet.
                 </td>
               </tr>
@@ -88,10 +88,24 @@
               <div v-if="formError" class="alert alert-danger py-2">{{ formError }}</div>
               <div v-for="col in config.columns" :key="col.prop" class="mb-3">
                 <label :for="`m-${col.prop}`" class="form-label fw-semibold">{{ col.label }}</label>
-                <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" type="text" class="form-control"
-                       :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
-                       :placeholder="`Input ${col.label}`" :disabled="isSaving" />
-                <div class="invalid-feedback">{{ col.label }} is required.</div>
+
+                <!-- Dropdown ng request: ang mga may natitirang slot lamang. -->
+                <select v-if="col.prop === 'requestId'" :id="`m-${col.prop}`" v-model="form.requestId"
+                        class="form-select" :class="{ 'is-invalid': submitted && !form.requestId }"
+                        :disabled="isSaving || isEditing">
+                  <option value="">Select an intern request</option>
+                  <option v-for="r in availableRequests" :key="r.id" :value="r.id">
+                    #{{ r.id }} &mdash; {{ r.officeName }} ({{ r.remaining }} slot{{ r.remaining === 1 ? '' : 's' }} left)
+                  </option>
+                </select>
+                <div v-if="col.prop === 'requestId'" class="invalid-feedback">Please select an intern request.</div>
+
+                <template v-else>
+                  <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" type="text" class="form-control"
+                         :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
+                         :placeholder="`Input ${col.label}`" :disabled="isSaving" />
+                  <div class="invalid-feedback">{{ col.label }} is required.</div>
+                </template>
               </div>
             </div>
             <div class="modal-footer">
@@ -141,15 +155,43 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal } from 'bootstrap'
-import { getApiErrorMessage, internsAPI, programsAPI, signatoriesAPI } from '../src/services/api'
+import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, signatoriesAPI } from '../src/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {
   'internlist.html': {
-    title: 'Intern List', singular: 'Intern', api: internsAPI,
-    columns: [{ prop: 'fullName', label: 'Full Name', max: 200 }, { prop: 'school', label: 'School', max: 200 }]
+    title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true,
+    columns: [
+      { prop: 'fullName', label: 'Full Name', max: 200 },
+      { prop: 'school', label: 'School', max: 200 },
+      { prop: 'requestId', label: 'Request ID', type: 'text' }
+    ],
+    /* Karagdagang column na hango sa profile: hindi ito lumalabas sa form. */
+    display: [
+      { prop: 'fullName', label: 'Full Name' },
+      { prop: 'applicantNo', label: 'Applicant No.' },
+      { prop: 'school', label: 'School' },
+      { prop: 'program', label: 'Program' },
+      { prop: 'contactNumber', label: 'Contact No.' },
+      { prop: 'requestId', label: 'Request', format: (v) => (v ? `#${v}` : null) },
+      { prop: 'durationDays', label: 'Days' },
+      {
+        prop: 'startDate',
+        label: 'OJT Period',
+        format: (_v, row) => {
+          const s = formatDate(row.startDate)
+          const e = formatDate(row.endDate)
+          return s || e ? `${s} \u2013 ${e}` : null
+        }
+      },
+      {
+        prop: 'excludeFriday',
+        label: 'Fri',
+        format: (v) => (v ? 'Excluded' : 'Included')
+      }
+    ]
   },
   'programs.html': {
     title: 'Programs / Strands', singular: 'Program', api: programsAPI,
@@ -165,13 +207,34 @@ const MODULES = {
   'utility.html': { title: 'Utility' }
 }
 
-const page = (window.location.pathname.split('/').pop() || '').toLowerCase()
-const entry = MODULES[page] || {}
+/* Ang page ay ipinapasa bilang prop (mula sa App.vue) para mag-re-render
+   kapag nagpalit ng module ang user. Kung babasahin ito sa
+   window.location, mananatili ang lumang module dahil nire-reuse
+   ng Vue ang parehong instance. */
+const props = defineProps({
+  modulePage: { type: String, default: '' }
+})
 
-const config = computed(() => entry.api ? entry : null)
-const title = computed(() => entry.title || 'Module')
+const entry = computed(() => MODULES[props.modulePage] || {})
+const config = computed(() => (entry.value.api ? entry.value : null))
+const title = computed(() => entry.value.title || 'Module')
+
+/* Mga column na ipinapakita sa table. Default: lahat ng config.columns.
+   Puwedeng may sariling "display" ang module para magdagdag ng
+   computed column (hal. OJT period) na wala sa form. */
+const displayColumns = computed(() => entry.value.display || entry.value.columns || [])
+
+/* Papuntahan sa cell. Kung may "format" ang column, gamitin iyon
+   (hal. petsa, o "#id - Office Name"). */
+function cell(row, col) {
+  const value = row[col.prop]
+  if (col.format) return col.format(value, row)
+  if (value === null || value === undefined || value === '') return '\u2014'
+  return value
+}
 
 const rows = ref([])
+const availableRequests = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const loadError = ref('')
@@ -193,6 +256,7 @@ let toastTimer = null
 
 function blankForm() {
   form.id = 0
+  form.requestId = ''
   if (config.value) config.value.columns.forEach((c) => { form[c.prop] = '' })
   submitted.value = false
   formError.value = ''
@@ -221,6 +285,9 @@ async function load() {
   loadError.value = ''
   try {
     rows.value = await config.value.api.getAll()
+    if (config.value.hiring) {
+      availableRequests.value = await internRequestsAPI.available()
+    }
   } catch (e) {
     loadError.value = getApiErrorMessage(e, `Failed to load ${title.value}.`)
   } finally {
@@ -228,7 +295,11 @@ async function load() {
   }
 }
 
-function openCreate() { blankForm(); formModal.show() }
+function openCreate() {
+  blankForm()
+  form.status = 'Hired'
+  formModal.show()
+}
 function openEdit(row) {
   blankForm()
   form.id = row.id
@@ -240,14 +311,27 @@ function closeForm() { if (!isSaving.value) formModal.hide() }
 async function save() {
   submitted.value = true
   formError.value = ''
+
+  // Kailangan ng request na may slot bago mag-hire.
+  if (config.value.hiring && availableRequests.value.length === 0) {
+    formError.value = 'There is no available intern request. Please create a request first.'
+    return
+  }
+
   const missing = config.value.columns.some((c) => !form[c.prop])
   if (missing) { formError.value = 'Please fill in all required fields.'; return }
 
   isSaving.value = true
   const api = config.value.api
+  const payload = { ...form }
+  if (config.value.hiring) {
+    payload.status = 'Hired'
+    payload.requestId = Number(form.requestId) || null
+  }
+
   try {
-    if (isEditing.value) { await api.update(form.id, { ...form }); notify('Record updated.') }
-    else { await api.create({ ...form }); notify('Record added.') }
+    if (isEditing.value) { await api.update(form.id, payload); notify('Record updated.') }
+    else { await api.create(payload); notify('Intern hired and added to the Intern List.') }
     formModal.hide()
     await load()
   } catch (e) {
@@ -288,8 +372,13 @@ onMounted(() => {
   load()
 })
 
+watch(() => props.modulePage, () => {
+  load()
+})
+
 onBeforeUnmount(() => {
   formModal?.dispose(); deleteModal?.dispose(); toast?.dispose()
   window.clearTimeout(toastTimer)
 })
 </script>
+

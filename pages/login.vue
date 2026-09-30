@@ -30,49 +30,64 @@
 
                             <div class="p-3">
 
-                                <form class="form-horizontal" id="loginForm" @submit.prevent="handleLogin">
-                                    <div class="loginWrapper">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="email">Email</label>
-                                            <input v-model.trim="email" type="text" class="form-control" id="email"
-                                                   placeholder="Enter email address" name="loginid" autocomplete="email"
-                                                   maxlength="29" required>
+                        <form class="form-horizontal" id="loginForm" @submit.prevent="submit">
+                            <div class="loginWrapper">
+                                <div class="mb-3" v-if="mode === 'signup'">
+                                    <div class="row">
+                                        <div class="col-sm-6 mb-2">
+                                            <label class="form-label" for="firstName">First Name</label>
+                                            <input v-model.trim="firstName" type="text" class="form-control" id="firstName"
+                                                   maxlength="50" required>
                                         </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label" for="emailpassword">Password</label>
-                                            <input v-model="password" type="password" class="form-control" id="emailpassword"
-                                                   placeholder="Enter password" name="password" autocomplete="current-password"
-                                                   maxlength="29" required>
+                                        <div class="col-sm-6 mb-2">
+                                            <label class="form-label" for="lastName">Last Name</label>
+                                            <input v-model.trim="lastName" type="text" class="form-control" id="lastName"
+                                                   maxlength="50" required>
                                         </div>
-
-                                        <p v-if="errorMessage" class="text-danger" role="alert">{{ errorMessage }}</p>
-
-                                        <div class="row mt-4">
-                                            <div class="col-sm-6">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" value="" id="customControlInline">
-                                                    <label class="form-check-label" for="customControlInline">
-                                                        Remember me
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-6 text-end">
-                                                <button class="btn btn-primary w-md waves-effect waves-light" type="submit">Log In</button>
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-0 row">
-                                            <div class="col-12 mt-4 text-center">
-                                                <a href="#" class="text-muted"><i class="mdi mdi-lock"></i>Forgot your password?</a>
-                                            </div>
-                                        </div>
-
-
-                                        <hr>
                                     </div>
-                                    
-                                </form>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="email">Email</label>
+                                    <input v-model.trim="email" type="email" class="form-control" id="email"
+                                           placeholder="Enter email address" name="loginid" autocomplete="email"
+                                           maxlength="256" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" for="emailpassword">Password</label>
+                                    <input v-model="password" type="password" class="form-control" id="emailpassword"
+                                           :placeholder="mode === 'signup' ? 'At least 8 characters' : 'Enter password'"
+                                           name="password" :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
+                                           maxlength="100" required>
+                                </div>
+
+                                <p v-if="errorMessage" class="text-danger" role="alert">{{ errorMessage }}</p>
+
+                                <div class="row mt-4">
+                                    <div class="col-sm-6">
+                                        <span class="text-muted small">
+                                            {{ mode === 'signup' ? 'Bagong account? Mag-sign up.' : 'Wala pang account?' }}
+                                            <a href="#" class="text-primary" @click.prevent="toggleMode">
+                                                {{ mode === 'signup' ? 'Mag-sign in' : 'Sign up' }}
+                                            </a>
+                                        </span>
+                                    </div>
+                                    <div class="col-sm-6 text-end">
+                                        <button class="btn btn-primary w-md waves-effect waves-light" type="submit" :disabled="isBusy">
+                                            <span v-if="isBusy" class="spinner-border spinner-border-sm me-1"></span>
+                                            {{ mode === 'signup' ? 'Sign Up' : 'Log In' }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-0 row">
+                                    <div class="col-12 mt-4 text-center">
+                                        <a href="#" class="text-muted"><i class="mdi mdi-lock"></i>Forgot your password?</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
 
                             </div>
 
@@ -105,30 +120,53 @@ import { onMounted, ref } from 'vue'
 import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
+import { authAPI, getApiErrorMessage } from '../src/services/api'
 
+const mode = ref('login')
 const email = ref('')
 const password = ref('')
+const firstName = ref('')
+const lastName = ref('')
 const errorMessage = ref('')
+const isBusy = ref(false)
 
-/* Ito ang tinatakdang token ng axios apiClient (src/services/api.js). */
-function setSession(user) {
-    localStorage.setItem('authToken', `ojt-${Date.now()}`)
-    localStorage.setItem('ojtUser', JSON.stringify({ email: user.email, loggedInAt: new Date().toISOString() }))
+function toggleMode() {
+    mode.value = mode.value === 'login' ? 'signup' : 'login'
+    errorMessage.value = ''
 }
 
-function handleLogin() {
-    if (!email.value || !password.value) {
-        errorMessage.value = 'Please enter your email and password.'
+async function submit() {
+    errorMessage.value = ''
+
+    if (mode.value === 'signup' && (!firstName.value || !lastName.value)) {
+        errorMessage.value = 'Please enter your first and last name.'
         return
     }
 
-    setSession({ email: email.value })
-    errorMessage.value = ''
-    window.history.pushState({}, '', '/dashboard.html')
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    isBusy.value = true
+
+    try {
+        if (mode.value === 'signup') {
+            await authAPI.register({
+                email: email.value,
+                password: password.value,
+                firstName: firstName.value,
+                lastName: lastName.value
+            })
+        } else {
+            await authAPI.login(email.value, password.value)
+        }
+
+        window.history.pushState({}, '', '/dashboard.html')
+        window.dispatchEvent(new PopStateEvent('popstate'))
+    } catch (error) {
+        errorMessage.value = getApiErrorMessage(error, 'Unable to sign in. Please try again.')
+    } finally {
+        isBusy.value = false
+    }
 }
 
-/* Kung naka-login na, huwag na ipakita ang login form. */
+/* Kung may session na, huwag nang ipakita ang login form. */
 onMounted(() => {
     if (localStorage.getItem('authToken')) {
         window.history.replaceState({}, '', '/dashboard.html')

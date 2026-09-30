@@ -2,9 +2,13 @@ import axios from 'axios'
 
 /**
  * Base URL for the OJTMISApi backend.
- * Override per environment with a VITE_API_URL entry in a .env file.
+ *
+ * Default ay relative ('/api') dahil ang Vite dev server (vite.config.js)
+ * ang nagpo-proxy patungo sa .NET backend. Kaya walang hard-coded na port
+ * at walang CORS. Override gamit ang VITE_API_URL kung kailangan ng
+ * absolute URL (hal. sa production).
  */
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5080/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 /**
  * Shared axios instance used by every resource API below.
@@ -86,8 +90,73 @@ function crud(resource) {
   }
 }
 
+/**
+ * Session helpers. Ang token at profile ay ini-store sa localStorage
+ * para mabasa ng axios interceptor sa itaas.
+ */
+export const authAPI = {
+  login: async (email, password) => {
+    const { data } = await apiClient.post('/auth/login', { email, password })
+    saveSession(data)
+    return data.profile
+  },
+  register: async (payload) => {
+    const { data } = await apiClient.post('/auth/register', payload)
+    saveSession(data)
+    return data.profile
+  },
+  me: async () => {
+    const { data } = await apiClient.get('/auth/me')
+    saveProfile(data)
+    return data
+  },
+  logout: () => clearSession()
+}
+
+export function saveProfile(profile) {
+  localStorage.setItem('ojtUser', JSON.stringify(profile))
+}
+
+export function saveSession(data) {
+  localStorage.setItem('authToken', data.token)
+  localStorage.setItem('ojtExpiresAt', data.expiresAt)
+  saveProfile(data.profile)
+}
+
+export function clearSession() {
+  localStorage.removeItem('authToken')
+  localStorage.removeItem('ojtUser')
+  localStorage.removeItem('ojtExpiresAt')
+}
+
+/** Kasalukuyang profile mula sa localStorage. */
+export function currentUser() {
+  try {
+    return JSON.parse(localStorage.getItem('ojtUser') || 'null')
+  } catch {
+    return null
+  }
+}
+
+/** True kapag may naka-login at HR Admin ang role. */
+export function isHRAdmin() {
+  return (currentUser()?.roles || []).includes('HRAdmin')
+}
+
 export const schoolsAPI = crud('schools')
 export const internsAPI = crud('interns')
+export const applicantsAPI = {
+  ...crud('applicants'),
+  /* Preview ng start/end date bago i-save. */
+  estimateDates: async (payload) => (await apiClient.post('/applicants/estimate-dates', payload)).data,
+  /* I-hire ang applicant: kinopya ang profile sa Intern + kinakalkula ang dates. */
+  hire: async (id, payload) => (await apiClient.post(`/applicants/${id}/hire`, payload)).data
+}
+export const internRequestsAPI = {
+  ...crud('internrequests'),
+  /* Ang mga request na may natitirang slot lamang. */
+  available: async () => (await apiClient.get('/internrequests/available')).data
+}
 export const programsAPI = crud('programs')
 export const signatoriesAPI = crud('signatories')
 

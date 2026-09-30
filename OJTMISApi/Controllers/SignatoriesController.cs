@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
@@ -7,6 +8,7 @@ namespace OJTMISApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = UserRoles.HRAdmin)]
     [Produces("application/json")]
     public class SignatoriesController : ControllerBase
     {
@@ -139,4 +141,5 @@ namespace OJTMISApi.Controllers
         }
     }
 }
+
 

@@ -772,38 +772,111 @@
                                 <strong>{{ hireApplicantNo }}</strong>
                             </p>
 
-                            <div class="form-group">
-                                <label for="hireRequestNo">
-                                    Request Number
-                                </label>
-                                <input
-                                    id="hireRequestNo"
-                                    v-model="hireRequestNo"
-                                    type="text"
-                                    class="form-control"
-                                    placeholder="e.g. RQ-20260101-001"
-                                    required
-                                />
+                            <div v-if="availableRequests.length === 0" class="alert alert-warning">
+                                Walang available intern request. Kailangan munang
+                                mag-request ng bakante bago mag-hire.
                             </div>
 
-                            <div class="form-group mb-0">
+                            <div class="form-group">
+                                <label for="hireRequestNo">
+                                    Request <span class="text-danger">*</span>
+                                </label>
+                                <select
+                                    id="hireRequestNo"
+                                    v-model="hireRequestNo"
+                                    class="form-control"
+                                    :disabled="availableRequests.length === 0 || isHiring"
+                                    required
+                                >
+                                    <option value="">Select an intern request</option>
+                                    <option v-for="r in availableRequests" :key="r.id" :value="r.id">
+                                        #{{ r.id }} &mdash; {{ r.officeName }} ({{ r.remaining }} slot{{ r.remaining === 1 ? '' : 's' }} left)
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="hireDate">
-                                    Hire Date
+                                    Hire Date <span class="text-danger">*</span>
                                 </label>
                                 <input
                                     id="hireDate"
                                     v-model="hireDate"
                                     type="date"
                                     class="form-control"
+                                    :disabled="isHiring"
                                     required
                                 />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="hireDuration">
+                                    OJT Duration (working days)
+                                </label>
+                                <input
+                                    id="hireDuration"
+                                    v-model.number="hireDuration"
+                                    type="number"
+                                    min="1"
+                                    max="3660"
+                                    class="form-control"
+                                    :disabled="isHiring"
+                                    required
+                                />
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <input
+                                    id="hireExcludeFriday"
+                                    v-model="hireExcludeFriday"
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    :disabled="isHiring"
+                                />
+                                <label class="form-check-label" for="hireExcludeFriday">
+                                    <strong>Exclude Fridays</strong> from the day count
+                                    <span class="text-muted d-block small">
+                                        I-on kapag hindi dapat kasama ang tuwing Biyernes.
+                                    </span>
+                                </label>
+                            </div>
+
+                            <!-- Preview ng computed dates, bago i-save -->
+                            <div class="card bg-light border-0">
+                                <div class="card-body py-3">
+                                    <h6 class="text-uppercase text-muted small mb-2">
+                                        Estimated OJT Schedule
+                                    </h6>
+                                    <div v-if="hireEstimate" class="row text-center">
+                                        <div class="col-4">
+                                            <div class="text-muted small">Start Date</div>
+                                            <div class="fw-bold">{{ hireEstimate.startDate }}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="text-muted small">End Date</div>
+                                            <div class="fw-bold">{{ hireEstimate.endDate }}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="text-muted small">Days</div>
+                                            <div class="fw-bold">{{ hireEstimate.durationDays }}</div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-muted small fst-italic">
+                                        Pumili ng hire date at duration para makita ang
+                                        tinatantyang start at end date.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="hireError" class="alert alert-danger mt-3 mb-0">
+                                {{ hireError }}
                             </div>
                         </div>
 
                         <div class="modal-footer border-0 pt-0">
-                            <button type="submit" class="btn btn-success px-4 modern-btn">
+                            <button type="submit" class="btn btn-success px-4 modern-btn" :disabled="isHiring">
                                 <i class="fas fa-user-check mr-1"></i>
-                                Confirm Hire
+                                {{ isHiring ? 'Hiring...' : 'Confirm Hire' }}
                             </button>
                             <button
                                 type="button"
@@ -1181,13 +1254,13 @@ import {
     onMounted,
     onBeforeUnmount,
     ref,
+    watch,
     computed
 } from 'vue'
 
+import { applicantsAPI, getApiErrorMessage, internRequestsAPI } from '../src/services/api'
+
 import '../assets/css/Applicants.css'
-
-
-const APPLICANTS_KEY = 'ojt_applicants_v1'
 
 const OFFICES_JSON = '/assets/json/offices.json'
 
@@ -1276,11 +1349,25 @@ const isHireModalOpen = ref(false)
 
 const hireApplicantNo = ref(null)
 
+/** Id ng piniling intern request (dropdown, walang "Full" na request). */
 const hireRequestNo = ref('')
 
 const hireDate = ref('')
 
-const hireDatePickerEl = ref(null)
+/** Haba ng OJT sa working days. */
+const hireDuration = ref(60)
+
+/** Kapag totoo, hindi binibilang ang Biyernes sa pagkakalkula. */
+const hireExcludeFriday = ref(true)
+
+/** Resulta ng /api/applicants/estimate-dates para sa live preview. */
+const hireEstimate = ref(null)
+
+const hireError = ref('')
+const isHiring = ref(false)
+
+/** Mga intern request na may natitirang slot lamang. */
+const availableRequests = ref([])
 
 let pendingAction = null
 
@@ -1346,24 +1433,37 @@ function closeAllModals() {
 }
 
 
-function loadApplicants() {
+/* Lahat ng datos ay galing sa backend, walang localStorage. */
+async function loadApplicants() {
     try {
-        applicants.value = JSON.parse(
-            localStorage.getItem(APPLICANTS_KEY) || '[]'
-        )
+        applicants.value = await applicantsAPI.getAll()
     } catch (error) {
-        console.error('Failed to load saved applicants:', error)
-
+        console.error('Failed to load applicants:', error)
         applicants.value = []
     }
 }
 
 
-function persist() {
-    localStorage.setItem(
-        APPLICANTS_KEY,
-        JSON.stringify(applicants.value)
-    )
+/**
+ * I-save ang isang applicant sa backend (upsert: POST kung wala pa,
+ * PUT kung may id na). Tinatanggap ang buong object para hindi na
+ * kailangang ide-deserialize ang bawat field.
+ */
+async function persist(applicant) {
+    if (!applicant) return
+
+    try {
+        const saved = applicant.id
+            ? await applicantsAPI.update(applicant.id, applicant)
+            : await applicantsAPI.create(applicant)
+
+        // Ibalik ang nai-save na record (may bagong id at normalized fields).
+        const index = applicants.value.findIndex((a) => a.id === saved.id)
+        if (index > -1) applicants.value[index] = saved
+    } catch (error) {
+        console.error('Failed to save applicant:', error)
+        alert(getApiErrorMessage(error, 'Failed to save the applicant.'))
+    }
 }
 
 
@@ -1452,7 +1552,7 @@ function closeActionPanels() {
 }
 
 
-function saveApplicant() {
+async function saveApplicant() {
     const value = (id) =>
         document.getElementById(id)?.value?.trim() || ''
 
@@ -1477,12 +1577,10 @@ function saveApplicant() {
         return
     }
 
-    /* Generate applicant number */
-    const nextNumber = applicants.value.length + 1
-
+    /* Ang applicant no ay ginagawa ng backend para hindi mag-clash
+       kahit may na-delete na applicant. */
     const applicant = {
-        applicantNo:
-            `A-${new Date().getFullYear()}-${String(nextNumber).padStart(3, '0')}`,
+        applicantNo: '',
 
         firstName,
         middleName: value('middleName'),
@@ -1511,7 +1609,7 @@ function saveApplicant() {
 
     applicants.value.push(applicant)
 
-    persist()
+    await persist(applicant)
 
     /* Reset form */
     document.getElementById('ojtForm')?.reset()
@@ -1558,7 +1656,7 @@ function saveRequirements() {
 
     applicant.requirements = [...reqChecks.value]
 
-    persist()
+    persist(applicant)
 
     const count = reqCount(applicant)
 
@@ -1577,7 +1675,7 @@ function saveRequirements() {
             applicant.accepted = true
             applicant.rejected = false
 
-            persist()
+            persist(applicant)
         }
     }
 }
@@ -1649,16 +1747,32 @@ function saveEvaluation() {
 
 /* ---- Hire ---- */
 
-function openHire(applicant, presetData = {}) {
+async function openHire(applicant, presetData = {}) {
     if (!applicant) return
 
     closeActionPanels()
 
     hireApplicantNo.value = applicant.applicantNo
-    hireRequestNo.value = presetData.requestNo || ''
+    hireRequestNo.value = presetData.requestNo || applicant.requestNo || ''
     hireDate.value = presetData.date || ''
+    hireDuration.value = applicant.requiredHours > 0
+        ? Math.max(1, Math.ceil(applicant.requiredHours / 8))
+        : 60
+    hireExcludeFriday.value = true
+    hireError.value = ''
+    hireEstimate.value = null
 
     isHireModalOpen.value = true
+
+    // Ang dropdown ay galing sa backend: yung may natitirang slot lamang.
+    try {
+        availableRequests.value = await internRequestsAPI.available()
+    } catch (error) {
+        availableRequests.value = []
+        hireError.value = getApiErrorMessage(error, 'Failed to load intern requests.')
+    }
+
+    refreshHireEstimate()
 }
 
 
@@ -1667,67 +1781,102 @@ function closeHireModal() {
 
     hireApplicantNo.value = null
     hireRequestNo.value = ''
+    hireDate.value = ''
+    hireEstimate.value = null
+    hireError.value = ''
 
     pendingAction = null
 }
 
 
-function openHireDatePicker() {
-    const el = hireDatePickerEl.value
-
-    if (!el) return
-
-    if (hireDate.value && !isNaN(Date.parse(hireDate.value))) {
-        el.value = hireDate.value
-    }
-
-    if (typeof el.showPicker === 'function') {
-        el.showPicker()
-    } else {
-        el.click()
-    }
-}
-
-
 function onHireDatePicked(e) {
     hireDate.value = e.target.value
+    refreshHireEstimate()
 }
 
 
-function submitHire() {
-    if (!hireRequestNo.value || !hireDate.value) {
-        alert('Request number and date are required.')
+/**
+ * Hinihingi sa backend ang tinatantyang start at end date.
+ * Dito nakikita kung paano naaapektuhan ng "Exclude Fridays" ang bilang.
+ */
+async function refreshHireEstimate() {
+    if (!hireDate.value || isNaN(Date.parse(hireDate.value))) {
+        hireEstimate.value = null
         return
     }
 
-    if (isNaN(Date.parse(hireDate.value))) {
-        alert('Please enter a valid date.')
+    try {
+        hireEstimate.value = await applicantsAPI.estimateDates({
+            hireDate: hireDate.value,
+            durationDays: Number(hireDuration.value) || 1,
+            excludeFriday: hireExcludeFriday.value
+        })
+    } catch (error) {
+        hireEstimate.value = null
+        hireError.value = getApiErrorMessage(error, 'Failed to compute the OJT dates.')
+    }
+}
+
+// Muling kalkulahin kapag nagbago ang duration o ang Friday toggle.
+watch([hireDuration, hireExcludeFriday], () => {
+    if (isHireModalOpen.value) refreshHireEstimate()
+})
+
+
+async function submitHire() {
+    hireError.value = ''
+
+    if (!hireRequestNo.value) {
+        hireError.value = 'Please select an intern request.'
+        return
+    }
+
+    if (availableRequests.value.length === 0) {
+        hireError.value = 'Walang available intern request. Mag-request muna ng bakante.'
+        return
+    }
+
+    if (!hireDate.value || isNaN(Date.parse(hireDate.value))) {
+        hireError.value = 'Please enter a valid hire date.'
         return
     }
 
     const applicant = applicants.value.find(
-        a => a.applicantNo === hireApplicantNo.value
+        (a) => a.applicantNo === hireApplicantNo.value
     )
 
-    if (applicant) {
-        if (pendingAction && pendingAction.office) {
-            applicant.applicantOffice = pendingAction.office
-        }
-
-        if (pendingAction && pendingAction.remarks) {
-            applicant.remarks = pendingAction.remarks
-        }
-
-        applicant.requestNo = hireRequestNo.value
-        applicant.actionDate = hireDate.value
-        applicant.accepted = true
-        applicant.hired = true
-        applicant.rejected = false
-
-        persist()
+    if (!applicant) {
+        hireError.value = 'Applicant not found.'
+        return
     }
 
-    closeHireModal()
+    isHiring.value = true
+
+    try {
+        // Ang backend ang gumagawa ng conversion: profile -> Intern profile,
+        // kinakalkula ang start/end date, at kinakain ang slot sa request.
+        const result = await applicantsAPI.hire(applicant.id, {
+            requestId: Number(hireRequestNo.value),
+            hireDate: hireDate.value,
+            durationDays: Number(hireDuration.value) || 1,
+            excludeFriday: hireExcludeFriday.value,
+            office: pendingAction?.office || applicant.applicantOffice || '',
+            remarks: pendingAction?.remarks || applicant.remarks || ''
+        })
+
+        alert(
+            `${result.message}\n\n` +
+            `Start Date: ${result.startDate}\n` +
+            `End Date: ${result.endDate}`
+        )
+
+        await loadApplicants()
+        closeHireModal()
+    } catch (error) {
+        hireError.value = getApiErrorMessage(error, 'Failed to hire the applicant.')
+    } finally {
+        isHiring.value = false
+    }
 }
 
 
@@ -1765,7 +1914,7 @@ function closeDeleteModal() {
 }
 
 
-function confirmDeleteApplicant() {
+async function confirmDeleteApplicant() {
     const applicant = deleteApplicantData.value
 
     if (!applicant) {
@@ -1773,13 +1922,13 @@ function confirmDeleteApplicant() {
         return
     }
 
-    applicants.value = applicants.value.filter(
-        a => a.applicantNo !== applicant.applicantNo
-    )
-
-    persist()
-
-    closeDeleteModal()
+    try {
+        await applicantsAPI.remove(applicant.id)
+        applicants.value = applicants.value.filter((a) => a.id !== applicant.id)
+        closeDeleteModal()
+    } catch (error) {
+        alert(getApiErrorMessage(error, 'Failed to delete the applicant.'))
+    }
 }
 
 
@@ -1873,7 +2022,7 @@ function saveSchedule() {
         confirmed: applicant.orientation?.confirmed || false
     }
 
-    persist()
+    persist(applicant)
 
     closeScheduleModal()
 }
@@ -1890,13 +2039,13 @@ function confirmOrientation(applicant) {
 
     applicant.orientation.confirmed = true
 
-    persist()
+    persist(applicant)
 }
 
 
-onMounted(() => {
+onMounted(async () => {
     readTabFromUrl()
-    loadApplicants()
+    await loadApplicants()
     loadScheduleOffices()
 
     document.addEventListener('click', handleOutsideClick)

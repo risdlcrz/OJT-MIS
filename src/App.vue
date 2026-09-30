@@ -7,6 +7,8 @@ import RequestsPage from '../pages/requests.vue'
 import ApplicantsPage from '../pages/applicants.vue'
 import SchoolsPage from '../pages/Schools.vue'
 import ModulePage from '../pages/ModulePage.vue'
+import ForbiddenPage from '../pages/forbidden.vue'
+import { clearSession, currentUser, isHRAdmin } from './services/api'
 
 /* Lahat ng page na kayang buksan ng app. Kailangan ding nakasaad
    sa assets/json/menu.json at ALLOWED_PAGES (BaseLayout.vue). */
@@ -36,14 +38,16 @@ const pageComponents = {
   'idgenerate.html': ModulePage,
   'utility.html': ModulePage,
   'programs.html': ModulePage,
-  'signatories.html': ModulePage
+  'signatories.html': ModulePage,
+  'forbidden.html': ForbiddenPage
 }
 
 function isLoggedIn() {
   return Boolean(localStorage.getItem('authToken'))
 }
 
-function getCurrentPage() {
+/* Ang lahat ng current view ay para sa HR Admin lamang. */
+function resolvePage() {
   const page = window.location.pathname.split('/').pop()?.toLowerCase() || ''
 
   if (page === 'login' || page === 'login.html' || page === 'index.html' || page === '') {
@@ -55,29 +59,33 @@ function getCurrentPage() {
     return 'login.html'
   }
 
+  // May session pero hindi HR Admin: walang access sa mga view na ito.
+  if (!isHRAdmin()) {
+    return 'forbidden.html'
+  }
+
   if (page in pageComponents) {
     return page
   }
 
-  // Naka-login pero hindi kilalang page: huwag na mag-login ulit.
+  // Naka-login pero hindi kilalang page: huwag nang mag-login ulit.
   return 'dashboard.html'
 }
 
-const currentPage = ref(getCurrentPage())
+const currentPage = ref(resolvePage())
 
 function changePage(page) {
   // "Logout" ay nagta-tawag ng nito.
   if (page === 'login.html') {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('ojtUser')
+    clearSession()
   }
 
-  currentPage.value = page
+  currentPage.value = page === 'login.html' ? resolvePage() : resolvePage()
 }
 
 onMounted(() => {
   window.addEventListener('popstate', () => {
-    currentPage.value = getCurrentPage()
+    currentPage.value = resolvePage()
   })
 })
 </script>
@@ -85,6 +93,6 @@ onMounted(() => {
 <template>
   <component v-if="currentPage === 'login.html'" :is="pageComponents[currentPage]" />
   <BaseLayout v-else :current-page="currentPage" @navigate="changePage">
-    <component :is="pageComponents[currentPage]" />
+    <component :is="pageComponents[currentPage]" :module-page="currentPage" />
   </BaseLayout>
 </template>
