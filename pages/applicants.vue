@@ -1082,67 +1082,7 @@
         </div>
 
 
-        <!-- ================= DELETE MODAL ================= -->
-        <div
-            id="deleteModal"
-            class="modal fade action-side-panel"
-            :class="{ show: isDeleteModalOpen }"
-            :style="{
-                display: isDeleteModalOpen ? 'block' : 'none'
-            }"
-            role="dialog"
-            :aria-hidden="!isDeleteModalOpen"
-        >
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content modern-modal">
-                    <div class="modal-header modern-modal-header">
-                        <h5 class="modal-title font-weight-bold">
-                            Delete Applicant
-                        </h5>
-                        <button
-                            type="button"
-                            class="close"
-                            aria-label="Close"
-                            @click="closeDeleteModal"
-                        >
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-
-                    <div class="modal-body p-4">
-                        <p class="mb-0">
-                            Are you sure you want to delete
-                            <strong>
-                                {{ deleteApplicantData?.lastName }},
-                                {{ deleteApplicantData?.firstName }}
-                            </strong>
-                            ?
-                        </p>
-                    </div>
-
-                    <div class="modal-footer border-0 pt-0">
-                        <button
-                            type="button"
-                            class="btn btn-danger px-4"
-                            @click="confirmDeleteApplicant"
-                        >
-                            <i class="fas fa-trash mr-1"></i>
-                            Delete
-                        </button>
-                        <button
-                            type="button"
-                            class="btn btn-outline-secondary px-4"
-                            @click="closeDeleteModal"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- ================= SCHEDULE ORIENTATION MODAL ================= -->
+<!-- ================= SCHEDULE ORIENTATION MODAL ================= -->
         <div
             id="scheduleModal"
             class="modal fade"
@@ -1240,7 +1180,7 @@
 
         <!-- Backdrop (side panels have none) -->
         <div
-            v-if="anyModalOpen && !isEvaluationModalOpen && !isHireModalOpen && !isViewModalOpen && !isDeleteModalOpen"
+            v-if="anyModalOpen && !isEvaluationModalOpen && !isHireModalOpen && !isViewModalOpen"
             class="modal-backdrop fade show"
             @click="closeAllModals"
         ></div>
@@ -1378,10 +1318,6 @@ const isViewModalOpen = ref(false)
 
 const viewApplicantData = ref(null)
 
-const isDeleteModalOpen = ref(false)
-
-const deleteApplicantData = ref(null)
-
 
 /* ---- Schedule Orientation state ---- */
 
@@ -1414,7 +1350,6 @@ const anyModalOpen = computed(() =>
     isEvaluationModalOpen.value ||
     isHireModalOpen.value ||
     isViewModalOpen.value ||
-    isDeleteModalOpen.value ||
     isScheduleModalOpen.value
 )
 
@@ -1425,10 +1360,8 @@ function closeAllModals() {
     isEvaluationModalOpen.value = false
     isHireModalOpen.value = false
     isViewModalOpen.value = false
-    isDeleteModalOpen.value = false
     isScheduleModalOpen.value = false
 
-    deleteApplicantData.value = null
     openDropdown.value = null
 }
 
@@ -1544,11 +1477,9 @@ function closeActionPanels() {
     isEvaluationModalOpen.value = false
     isHireModalOpen.value = false
     isViewModalOpen.value = false
-    isDeleteModalOpen.value = false
     isScheduleModalOpen.value = false
 
     viewApplicantData.value = null
-    deleteApplicantData.value = null
 }
 
 
@@ -1899,36 +1830,25 @@ function closeViewModal() {
 
 
 function deleteApplicant(applicant) {
+    if (!applicant?.id) return
+
     closeActionPanels()
 
-    deleteApplicantData.value = applicant
+    // Optimistic: alisin agad ang row sa listahan habang nagpo-process ang
+    // backend delete. Ibalik lang ito (kasabay ng alert) kung mabigo.
+    const index = applicants.value.findIndex((a) => a.id === applicant.id)
+    if (index === -1) return
 
-    isDeleteModalOpen.value = true
-}
+    const [removed] = applicants.value.splice(index, 1)
 
-
-function closeDeleteModal() {
-    isDeleteModalOpen.value = false
-
-    deleteApplicantData.value = null
-}
-
-
-async function confirmDeleteApplicant() {
-    const applicant = deleteApplicantData.value
-
-    if (!applicant) {
-        closeDeleteModal()
-        return
-    }
-
-    try {
-        await applicantsAPI.remove(applicant.id)
-        applicants.value = applicants.value.filter((a) => a.id !== applicant.id)
-        closeDeleteModal()
-    } catch (error) {
+    applicantsAPI.delete(removed.id).catch((error) => {
+        const isPresent = applicants.value.some((a) => a.id === removed.id)
+        if (!isPresent) {
+            const at = Math.min(index, applicants.value.length)
+            applicants.value.splice(at, 0, removed)
+        }
         alert(getApiErrorMessage(error, 'Failed to delete the applicant.'))
-    }
+    })
 }
 
 

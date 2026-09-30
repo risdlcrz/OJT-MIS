@@ -169,7 +169,7 @@ async function removeRequest(id) {
     if (!confirm('Remove this intern request?')) return
     loadError.value = ''
     try {
-        await internRequestsAPI.remove(id)
+        await internRequestsAPI.delete(id)
         await loadRequests()
     } catch (e) {
         loadError.value = getApiErrorMessage(e, 'Failed to remove request.')
