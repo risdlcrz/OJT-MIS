@@ -1,32 +1,32 @@
 {
-	"offices": [
-		{
-			"code": "ITO",
-			"name": "AS - INFORMATION TECHNOLOGY OFFICE"
-		},
-		{
-			"code": "ISDMD",
-			"name": "ISDMD - INFORMATION SYSTEMS DEVELOPMENT"
-		},
-		{
-			"code": "HR",
-			"name": "HR - HUMAN RESOURCES OFFICE"
-		},
-		{
-			"code": "FIN",
-			"name": "FIN - FINANCE OFFICE"
-		},
-		{
-			"code": "ADMIN",
-			"name": "ADMIN - ADMINISTRATIVE SERVICES"
-		},
-		{
-			"code": "LIBRARY",
-			"name": "LIBRARY - LIBRARY SERVICES"
-		},
-		{
-			"code": "REGISTRAR",
-			"name": "REGISTRAR - OFFICE OF THE REGISTRAR"
-		}
-	]
+  "offices": [
+    { "code": "PMO", "name": "PMO - Project Management Office" },
+    { "code": "IAO", "name": "INTERNAL AFFAIRS OFFICE" },
+    { "code": "IAUD", "name": "INTERNAL AUDIT OFFICE" },
+    { "code": "PIO", "name": "PIO - Public Information Office" },
+    { "code": "IARO", "name": "IARO - International Audit & Relations Office" },
+    { "code": "NGS", "name": "NGS - National Government Sector" },
+    { "code": "CGS", "name": "CGS - Corporate Government Sector" },
+    { "code": "SSS", "name": "SSS - Social Services Sector" },
+    { "code": "LSS", "name": "LSS - Legal Services Sector" },
+    { "code": "OGC", "name": "OGC - Office of the General Counsel" },
+    { "code": "LGS", "name": "LGS - Local Government Sector" },
+    { "code": "AS", "name": "AS - Administration Sector" },
+    { "code": "HRMO", "name": "HRMO - Human Resource Management Office" },
+    { "code": "GSO", "name": "GSO - General Services Office" },
+    { "code": "ITO", "name": "ITO - Information Technology Office" },
+    { "code": "GAS", "name": "GAS - Government Accountancy Sector" },
+    { "code": "PIDS", "name": "PIDS - Professional and Institutional Development Sector" },
+    { "code": "PFMS", "name": "PFMS - Planning, Finance and Management Sector" },
+    { "code": "ACCT", "name": "Accounting" },
+    { "code": "BUDGET", "name": "Budget" },
+    { "code": "SAO", "name": "SAO" },
+    { "code": "FAO", "name": "FAO" },
+    { "code": "TSO", "name": "TSO - Technical Services Office" },
+    { "code": "LAO", "name": "LAO" },
+    { "code": "CAO", "name": "CAO" },
+    { "code": "POLICY", "name": "Policy & Research" },
+    { "code": "QA", "name": "Quality Assurance" },
+    { "code": "TRAINING", "name": "Training" }
+  ]
 }

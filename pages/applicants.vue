@@ -68,13 +68,13 @@
                                     v-for="applicant in displayApplicants"
                                     :key="applicant.applicantNo"
                                 >
-                                    <td>{{ applicant.applicantNo }}</td>
+                                    <td class="text-dark">{{ applicant.applicantNo }}</td>
 
-                                    <td>{{ applicant.lastName }}</td>
+                                    <td class="text-dark">{{ applicant.lastName }}</td>
 
-                                    <td>{{ applicant.firstName }}</td>
+                                    <td class="text-dark">{{ applicant.firstName }}</td>
 
-                                    <td>
+                                    <td class="text-dark">
                                         {{
                                             applicant.program ||
                                             applicant.educationLevel ||
@@ -213,11 +213,11 @@
                                     v-for="applicant in scheduleCandidates"
                                     :key="applicant.applicantNo"
                                 >
-                                    <td>{{ applicant.applicantNo }}</td>
-                                    <td>{{ applicant.lastName }}</td>
-                                    <td>{{ applicant.firstName }}</td>
-                                    <td>{{ scheduleLabel(applicant) }}</td>
-                                    <td>{{ (applicant.orientation && applicant.orientation.office) || '-' }}</td>
+                                    <td class="text-dark">{{ applicant.applicantNo }}</td>
+                                    <td class="text-dark">{{ applicant.lastName }}</td>
+                                    <td class="text-dark">{{ applicant.firstName }}</td>
+                                    <td class="text-dark">{{ scheduleLabel(applicant) }}</td>
+                                    <td class="text-dark">{{ (applicant.orientation && applicant.orientation.office) || '-' }}</td>
                                     <td>
                                         <div class="d-flex justify-content-center" style="gap: 6px">
                                             <button

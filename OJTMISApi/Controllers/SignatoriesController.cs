@@ -65,6 +65,7 @@ namespace OJTMISApi.Controllers
 
             var f1 = item.Name?.Trim() ?? string.Empty;
             var f2 = item.Position?.Trim() ?? string.Empty;
+            var f3 = item.Department?.Trim() ?? string.Empty;
 
             if (await _context.Signatories.AnyAsync(x => x.Name != null && x.Name.ToLower() == f1.ToLower()))
             {
@@ -72,7 +73,7 @@ namespace OJTMISApi.Controllers
             }
 
             var now = DateTime.Now;
-            var entity = new Signatory { Name = f1, Position = f2, CreatedAt = now, UpdatedAt = now };
+            var entity = new Signatory { Name = f1, Position = f2, Department = f3, CreatedAt = now, UpdatedAt = now };
 
             try
             {
@@ -96,6 +97,7 @@ namespace OJTMISApi.Controllers
 
             var f1 = item.Name?.Trim() ?? string.Empty;
             var f2 = item.Position?.Trim() ?? string.Empty;
+            var f3 = item.Department?.Trim() ?? string.Empty;
 
             try
             {
@@ -109,6 +111,7 @@ namespace OJTMISApi.Controllers
 
                 existing.Name = f1;
                 existing.Position = f2;
+                existing.Department = f3;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
                 return Ok(existing);

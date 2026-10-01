@@ -37,6 +37,12 @@ namespace OJTMISApi.Models
 
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
+        /// <summary>Optional signatory assigned to this request.</summary>
+        public int? SignatoryId { get; set; }
+
+        [ForeignKey(nameof(SignatoryId))]
+        public Signatory? Signatory { get; set; }
+
         /// <summary>Pera pang natitirang slot. Zero = walang bakante na.</summary>
         [NotMapped]
         public int Remaining => Math.Max(0, Count - Filled);

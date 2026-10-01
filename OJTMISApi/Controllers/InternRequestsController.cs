@@ -76,6 +76,7 @@ namespace OJTMISApi.Controllers
                 Skills = request.Skills?.Trim() ?? string.Empty,
                 Description = request.Description?.Trim() ?? string.Empty,
                 Status = "Open",
+                SignatoryId = request.SignatoryId,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -107,6 +108,7 @@ namespace OJTMISApi.Controllers
             existing.Skills = request.Skills?.Trim() ?? string.Empty;
             existing.Description = request.Description?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(request.Status)) existing.Status = request.Status.Trim();
+            existing.SignatoryId = request.SignatoryId;
             existing.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();

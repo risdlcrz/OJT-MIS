@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OJTMISApi.Data;
 
@@ -11,9 +12,11 @@ using OJTMISApi.Data;
 namespace OJTMISApi.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001051822_AddDepartmentToSignatory")]
+    partial class AddDepartmentToSignatory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -577,9 +580,6 @@ namespace OJTMISApi.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int?>("SignatoryId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Skills")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -596,8 +596,6 @@ namespace OJTMISApi.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("SignatoryId");
 
                     b.ToTable("InternRequests");
                 });
@@ -766,15 +764,6 @@ namespace OJTMISApi.Data.Migrations
                         .WithMany()
                         .HasForeignKey("RequestId")
                         .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("OJTMISApi.Models.InternRequest", b =>
-                {
-                    b.HasOne("OJTMISApi.Models.Signatory", "Signatory")
-                        .WithMany()
-                        .HasForeignKey("SignatoryId");
-
-                    b.Navigation("Signatory");
                 });
 #pragma warning restore 612, 618
         }

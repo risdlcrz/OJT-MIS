@@ -42,16 +42,16 @@
             </thead>
             <tbody>
               <tr v-for="(school, index) in schools" :key="school.id">
-                <td class="text-center">{{ index + 1 }}</td>
-                <td class="fw-semibold">{{ school.name }}</td>
-                <td>{{ school.abbreviation || '-' }}</td>
-                <td>{{ school.address }}</td>
+                <td class="text-center text-dark">{{ index + 1 }}</td>
+                <td class="fw-semibold text-dark">{{ school.name }}</td>
+                <td class="text-dark">{{ school.abbreviation || '-' }}</td>
+                <td class="text-dark">{{ school.address }}</td>
                 <td>
                   <span :class="school.moaStatus ? 'badge badge-success text-dark' : 'badge badge-secondary'">
                     {{ school.moaStatus ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
-                <td>{{ school.moaExpiry ? formatDateOnly(school.moaExpiry) : '-' }}</td>
+                <td class="text-dark">{{ school.moaExpiry ? formatDateOnly(school.moaExpiry) : '-' }}</td>
                 <td class="text-muted small">{{ formatDate(school.updatedAt) }}</td>
                 <td class="text-center text-nowrap">
                   <button

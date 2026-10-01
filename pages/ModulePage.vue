@@ -32,7 +32,7 @@
               <tr v-for="(row, index) in rows" :key="row.id">
                 <td v-for="col in displayColumns" :key="col.prop">
                   <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
-                  <span v-else>{{ cell(row, col) }}</span>
+                  <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
@@ -95,6 +95,17 @@
                          :placeholder="`Input ${col.label}`" :disabled="isSaving || isEditing" />
                   <div class="invalid-feedback">{{ col.label }} is required.</div>
                   <div v-if="isEditing" class="form-text text-muted">Status cannot be changed after hiring.</div>
+                </template>
+
+                <template v-else-if="col.prop === 'department'">
+                  <select :id="`m-${col.prop}`" v-model.trim="form.department"
+                          class="form-select" :disabled="isSaving">
+                    <option value="">Select Department (optional)</option>
+                    <option v-for="name in departmentList" :key="name" :value="name">
+                      {{ name }}
+                    </option>
+                  </select>
+                  <div class="form-text text-muted">Optional</div>
                 </template>
 
                 <template v-else>
@@ -259,8 +270,12 @@ const MODULES = {
     columns: [{ prop: 'programCode', label: 'Program Code', max: 50 }, { prop: 'programName', label: 'Program Name', max: 200 }]
   },
   'signatories.html': {
-    title: 'Signatories', singular: 'Signatory', api: signatoriesAPI,
-    columns: [{ prop: 'name', label: 'Name', max: 200 }, { prop: 'position', label: 'Position', max: 150 }]
+    title: 'Signatories', singular: 'Signatory', api: signatoriesAPI, needsDepartment: true,
+    columns: [
+      { prop: 'name', label: 'Name', max: 200 },
+      { prop: 'position', label: 'Position', max: 150 },
+      { prop: 'department', label: 'Department', max: 200 }
+    ]
   },
   'forms.html': { title: 'Issuance of COC' },
   'dtr.html': { title: 'Daily Time Records' },
@@ -296,6 +311,7 @@ function cell(row, col) {
 
 const rows = ref([])
 const availableRequests = ref([])
+const departments = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const loadError = ref('')
@@ -348,7 +364,7 @@ async function load() {
   loadError.value = ''
   try {
     rows.value = await config.value.api.getAll()
-    if (config.value.hiring) {
+    if (config.value.hiring || config.value.needsDepartment) {
       availableRequests.value = await internRequestsAPI.available()
       // Fetch all requests to map requestId -> full office name for Department column
       const allRequests = await internRequestsAPI.getAll()
@@ -357,12 +373,29 @@ async function load() {
         row.requestOffice = requestMap.get(row.requestId) || null
       })
     }
+    // Load departments from shared source for Signatory modal dropdown
+    if (config.value.needsDepartment) {
+      try {
+        const response = await fetch('/assets/json/offices.json')
+        const data = await response.json()
+        departments.value = data.offices || []
+      } catch {
+        departments.value = []
+      }
+    }
   } catch (e) {
     loadError.value = getApiErrorMessage(e, `Failed to load ${title.value}.`)
   } finally {
     isLoading.value = false
   }
 }
+
+const departmentList = computed(() => {
+  const seen = new Set()
+  return departments.value
+    .filter(d => d.name && !seen.has(d.name) && seen.add(d.name))
+    .map(d => d.name)
+})
 
 function openCreate() {
   blankForm()
@@ -383,18 +416,24 @@ async function save() {
   submitted.value = true
   formError.value = ''
 
-  // Kailangan ng request na may slot bago mag-hire.
   if (config.value.hiring && availableRequests.value.length === 0) {
     formError.value = 'There is no available intern request. Please create a request first.'
     return
   }
 
-  const missing = config.value.columns.some((c) => !form[c.prop])
+  const requiredColumns = config.value.columns.filter(c => c.prop !== 'department')
+  const missing = requiredColumns.some((c) => !form[c.prop])
   if (missing) { formError.value = 'Please fill in all required fields.'; return }
 
   isSaving.value = true
   const api = config.value.api
-  const payload = { ...form }
+
+  // Only send properties the backend model expects; omit updatedAt (server-set)
+  const payload = {
+    name: form.name,
+    position: form.position,
+    department: form.department || ''
+  }
   if (config.value.hiring) {
     payload.status = 'Hired'
     payload.requestId = Number(form.requestId) || null
@@ -402,7 +441,7 @@ async function save() {
 
   try {
     if (isEditing.value) { await api.update(form.id, payload); notify('Record updated.') }
-    else { await api.create(payload); notify('Intern hired and added to the Intern List.') }
+    else { await api.create(payload); notify('Record created.') }
     formModal.hide()
     await load()
   } catch (e) {

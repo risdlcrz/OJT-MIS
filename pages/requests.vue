@@ -24,10 +24,10 @@
             <form id="internRequestForm" @submit.prevent="saveRequest">
                 <div class="modal-body p-4">
                     <div class="form-group row">
-                        <label class="col-sm-4 col-form-label font-weight-bold">Select Office</label>
+                        <label class="col-sm-4 col-form-label font-weight-bold">Select Department</label>
                         <div class="col-sm-8">
                             <select class="form-control" id="requestOffice" v-model="requestForm.officeCode" required>
-                                <option selected disabled value="">Select an office</option>
+                                <option selected disabled value="">Select a department</option>
                                 <option v-for="office in offices" :key="office.code" :value="office.code">{{ office.name }}</option>
                             </select>
                         </div>
@@ -50,6 +50,25 @@
                             <textarea v-model="requestForm.description" class="form-control" id="requestDescription" rows="3" placeholder="Input Text"></textarea>
                         </div>
                     </div>
+                    <div class="form-group row" v-if="matchedSignatory" style="background: #fff7ed; border: 1px solid #f97316; border-radius: 0.5rem; padding: 1rem;">
+                        <div class="col-12">
+                            <label class="font-weight-bold" style="color: #f97316;">Auto-Assigned Supervisor</label>
+                            <div class="row mt-2">
+                                <div class="col-sm-6">
+                                    <label class="col-sm-4 col-form-label text-muted small">Name</label>
+                                    <div class="col-sm-8 font-weight-bold">{{ matchedSignatory.name }}</div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="col-sm-4 col-form-label text-muted small">Position</label>
+                                    <div class="col-sm-8">{{ matchedSignatory.position }}</div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="col-sm-4 col-form-label text-muted small">Department</label>
+                                    <div class="col-sm-8">{{ matchedSignatory.department }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 <div class="modal-footer border-0 justify-content-end">
     <button type="submit" class="btn btn-primary px-4 modern-btn" :disabled="isSaving">
@@ -70,7 +89,7 @@
             <thead> 
                 <tr class="text-center"> 
                     <th>REQUEST NO.</th> 
-                    <th>REQUESTING OFFICE</th> 
+                    <th>REQUESTING DEPARTMENT</th> 
                     <th>NO. OF OJT NEEDED</th> 
                     <th>SKILLS AND DESCRIPTION</th> 
                     <th>STATUS</th> 
@@ -79,10 +98,10 @@
            </thead> 
     <tbody id="requestsTbody">
         <tr v-for="request in requests" :key="request.id">
-            <td>{{ request.id }}</td>
-            <td>{{ request.officeName || request.officeCode }}</td>
-            <td>{{ request.count }} <span class="text-muted small">({{ request.remaining }} left)</span></td>
-            <td>{{ request.skills }}<span v-if="request.description"> - {{ request.description }}</span></td>
+            <td class="text-dark">{{ request.id }}</td>
+            <td class="text-dark">{{ request.officeName }}</td>
+            <td class="text-dark">{{ request.count }} <span class="text-muted small">({{ request.remaining }} left)</span></td>
+            <td class="text-dark">{{ request.skills }}<span v-if="request.description"> - {{ request.description }}</span></td>
             <td>
                 <span class="badge badge-info">{{ request.status }}</span>
                 <span v-if="request.hasSlots" class="badge badge-success">Has slots</span>
@@ -111,8 +130,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, inject } from 'vue'
-import { getApiErrorMessage, internRequestsAPI } from '@/services/api'
+import { onMounted, ref, inject, computed, watch } from 'vue'
+import { getApiErrorMessage, internRequestsAPI, signatoriesAPI } from '@/services/api'
 import '../assets/css/Request.css'
 
 const dialog = inject('dialog')
@@ -121,10 +140,21 @@ const { showAlert, showConfirm } = dialog || {}
 const isRequestModalOpen = ref(false)
 const requests = ref([])
 const offices = ref([])
+const signatories = ref([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const loadError = ref('')
 const requestForm = ref({ officeCode: '', count: 1, skills: '', description: '' })
+
+const matchedSignatory = computed(() => {
+  if (!requestForm.value.officeCode) return null
+  const office = offices.value.find(o => o.code === requestForm.value.officeCode)
+  if (!office) return null
+  return signatories.value.find(s => 
+    s.department?.toLowerCase().includes(office.code.toLowerCase()) ||
+    office.name.toLowerCase().includes(s.department?.toLowerCase() || '')
+  ) || null
+})
 
 /* Lahat ng datos ay galing sa backend, walang localStorage. */
 async function loadRequests() {
@@ -156,7 +186,8 @@ async function saveRequest() {
             count: Number(form.count),
             skills: form.skills.trim(),
             description: form.description.trim(),
-            status: 'Open'
+            status: 'Open',
+            signatoryId: matchedSignatory.value?.id || null
         })
         requestForm.value = { officeCode: '', count: 1, skills: '', description: '' }
         isRequestModalOpen.value = false
@@ -183,10 +214,15 @@ async function removeRequest(id) {
 onMounted(async () => {
     await loadRequests()
     try {
-        const response = await fetch('/assets/json/offices.json')
-        offices.value = (await response.json()).offices || []
+        const [officesRes, signatoriesRes] = await Promise.all([
+            fetch('/assets/json/offices.json'),
+            signatoriesAPI.getAll()
+        ])
+        offices.value = (await officesRes.json()).offices || []
+        signatories.value = signatoriesRes || []
     } catch {
         offices.value = []
+        signatories.value = []
     }
 })
 </script>

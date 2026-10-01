@@ -16,6 +16,9 @@ namespace OJTMISApi.Models
         [StringLength(150, ErrorMessage = "Position cannot exceed 150 characters.")]
         public string Position { get; set; } = string.Empty;
 
+        [StringLength(200, ErrorMessage = "Department cannot exceed 200 characters.")]
+        public string Department { get; set; } = string.Empty;
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
