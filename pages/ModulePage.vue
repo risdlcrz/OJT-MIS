@@ -26,25 +26,17 @@
             <thead class="table-light">
               <tr>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
-                <th scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(row, index) in rows" :key="row.id">
-                <td v-for="col in displayColumns" :key="col.prop">{{ cell(row, col) }}</td>
-                <td class="text-center text-nowrap">
-                  <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
-                          :disabled="isLoading || isSaving" @click="openEdit(row)">
-                    <i class="fas fa-pen"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
-                          :disabled="isLoading || isSaving" @click="confirmDelete(row)">
-                    <i class="fas fa-trash"></i>
-                  </button>
+                <td v-for="col in displayColumns" :key="col.prop">
+                  <span v-if="col.clickable" class="text-decoration-underline text-primary fw-medium cursor-pointer" @click="openView(row)">{{ cell(row, col) }}</span>
+                  <span v-else>{{ cell(row, col) }}</span>
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length + 1" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length" class="text-center text-muted py-4">
                   No {{ config.title.toLowerCase() }} yet.
                 </td>
               </tr>
@@ -154,6 +146,77 @@
       </div>
     </div>
 
+    <!-- ================= View Intern Modal ================= -->
+    <Teleport to="body">
+      <div v-if="viewIntern"
+           style="position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1055; overflow: hidden; background: rgba(26, 26, 46, 0.55); display: flex; align-items: center; justify-content: center; padding: 0.75rem;"
+           role="dialog" aria-modal="true" aria-label="Intern Details" @click.self="closeView">
+        <div class="modal-content shadow-lg" style="background: #ffffff; border: none; border-top: 4px solid #ff6b00; border-radius: 8px; width: 720px; max-width: 100%; max-height: calc(100vh - 1.5rem); display: flex; flex-direction: column;">
+          <div class="modal-header" style="background: #ffffff; border-bottom: 1px solid #e9ecef; border-radius: 0;">
+            <h5 class="modal-title fw-bold" style="color: #1a1a2e;">Intern Details</h5>
+            <button type="button" class="btn-close" aria-label="Close" :disabled="isSaving" @click="closeView"></button>
+          </div>
+          <div class="modal-body p-4 overflow-auto">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Applicant No.</label>
+                <div class="fw-bold fs-5" style="color: #1a1a2e;">{{ viewIntern.applicantNo || '-' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Full Name</label>
+                <div class="fw-bold fs-5" style="color: #1a1a2e;">{{ viewIntern.fullName || '-' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">School</label>
+                <div style="color: #212529;">{{ viewIntern.school || '-' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Program</label>
+                <div style="color: #212529;">{{ viewIntern.program || '-' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Contact No.</label>
+                <div style="color: #212529;">{{ viewIntern.contactNumber || '-' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Department</label>
+                <div style="color: #212529;">{{ viewIntern.requestOffice || (viewIntern.requestId ? `#${viewIntern.requestId}` : '-') }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Hours Rendered</label>
+                <div class="fw-bold" style="color: #1a1a2e;">{{ viewIntern.durationDays != null ? viewIntern.durationDays * 8 : '-' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">OJT Period</label>
+                <div style="color: #212529;">{{ formatOJTPeriod(viewIntern) }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Fridays</label>
+                <div style="color: #212529;">{{ viewIntern.excludeFriday ? 'Excluded' : 'Included' }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="text-secondary small text-uppercase fw-semibold">Status</label>
+                <div>
+                  <span class="badge" :class="statusBadge(viewIntern.status)">{{ viewIntern.status || '-' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="background: #f8f9fa; border-top: 1px solid #e9ecef; border-radius: 0 0 8px 8px;">
+            <button type="button" class="btn px-4" style="background: #ff6b00; color: #fff; border: none;" :disabled="isSaving" @click="editFromView">
+              <i class="fas fa-pen me-1"></i> Edit
+            </button>
+            <button type="button" class="btn btn-outline-danger px-4" :disabled="isSaving" @click="deleteFromView">
+              <i class="fas fa-trash me-1"></i> Delete
+            </button>
+            <button type="button" class="btn btn-outline-secondary px-4" @click="closeView">
+              <i class="fas fa-times me-1"></i> Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ================= Toast ================= -->
     <div class="toast-container position-fixed top-0 end-0 p-3">
       <div ref="toastEl" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -183,27 +246,9 @@ const MODULES = {
     ],
     /* Karagdagang column na hango sa profile: hindi ito lumalabas sa form. */
     display: [
-      { prop: 'applicantNo', label: 'Applicant No.' },
-      { prop: 'fullName', label: 'Full Name' },
+      { prop: 'fullName', label: 'Full Name', clickable: true },
       { prop: 'school', label: 'School' },
-      { prop: 'program', label: 'Program' },
-      { prop: 'contactNumber', label: 'Contact No.' },
       { prop: 'requestId', label: 'Department', format: (_v, row) => row.requestOffice || (row.requestId ? `#${row.requestId}` : null) },
-      { prop: 'durationDays', label: 'Days' },
-      {
-        prop: 'startDate',
-        label: 'OJT Period',
-        format: (_v, row) => {
-          const s = formatDate(row.startDate)
-          const e = formatDate(row.endDate)
-          return s || e ? `${s} \u2013 ${e}` : null
-        }
-      },
-      {
-        prop: 'excludeFriday',
-        label: 'Fri',
-        format: (v) => (v ? 'Excluded' : 'Included')
-      },
       { prop: 'status', label: 'Status' }
     ]
   },
@@ -255,6 +300,7 @@ const loadError = ref('')
 const formError = ref('')
 const submitted = ref(false)
 const pending = ref(null)
+const viewIntern = ref(null)
 const message = ref('')
 
 const form = reactive({ id: 0 })
@@ -366,6 +412,43 @@ async function save() {
 function confirmDelete(row) { pending.value = row; deleteModal.show() }
 function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = null } }
 
+function openView(row) {
+  viewIntern.value = row
+  document.body.style.overflow = 'hidden'
+}
+function closeView() {
+  if (isSaving.value) return
+  viewIntern.value = null
+  document.body.style.overflow = ''
+}
+function editFromView() {
+  const row = viewIntern.value
+  if (!row) return
+  closeView()
+  openEdit(row)
+}
+function deleteFromView() {
+  const row = viewIntern.value
+  if (!row) return
+  closeView()
+  confirmDelete(row)
+}
+
+function formatOJTPeriod(row) {
+  const s = formatDate(row.startDate)
+  const e = formatDate(row.endDate)
+  return s || e ? `${s} \u2013 ${e}` : '-'
+}
+function statusBadge(status) {
+  switch (status) {
+    case 'Hired': return 'bg-success'
+    case 'Pending': return 'bg-warning text-dark'
+    case 'Completed': return 'bg-info text-dark'
+    case 'Terminated': return 'bg-danger'
+    default: return 'bg-secondary'
+  }
+}
+
 async function doDelete() {
   if (!pending.value) return
   isSaving.value = true
@@ -401,6 +484,7 @@ watch(() => props.modulePage, () => {
 onBeforeUnmount(() => {
   formModal?.dispose(); deleteModal?.dispose(); toast?.dispose()
   window.clearTimeout(toastTimer)
+  document.body.style.overflow = ''
 })
 </script>
 
