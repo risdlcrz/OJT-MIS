@@ -31,7 +31,7 @@
             <tbody>
               <tr v-for="(row, index) in rows" :key="row.id">
                 <td v-for="col in displayColumns" :key="col.prop">
-                  <span v-if="col.clickable" class="text-decoration-underline text-primary fw-medium cursor-pointer" @click="openView(row)">{{ cell(row, col) }}</span>
+                  <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
                   <span v-else>{{ cell(row, col) }}</span>
                 </td>
               </tr>
@@ -350,8 +350,9 @@ async function load() {
     rows.value = await config.value.api.getAll()
     if (config.value.hiring) {
       availableRequests.value = await internRequestsAPI.available()
-      // Map requestId to officeName for Department column
-      const requestMap = new Map(availableRequests.value.map(r => [r.id, r.officeName]))
+      // Fetch all requests to map requestId -> full office name for Department column
+      const allRequests = await internRequestsAPI.getAll()
+      const requestMap = new Map(allRequests.map(r => [r.id, r.officeName]))
       rows.value.forEach(row => {
         row.requestOffice = requestMap.get(row.requestId) || null
       })

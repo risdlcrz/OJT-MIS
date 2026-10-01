@@ -47,11 +47,11 @@
                 <td>{{ school.abbreviation || '-' }}</td>
                 <td>{{ school.address }}</td>
                 <td>
-                  <span :class="school.moaStatus ? 'badge badge-success' : 'badge badge-secondary'">
+                  <span :class="school.moaStatus ? 'badge badge-success text-dark' : 'badge badge-secondary'">
                     {{ school.moaStatus ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
-                <td>{{ school.moaExpiry ? formatDate(school.moaExpiry) : '-' }}</td>
+                <td>{{ school.moaExpiry ? formatDateOnly(school.moaExpiry) : '-' }}</td>
                 <td class="text-muted small">{{ formatDate(school.updatedAt) }}</td>
                 <td class="text-center text-nowrap">
                   <button
@@ -175,11 +175,9 @@
 
               <div class="mb-0">
                 <label for="schoolMoaExpiry" class="form-label fw-semibold">MOA Expiry Date</label>
-                <input
+                <DatePicker
                   id="schoolMoaExpiry"
                   v-model="form.moaExpiry"
-                  type="date"
-                  class="form-control"
                   :disabled="isSaving"
                 />
               </div>
@@ -293,6 +291,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Modal } from 'bootstrap'
 import { getApiErrorMessage, schoolsAPI } from '@/services/api'
+import DatePicker from '@/components/DatePicker.vue'
 
 const schools = ref([])
 const isLoading = ref(false)
@@ -359,6 +358,25 @@ function formatDate(value) {
   })
 }
 
+function formatDateOnly(value) {
+  if (!value) return '-'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '-'
+  return parsed.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit'
+  })
+}
+
+function removeModalBackdrops() {
+  if (typeof document === 'undefined') return
+  document.querySelectorAll?.('.modal-backdrop')?.forEach?.(el => el.remove?.())
+  document.body?.classList?.remove('modal-open')
+  document.body.style.overflow = ''
+  document.body.style.paddingRight = ''
+}
+
 async function loadSchools() {
   isLoading.value = true
   loadError.value = ''
@@ -391,6 +409,7 @@ function openEditModal(school) {
 function closeFormModal() {
   if (isSaving.value) return
   formModal.hide()
+  removeModalBackdrops()
 }
 
 async function saveSchool() {
@@ -415,19 +434,22 @@ async function saveSchool() {
 
   try {
     if (isEditing.value) {
-      await schoolsAPI.update(form.id, payload)
+      const updated = await schoolsAPI.update(form.id, payload)
+      const idx = schools.value.findIndex(s => s.id === form.id)
+      if (idx !== -1) schools.value[idx] = updated
       showToast('School updated successfully.')
     } else {
-      await schoolsAPI.create(payload)
+      const created = await schoolsAPI.create(payload)
+      schools.value.unshift(created)
       showToast('School added successfully.')
     }
 
     formModal.hide()
-    await loadSchools()
+    removeModalBackdrops()
   } catch (error) {
     formError.value = getApiErrorMessage(error, 'Failed to save the school.')
-    // Hide modal on error to prevent frozen backdrop
     formModal.hide()
+    removeModalBackdrops()
   } finally {
     isSaving.value = false
   }
@@ -441,6 +463,7 @@ function openDeleteModal(school) {
 function closeDeleteModal() {
   if (isSaving.value) return
   deleteModal.hide()
+  removeModalBackdrops()
   pendingDelete.value = null
 }
 
@@ -451,10 +474,11 @@ async function confirmDelete() {
 
   try {
     await schoolsAPI.delete(pendingDelete.value.id)
+    schools.value = schools.value.filter(s => s.id !== pendingDelete.value.id)
     showToast('School deleted successfully.')
     deleteModal.hide()
+    removeModalBackdrops()
     pendingDelete.value = null
-    await loadSchools()
   } catch (error) {
     showToast(getApiErrorMessage(error, 'Failed to delete the school.'), 'danger')
   } finally {
