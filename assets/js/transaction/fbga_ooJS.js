@@ -50,28 +50,30 @@ function formatDate(dateString) {
 
 // Function to handle editing an office order
 function editOfficeOrder(referenceNo) {
-    alert(`Edit Office Order with Reference No: ${referenceNo}`);
+    window.$dialog?.alert(`Edit Office Order with Reference No: ${referenceNo}`, 'Edit Office Order');
     // You can load the details into a modal for editing here
 }
 
 // Function to handle deleting an office order
 function deleteOfficeOrder(referenceNo) {
-    if (confirm(`Are you sure you want to delete Office Order with Reference No: ${referenceNo}?`)) {
-        $.ajax({
-            url: '/services/transaction/fbga_oo.ashx',
-            type: 'POST',
-            data: JSON.stringify({ action: 'delete', referenceNo }),
-            contentType: 'application/json; charset=utf-8',
-            success: function (response) {
-                alert('Office Order deleted successfully.');
-                $('#tblMain').DataTable().ajax.reload();
-            },
-            error: function (xhr, status, error) {
-                alert('Failed to delete Office Order. Please try again.');
-                console.error('Error:', error);
-            }
-        });
-    }
+    window.$dialog?.confirm(`Are you sure you want to delete Office Order with Reference No: ${referenceNo}?`, 'Confirm Delete').then((ok) => {
+        if (ok) {
+            $.ajax({
+                url: '/services/transaction/fbga_oo.ashx',
+                type: 'POST',
+                data: JSON.stringify({ action: 'delete', referenceNo }),
+                contentType: 'application/json; charset=utf-8',
+                success: function (response) {
+                    window.$dialog?.alert('Office Order deleted successfully.', 'Success');
+                    $('#tblMain').DataTable().ajax.reload();
+                },
+                error: function (xhr, status, error) {
+                    window.$dialog?.alert('Failed to delete Office Order. Please try again.', 'Error');
+                    console.error('Error:', error);
+                }
+            });
+        }
+    });
 }
 
 function LoadAddOfficeOrder() {
@@ -101,7 +103,7 @@ function saveOfficeOrder() {
 
     // Validate fields
     if (!officeOrderData.referenceOrderNo || !officeOrderData.officeOrderNo || !officeOrderData.officeOrderDate || !officeOrderData.auditPlace || !officeOrderData.auditDateFrom || !officeOrderData.auditDateTo) {
-        alert('Please fill out all required fields.');
+        window.$dialog?.alert('Please fill out all required fields.', 'Validation Error');
         return;
     }
 
@@ -114,15 +116,15 @@ function saveOfficeOrder() {
         success: function (response) {
             const result = response.d; // Web Service wraps the response in `d`
             if (result.ReturnCode === "0000") {
-                alert(result.ReturnValue);
+                window.$dialog?.alert(result.ReturnValue, 'Success');
                 $('#addOfficeOrderModal').modal('hide');
                 $('#tblMain').DataTable().ajax.reload(); // Reload the DataTable
             } else {
-                alert(result.ReturnValue);
+                window.$dialog?.alert(result.ReturnValue, 'Error');
             }
         },
         error: function (xhr, status, error) {
-            alert('Failed to save Office Order. Please try again.');
+            window.$dialog?.alert('Failed to save Office Order. Please try again.', 'Error');
             console.error('Error:', error);
         }
     });

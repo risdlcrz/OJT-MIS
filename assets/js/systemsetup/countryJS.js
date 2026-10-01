@@ -37,9 +37,9 @@
 });
 
 function editContinent(id, name) {
-    alert(`Edit: ${id}, ${name}`);
+    window.$dialog?.alert(`Edit: ${id}, ${name}`, 'Edit Country');
 }
 
 function deleteContinent(id, name) {
-    alert(`Delete: ${id}, ${name}`);
+    window.$dialog?.alert(`Delete: ${id}, ${name}`, 'Delete Country');
 }

@@ -111,9 +111,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, inject } from 'vue'
 import { getApiErrorMessage, internRequestsAPI } from '@/services/api'
 import '../assets/css/Request.css'
+
+const dialog = inject('dialog')
+const { showAlert, showConfirm } = dialog || {}
 
 const isRequestModalOpen = ref(false)
 const requests = ref([])
@@ -166,7 +169,8 @@ async function saveRequest() {
 }
 
 async function removeRequest(id) {
-    if (!confirm('Remove this intern request?')) return
+    const ok = await showConfirm('Remove this intern request?', 'Confirm Delete')
+    if (!ok) return
     loadError.value = ''
     try {
         await internRequestsAPI.delete(id)

@@ -50,7 +50,7 @@ function saveCity() {
     const name = $('#editCityName').val();
 
     if (!name) {
-        alert('City name cannot be empty.');
+        window.$dialog?.alert('City name cannot be empty.', 'Validation Error');
         return;
     }
 
@@ -65,7 +65,7 @@ function saveCity() {
             $('#tblMain').DataTable().ajax.reload();
         },
         error: function () {
-            alert('Failed to save city changes.');
+            window.$dialog?.alert('Failed to save city changes.', 'Error');
         }
     });
 }
@@ -84,7 +84,7 @@ function confirmDeleteCity() {
             $('#tblMain').DataTable().ajax.reload();
         },
         error: function () {
-            alert('Failed to delete city.');
+            window.$dialog?.alert('Failed to delete city.', 'Error');
         }
     });
 }

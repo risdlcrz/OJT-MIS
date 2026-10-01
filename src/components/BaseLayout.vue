@@ -281,11 +281,97 @@
     <footer class="main-footer text-sm">
       <strong>2026 &copy; OJTMIS</strong>
     </footer>
+
+    <!-- Global Alert Modal -->
+    <div
+      id="globalAlertModal"
+      class="modal fade"
+      :class="{ show: isAlertOpen }"
+      :style="{ display: isAlertOpen ? 'block' : 'none' }"
+      tabindex="-1"
+      role="dialog"
+      :aria-hidden="!isAlertOpen"
+    >
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content modern-modal">
+          <div class="modal-header modern-modal-header">
+            <h5 class="modal-title font-weight-bold">{{ alertTitle }}</h5>
+            <button
+              type="button"
+              class="close"
+              aria-label="Close"
+              @click="closeAlert"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="mb-0">{{ alertMessage }}</p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button
+              type="button"
+              class="btn btn-primary px-4 modern-btn"
+              @click="closeAlert"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Confirm Modal -->
+    <div
+      id="globalConfirmModal"
+      class="modal fade"
+      :class="{ show: isConfirmOpen }"
+      :style="{ display: isConfirmOpen ? 'block' : 'none' }"
+      tabindex="-1"
+      role="dialog"
+      :aria-hidden="!isConfirmOpen"
+    >
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content modern-modal">
+          <div class="modal-header modern-modal-header">
+            <h5 class="modal-title font-weight-bold">{{ confirmTitle }}</h5>
+            <button
+              type="button"
+              class="close"
+              aria-label="Close"
+              @click="closeConfirm(false)"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="mb-0">{{ confirmMessage }}</p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button
+              type="button"
+              class="btn btn-outline-secondary px-4 modern-btn"
+              @click="closeConfirm(false)"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary px-4 modern-btn"
+              @click="closeConfirm(true)"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import '../../assets/css/navigation.css'
 import '../../assets/css/Dashboard.css'
 import menuConfig from '../../assets/json/menu.json'
@@ -315,6 +401,62 @@ const ALLOWED_PAGES = [
   'programs.html',
   'signatories.html'
 ]
+
+/* ---- Global Dialog state ---- */
+const isAlertOpen = ref(false)
+const isConfirmOpen = ref(false)
+const alertTitle = ref('')
+const alertMessage = ref('')
+const confirmTitle = ref('')
+const confirmMessage = ref('')
+
+let alertResolve = null
+let confirmResolve = null
+
+function closeAlert() {
+  isAlertOpen.value = false
+  if (alertResolve) {
+    alertResolve()
+    alertResolve = null
+  }
+}
+
+function closeConfirm(result) {
+  isConfirmOpen.value = false
+  if (confirmResolve) {
+    confirmResolve(result)
+    confirmResolve = null
+  }
+}
+
+function showAlert(message, title = 'Notification') {
+  alertTitle.value = title
+  alertMessage.value = message
+  isAlertOpen.value = true
+  return new Promise((resolve) => {
+    alertResolve = resolve
+  })
+}
+
+function showConfirm(message, title = 'Confirm') {
+  confirmTitle.value = title
+  confirmMessage.value = message
+  isConfirmOpen.value = true
+  return new Promise((resolve) => {
+    confirmResolve = resolve
+  })
+}
+
+provide('dialog', {
+  showAlert,
+  showConfirm,
+  isAlertOpen,
+  isConfirmOpen,
+  alertTitle,
+  alertMessage,
+  confirmTitle,
+  confirmMessage
+})
 
 /* Ang "#schedule" (o anumang hash) sa URL, halimbawa "/applicants.html#schedule".
    Ito ang nagsasabi kung List of Applicants o Schedule Orientation ang bukas. */
@@ -422,7 +564,7 @@ function closeChangePassword() {
   changePasswordError.value = ''
 }
 
-function submitChangePassword() {
+async function submitChangePassword() {
   changePasswordError.value = ''
 
   if (currentPassword.value !== getStoredPassword()) {
@@ -444,7 +586,7 @@ function submitChangePassword() {
 
   closeChangePassword()
 
-  alert('Password updated successfully.')
+  await showAlert('Password updated successfully.')
 }
 
 /* "Change Password" ang dropdown item na walang sariling page, kaya binubuksan
@@ -598,6 +740,12 @@ onMounted(() => {
   }
 
   openMenus.value = new Set(menu.value.filter(hasActiveChild).map((item) => item.name))
+
+  /* Expose global dialog functions for non-Vue JS files */
+  window.$dialog = {
+    alert: showAlert,
+    confirm: showConfirm
+  }
 })
 
 onBeforeUnmount(() => {

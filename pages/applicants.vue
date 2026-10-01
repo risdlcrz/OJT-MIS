@@ -1192,12 +1192,16 @@ import {
     onBeforeUnmount,
     ref,
     watch,
-    computed
+    computed,
+    inject
 } from 'vue'
 
 import { applicantsAPI, getApiErrorMessage, internRequestsAPI, schoolsAPI } from '@/services/api'
 
 import '../assets/css/Applicants.css'
+
+const dialog = inject('dialog')
+const { showAlert, showConfirm } = dialog || {}
 
 const OFFICES_JSON = '/assets/json/offices.json'
 
@@ -1523,17 +1527,17 @@ async function saveApplicant() {
 
     /* Required validation */
     if (!firstName) {
-        alert('Please enter the First Name.')
+        await showAlert('Please enter the First Name.', 'Validation Error')
         return
     }
 
     if (!lastName) {
-        alert('Please enter the Last Name.')
+        await showAlert('Please enter the Last Name.', 'Validation Error')
         return
     }
 
     if (!schoolName) {
-        alert('Please select a School Name.')
+        await showAlert('Please select a School Name.', 'Validation Error')
         return
     }
 
@@ -1577,12 +1581,12 @@ async function saveApplicant() {
 
         isApplicantModalOpen.value = false
 
-        alert('Applicant saved successfully.')
+        await showAlert('Applicant saved successfully.', 'Success')
 
         return saved
     } catch (error) {
         console.error('Failed to save applicant:', error)
-        alert(getApiErrorMessage(error, 'Failed to save the applicant.'))
+        await showAlert(getApiErrorMessage(error, 'Failed to save the applicant.'), 'Error')
         throw error
     } finally {
         isSavingApplicant.value = false
@@ -1614,7 +1618,7 @@ function closeRequirementsModal() {
 }
 
 
-function saveRequirements() {
+async function saveRequirements() {
     const applicant = applicants.value.find(
         a => a.applicantNo === reqModalApplicantNo.value
     )
@@ -1637,8 +1641,9 @@ function saveRequirements() {
         !applicant.accepted &&
         !applicant.rejected
     ) {
-        const confirmAccept = confirm(
-            'All requirements are completed for this applicant. Accept the applicant and move to scheduling?'
+        const confirmAccept = await showConfirm(
+            'All requirements are completed for this applicant. Accept the applicant and move to scheduling?',
+            'Accept Applicant'
         )
 
         if (confirmAccept) {
@@ -1686,9 +1691,9 @@ function nextRequestNo() {
 }
 
 
-function saveEvaluation() {
+async function saveEvaluation() {
     if (!evalOffice.value) {
-        alert('Please select an office.')
+        await showAlert('Please select an office.', 'Validation Error')
         return
     }
 
@@ -1839,10 +1844,11 @@ async function submitHire() {
             remarks: pendingAction?.remarks || applicant.remarks || ''
         })
 
-        alert(
+        await showAlert(
             `${result.message}\n\n` +
             `Start Date: ${result.startDate}\n` +
-            `End Date: ${result.endDate}`
+            `End Date: ${result.endDate}`,
+            'Hire Successful'
         )
 
         await loadApplicants()
@@ -1891,7 +1897,7 @@ function deleteApplicant(applicant) {
             const at = Math.min(index, applicants.value.length)
             applicants.value.splice(at, 0, removed)
         }
-        alert(getApiErrorMessage(error, 'Failed to delete the applicant.'))
+        showAlert(getApiErrorMessage(error, 'Failed to delete the applicant.'), 'Error')
     })
 }
 
@@ -1964,9 +1970,9 @@ function closeScheduleModal() {
 }
 
 
-function saveSchedule() {
+async function saveSchedule() {
     if (!orientationDate.value || !orientationOffice.value) {
-        alert('Please select a date and an office.')
+        await showAlert('Please select a date and an office.', 'Validation Error')
         return
     }
 
@@ -1992,11 +1998,12 @@ function saveSchedule() {
 }
 
 
-function confirmOrientation(applicant) {
+async function confirmOrientation(applicant) {
     if (!applicant || !applicant.orientation?.date) return
 
-    const ok = confirm(
-        `Confirm orientation for ${applicant.lastName}, ${applicant.firstName}?`
+    const ok = await showConfirm(
+        `Confirm orientation for ${applicant.lastName}, ${applicant.firstName}?`,
+        'Confirm Orientation'
     )
 
     if (!ok) return
