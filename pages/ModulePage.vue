@@ -26,7 +26,7 @@
             <thead class="table-light">
               <tr>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
-                <th v-if="config.value.hasActions" scope="col" class="text-center" style="width: 120px;">Actions</th>
+                <th v-if="config.value?.hasActions" scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -35,7 +35,7 @@
                   <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
-                <td v-if="config.value.hasActions" class="text-center text-nowrap">
+                <td v-if="config.value?.hasActions" class="text-center text-nowrap">
                   <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
                           :disabled="isLoading || isSaving" @click="openEdit(row)">
                     <i class="fas fa-pen"></i>
@@ -47,7 +47,7 @@
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length + (config.value.hasActions ? 1 : 0)" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length + (config.value?.hasActions ? 1 : 0)" class="text-center text-muted py-4">
                   No {{ config.title.toLowerCase() }} yet.
                 </td>
               </tr>
