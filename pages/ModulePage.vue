@@ -151,13 +151,14 @@
       <div v-if="viewIntern"
            style="position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1055; overflow: hidden; background: rgba(26, 26, 46, 0.55); display: flex; align-items: center; justify-content: center; padding: 0.75rem;"
            role="dialog" aria-modal="true" aria-label="Intern Details" @click.self="closeView">
-        <div class="modal-content shadow-lg" style="background: #ffffff; border: none; border-top: 4px solid #ff6b00; border-radius: 8px; width: 720px; max-width: 100%; max-height: calc(100vh - 1.5rem); display: flex; flex-direction: column;">
-          <div class="modal-header" style="background: #ffffff; border-bottom: 1px solid #e9ecef; border-radius: 0;">
+        <div class="modal-content shadow-lg border-0" style="background: linear-gradient(135deg, #f97316 0%, #ffffff 100%); border-radius: 12px; width: 720px; max-width: 100%; max-height: calc(100vh - 1.5rem); display: flex; flex-direction: column; box-shadow: 0 1rem 3rem rgba(0,0,0,0.175);">
+          <div class="modal-header bg-transparent border-0 px-4 pt-4 pb-2">
             <h5 class="modal-title fw-bold" style="color: #1a1a2e;">Intern Details</h5>
             <button type="button" class="btn-close" aria-label="Close" :disabled="isSaving" @click="closeView"></button>
           </div>
           <div class="modal-body p-4 overflow-auto">
-            <div class="row g-3">
+            <div class="bg-white rounded-3 shadow-sm p-4 border" style="border-color: rgba(33,37,41,0.08) !important;">
+              <div class="row g-3">
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Applicant No.</label>
                 <div class="fw-bold fs-5" style="color: #1a1a2e;">{{ viewIntern.applicantNo || '-' }}</div>
@@ -201,15 +202,16 @@
                 </div>
               </div>
             </div>
+            </div>
           </div>
-          <div class="modal-footer" style="background: #f8f9fa; border-top: 1px solid #e9ecef; border-radius: 0 0 8px 8px;">
-            <button type="button" class="btn px-4" style="background: #ff6b00; color: #fff; border: none;" :disabled="isSaving" @click="editFromView">
+          <div class="modal-footer bg-transparent border-0 px-4 pt-2 pb-4 d-flex justify-content-end gap-3">
+            <button type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #ff6b00; color: #fff; border: none;" :disabled="isSaving" @click="editFromView">
               <i class="fas fa-pen me-1"></i> Edit
             </button>
-            <button type="button" class="btn btn-outline-danger px-4" :disabled="isSaving" @click="deleteFromView">
+            <button type="button" class="btn btn-outline-danger px-4 py-2 rounded-pill shadow-sm" :disabled="isSaving" @click="deleteFromView">
               <i class="fas fa-trash me-1"></i> Delete
             </button>
-            <button type="button" class="btn btn-outline-secondary px-4" @click="closeView">
+            <button type="button" class="btn btn-outline-secondary px-4 py-2 rounded-pill shadow-sm" @click="closeView">
               <i class="fas fa-times me-1"></i> Close
             </button>
           </div>
