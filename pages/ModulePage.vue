@@ -26,6 +26,7 @@
             <thead class="table-light">
               <tr>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
+                <th v-if="config.value.hasActions" scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -34,9 +35,19 @@
                   <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
+                <td v-if="config.value.hasActions" class="text-center text-nowrap">
+                  <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
+                          :disabled="isLoading || isSaving" @click="openEdit(row)">
+                    <i class="fas fa-pen"></i>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                          :disabled="isLoading || isSaving" @click="confirmDelete(row)">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length + (config.value.hasActions ? 1 : 0)" class="text-center text-muted py-4">
                   No {{ config.title.toLowerCase() }} yet.
                 </td>
               </tr>
@@ -270,7 +281,7 @@ const MODULES = {
     columns: [{ prop: 'programCode', label: 'Program Code', max: 50 }, { prop: 'programName', label: 'Program Name', max: 200 }]
   },
   'signatories.html': {
-    title: 'Signatories', singular: 'Signatory', api: signatoriesAPI, needsDepartment: true,
+    title: 'Signatories', singular: 'Signatory', api: signatoriesAPI, needsDepartment: true, hasActions: true,
     columns: [
       { prop: 'name', label: 'Name', max: 200 },
       { prop: 'position', label: 'Position', max: 150 },
@@ -355,7 +366,15 @@ function formatDate(v) {
   const d = v ? new Date(v) : null
   return d && !Number.isNaN(d.getTime())
     ? d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-    : '-'
+: '-'
+}
+
+function removeModalBackdrops() {
+  if (typeof document === 'undefined') return
+  document.querySelectorAll?.('.modal-backdrop')?.forEach?.(el => el.remove?.())
+  document.body?.classList?.remove('modal-open')
+  document.body.style.overflow = ''
+  document.body.style.paddingRight = ''
 }
 
 async function load() {
@@ -410,7 +429,7 @@ function openEdit(row) {
   form.updatedAt = row.updatedAt
   formModal.show()
 }
-function closeForm() { if (!isSaving.value) formModal.hide() }
+function closeForm() { if (!isSaving.value) { formModal.hide(); removeModalBackdrops() } }
 
 async function save() {
   submitted.value = true
@@ -428,7 +447,6 @@ async function save() {
   isSaving.value = true
   const api = config.value.api
 
-  // Only send properties the backend model expects; omit updatedAt (server-set)
   const payload = {
     name: form.name,
     position: form.position,
@@ -440,12 +458,27 @@ async function save() {
   }
 
   try {
-    if (isEditing.value) { await api.update(form.id, payload); notify('Record updated.') }
-    else { await api.create(payload); notify('Record created.') }
+    if (isEditing.value) {
+      await api.update(form.id, payload)
+      const idx = rows.value.findIndex(r => r.id === form.id)
+      if (idx !== -1) rows.value[idx] = { ...rows.value[idx], ...payload }
+      notify('Record updated.')
+    } else {
+      const created = await api.create(payload)
+      rows.value.unshift(created)
+      notify('Record created.')
+    }
     formModal.hide()
-    await load()
+    removeModalBackdrops()
   } catch (e) {
-    formError.value = getApiErrorMessage(e, 'Failed to save.')
+    const msg = getApiErrorMessage(e, 'Failed to save.')
+    // 409 Conflict - duplicate name
+    if (e?.response?.status === 409 || msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('conflict')) {
+      formError.value = 'A signatory with this name already exists. Please choose a different name.'
+    } else {
+      formError.value = msg
+    }
+    removeModalBackdrops()
   } finally {
     isSaving.value = false
   }
@@ -496,10 +529,11 @@ async function doDelete() {
   isSaving.value = true
   try {
     await config.value.api.delete(pending.value.id)
+    rows.value = rows.value.filter(r => r.id !== pending.value.id)
     notify('Record deleted.')
     deleteModal.hide()
+    removeModalBackdrops()
     pending.value = null
-    await load()
   } catch (e) {
     notify(getApiErrorMessage(e, 'Failed to delete.'), 'danger')
   } finally {

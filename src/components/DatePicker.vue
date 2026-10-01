@@ -1,6 +1,6 @@
 <template>
   <div class="date-picker">
-    <div class="date-picker-input-wrapper" @click="open">
+    <div ref="wrapper" class="date-picker-input-wrapper" @click="open">
       <input
         type="text"
         :value="formattedValue"
@@ -15,7 +15,7 @@
     </div>
 
     <Teleport to="body">
-      <div v-if="isOpen" class="date-picker-dropdown" :style="dropdownStyle" @click.stop>
+      <div ref="dropdown" v-if="isOpen" class="date-picker-dropdown" :style="dropdownStyle" @click.stop>
         <div class="date-picker-header">
           <button type="button" class="nav-btn" @click="prevYear" title="Previous year">&#171;</button>
           <button type="button" class="nav-btn" @click="prevMonth" title="Previous month">&#8249;</button>
@@ -64,6 +64,8 @@ const emit = defineEmits(['update:modelValue'])
 const isOpen = ref(false)
 const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
+const wrapper = ref(null)
+const dropdown = ref(null)
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -156,9 +158,9 @@ function nextYear() { currentYear.value++ }
 
 function handleOutsideClick(e) {
   if (!isOpen.value) return
-  const wrapper = document.querySelector('.date-picker-input-wrapper')
-  const dropdown = document.querySelector('.date-picker-dropdown')
-  if (wrapper && !wrapper.contains(e.target) && dropdown && !dropdown.contains(e.target)) {
+  const w = wrapper.value
+  const d = dropdown.value
+  if (w && !w.contains(e.target) && d && !d.contains(e.target)) {
     close()
   }
 }
@@ -180,24 +182,24 @@ function close() {
 }
 
 function positionDropdown() {
-  const wrapper = document.querySelector('.date-picker-input-wrapper')
-  const dropdown = document.querySelector('.date-picker-dropdown')
-  if (!wrapper || !dropdown) return
-  const rect = wrapper.getBoundingClientRect()
-  const dropdownHeight = dropdown.offsetHeight || 320
+  const w = wrapper.value
+  const d = dropdown.value
+  if (!w || !d) return
+  const rect = w.getBoundingClientRect()
+  const dropdownHeight = d.offsetHeight || 320
   const spaceBelow = window.innerHeight - rect.bottom
   const spaceAbove = rect.top
 
   if (spaceBelow < dropdownHeight && spaceAbove >= dropdownHeight) {
-    dropdown.style.top = `${rect.top + window.scrollY - dropdownHeight - 4}px`
-    dropdown.style.left = `${rect.left + window.scrollX}px`
-    dropdown.style.minWidth = `${rect.width}px`
-    dropdown.classList.add('opens-up')
+    d.style.top = `${rect.top + window.scrollY - dropdownHeight - 4}px`
+    d.style.left = `${rect.left + window.scrollX}px`
+    d.style.minWidth = `${rect.width}px`
+    d.classList.add('opens-up')
   } else {
-    dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`
-    dropdown.style.left = `${rect.left + window.scrollX}px`
-    dropdown.style.minWidth = `${rect.width}px`
-    dropdown.classList.remove('opens-up')
+    d.style.top = `${rect.bottom + window.scrollY + 4}px`
+    d.style.left = `${rect.left + window.scrollX}px`
+    d.style.minWidth = `${rect.width}px`
+    d.classList.remove('opens-up')
   }
 }
 
