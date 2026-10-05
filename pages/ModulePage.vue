@@ -26,7 +26,7 @@
             <thead class="table-light">
               <tr>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
-                <th v-if="config.value?.hasActions" scope="col" class="text-center" style="width: 120px;">Actions</th>
+                <th scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -35,7 +35,7 @@
                   <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
-                <td v-if="config.value?.hasActions" class="text-center text-nowrap">
+                <td class="text-center text-nowrap">
                   <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
                           :disabled="isLoading || isSaving" @click="openEdit(row)">
                     <i class="fas fa-pen"></i>
@@ -47,7 +47,7 @@
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length + (config.value?.hasActions ? 1 : 0)" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length + 1" class="text-center text-muted py-4">
                   No {{ config.title.toLowerCase() }} yet.
                 </td>
               </tr>
@@ -119,6 +119,17 @@
                   <div class="form-text text-muted">Optional</div>
                 </template>
 
+                <template v-else-if="col.prop === 'position'">
+                  <select :id="`m-${col.prop}`" v-model.trim="form.position"
+                          class="form-select" :class="{ 'is-invalid': submitted && !form.position }"
+                          :disabled="isSaving">
+                    <option value="" disabled hidden>Select Position</option>
+                    <option value="supervisor">Supervisor</option>
+                    <option value="assistant supervisor">Assistant Supervisor</option>
+                  </select>
+                  <div class="invalid-feedback">{{ col.label }} is required.</div>
+                </template>
+
                 <template v-else>
                   <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" type="text" class="form-control"
                          :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
@@ -155,7 +166,7 @@
             <button type="button" class="btn-close" aria-label="Close" :disabled="isSaving" @click="closeDelete"></button>
           </div>
           <div class="modal-body">
-            <p class="mb-0">Delete <strong class="text-danger">{{ pending?.id }}</strong>? This cannot be undone.</p>
+            <p class="mb-0">Delete <strong class="text-danger">{{ pending?.name || pending?.id }}</strong>? This cannot be undone.</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-danger" :disabled="isSaving" @click="doDelete">
@@ -328,7 +339,7 @@ const isSaving = ref(false)
 const loadError = ref('')
 const formError = ref('')
 const submitted = ref(false)
-const pending = ref(null)
+const pending = ref({ id: null, name: '' })
 const viewIntern = ref(null)
 const message = ref('')
 
@@ -448,6 +459,7 @@ async function save() {
   const api = config.value.api
 
   const payload = {
+    id: form.id || 0,
     name: form.name,
     position: form.position,
     department: form.department || ''
@@ -484,8 +496,8 @@ async function save() {
   }
 }
 
-function confirmDelete(row) { pending.value = row; deleteModal.show() }
-function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = null } }
+function confirmDelete(row) { pending.value = { id: row.id, name: row.name }; deleteModal.show() }
+function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = { id: null, name: '' } } }
 
 function openView(row) {
   viewIntern.value = row
@@ -525,7 +537,7 @@ function statusBadge(status) {
 }
 
 async function doDelete() {
-  if (!pending.value) return
+  if (!pending.value?.id) return
   isSaving.value = true
   try {
     await config.value.api.delete(pending.value.id)
@@ -533,7 +545,7 @@ async function doDelete() {
     notify('Record deleted.')
     deleteModal.hide()
     removeModalBackdrops()
-    pending.value = null
+    pending.value = { id: null, name: '' }
   } catch (e) {
     notify(getApiErrorMessage(e, 'Failed to delete.'), 'danger')
   } finally {

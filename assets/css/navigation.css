@@ -200,3 +200,110 @@
     background: linear-gradient(90deg, #ff8c1a 0%, #ff6b00 100%) !important;
     color: #fff !important;
 }
+
+/* Modern Breadcrumb Styles */
+.modern-breadcrumb {
+    padding: 0.75rem 0;
+}
+
+.breadcrumb-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumb-item:not(:last-child)::after {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: 0.5rem;
+    border-right: 2px solid #cbd5e1;
+    border-bottom: 2px solid #cbd5e1;
+    transform: rotate(-45deg);
+    vertical-align: middle;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.breadcrumb-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #64748b;
+    text-decoration: none;
+    padding: 0.25rem 0.35rem;
+    border-radius: 6px;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.breadcrumb-link:hover,
+.breadcrumb-link:focus {
+    color: #1e293b;
+    background: #f1f5f9;
+    text-decoration: none;
+    outline: none;
+}
+
+.breadcrumb-link i {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    transition: color 0.18s ease;
+}
+
+.breadcrumb-link:hover i,
+.breadcrumb-link:focus i {
+    color: #64748b;
+}
+
+.breadcrumb-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #1e293b;
+    padding: 0.25rem 0.35rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.breadcrumb-current i {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.breadcrumb-item--active .breadcrumb-current {
+    font-weight: 600;
+}
+
+@media (max-width: 575.98px) {
+    .breadcrumb-list {
+        font-size: 0.8125rem;
+        gap: 0.35rem;
+    }
+
+    .breadcrumb-item:not(:last-child)::after {
+        width: 0.4rem;
+        height: 0.4rem;
+        margin-left: 0.35rem;
+        border-width: 1.5px;
+    }
+
+    .breadcrumb-link,
+    .breadcrumb-current {
+        padding: 0.2rem 0.25rem;
+    }
+}

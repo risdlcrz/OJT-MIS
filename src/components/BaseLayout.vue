@@ -257,19 +257,28 @@
     <main class="content-wrapper shell-content">
       <section class="content-header">
         <div class="container-fluid">
-          <ol class="breadcrumb text-orange font-weight-bold">
-            <li class="breadcrumb-item">
-              <a href="/dashboard.html" class="text-orange font-weight-light" @click="navigate($event, 'dashboard.html')">
-                <i class="fas fa-home"></i> Dashboard
-              </a>
-            </li>
-            <li v-if="pageMeta.section" class="breadcrumb-item">
-              <a class="text-orange font-weight-light"><i :class="pageMeta.sectionIcon"></i> {{ pageMeta.section }}</a>
-            </li>
-            <li v-if="pageMeta.title !== 'Dashboard'" class="breadcrumb-item active">
-              <a :href="`/${currentPage}${currentHash}`" class="text-orange">{{ pageMeta.title }}</a>
-            </li>
-          </ol>
+          <nav class="modern-breadcrumb" aria-label="Breadcrumb">
+            <ol class="breadcrumb-list">
+              <li class="breadcrumb-item">
+                <a href="/dashboard.html" class="breadcrumb-link" @click="navigate($event, 'dashboard.html')">
+                  <i class="fas fa-home"></i>
+                  <span>Dashboard</span>
+                </a>
+              </li>
+              <li v-if="pageMeta.section" class="breadcrumb-item">
+                <a class="breadcrumb-link">
+                  <i :class="pageMeta.sectionIcon"></i>
+                  <span>{{ pageMeta.section }}</span>
+                </a>
+              </li>
+              <li v-if="pageMeta.title !== 'Dashboard'" class="breadcrumb-item breadcrumb-item--active" aria-current="page">
+                <span class="breadcrumb-current">
+                  <i :class="pageMeta.sectionIcon || 'fas fa-file'"></i>
+                  <span>{{ pageMeta.title }}</span>
+                </span>
+              </li>
+            </ol>
+          </nav>
         </div>
       </section>
 
