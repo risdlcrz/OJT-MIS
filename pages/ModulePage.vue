@@ -202,7 +202,7 @@
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">School</label>
-                <div style="color: #212529;">{{ viewIntern.school || '-' }}</div>
+                <div style="color: #212529;">{{ viewIntern.SchoolAbbreviation || viewIntern.school || '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Program</label>
@@ -282,9 +282,11 @@ const MODULES = {
     /* Karagdagang column na hango sa profile: hindi ito lumalabas sa form. */
     display: [
       { prop: 'fullName', label: 'Full Name', clickable: true },
-      { prop: 'school', label: 'School' },
-      { prop: 'requestId', label: 'Department', format: (_v, row) => row.requestOffice || (row.requestId ? `#${row.requestId}` : null) },
-      { prop: 'status', label: 'Status' }
+      { prop: 'schoolAbbreviation', label: 'School' },
+      { prop: 'requiredHours', label: 'Required Hours' },
+      { prop: 'requestOffice', label: 'Department' },
+      { prop: 'startDate', label: 'Estimated Start', format: (_v, row) => row.startDate ? new Date(row.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+      { prop: 'endDate', label: 'Estimated End', format: (_v, row) => row.endDate ? new Date(row.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }
     ]
   },
   'programs.html': {

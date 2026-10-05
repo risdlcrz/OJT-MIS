@@ -22,6 +22,55 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
+        /// Cascades school name updates to related Intern and Applicant records.
+        /// School abbreviation is not stored in related entities; it's fetched dynamically from the Schools table.
+        /// </summary>
+        private async Task CascadeSchoolNameUpdateAsync(string oldName, string newName, DateTime now)
+        {
+            if (string.IsNullOrWhiteSpace(oldName) || string.IsNullOrWhiteSpace(newName) || 
+                string.Equals(oldName, newName, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            try
+            {
+                // Update Interns with matching school name (case-insensitive)
+                var interns = await _context.Interns
+                    .Where(i => i.School != null && i.School.ToLower() == oldName.ToLower())
+                    .ToListAsync();
+
+                foreach (var intern in interns)
+                {
+                    intern.School = newName;
+                    intern.SchoolName = newName;
+                    intern.UpdatedAt = now;
+                }
+
+                // Update Applicants with matching school name (case-insensitive)
+                var applicants = await _context.Applicants
+                    .Where(a => a.SchoolName != null && a.SchoolName.ToLower() == oldName.ToLower())
+                    .ToListAsync();
+
+                foreach (var applicant in applicants)
+                {
+                    applicant.SchoolName = newName;
+                    applicant.UpdatedAt = now;
+                }
+
+                if (interns.Count > 0 || applicants.Count > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Cascaded school name update from '{OldName}' to '{NewName}' for {InternCount} interns and {ApplicantCount} applicants.",
+                        oldName, newName, interns.Count, applicants.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cascading school update from '{OldName}' to '{NewName}'.", oldName, newName);
+                // Don't throw - the school update succeeded, cascade is best effort
+            }
+        }
+
+        /// <summary>
         /// GET: api/schools
         /// Retrieves all schools.
         /// </summary>
@@ -179,14 +228,24 @@ namespace OJTMISApi.Controllers
                     return Conflict(new { message = $"A school named \"{name}\" already exists." });
                 }
 
+                // Store old name for cascade update
+                var oldName = existing.Name;
+
                 existing.Name = name;
                 existing.Abbreviation = abbreviation;
                 existing.Address = address;
                 existing.MoaStatus = moaStatus;
                 existing.MoaExpiry = moaExpiry;
-                existing.UpdatedAt = DateTime.Now;
+                var now = DateTime.Now;
+                existing.UpdatedAt = now;
 
                 await _context.SaveChangesAsync();
+
+                // Cascade update to related records if name changed
+                if (!string.Equals(oldName, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    await CascadeSchoolNameUpdateAsync(oldName, name, now);
+                }
 
                 return Ok(existing);
             }

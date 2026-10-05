@@ -23,7 +23,7 @@ namespace OJTMISApi.Controllers
 
         /// <summary>GET: api/interns</summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Intern>>> GetAll([FromQuery] string? status)
+        public async Task<ActionResult<IEnumerable<object>>> GetAll([FromQuery] string? status)
         {
             try
             {
@@ -34,9 +34,57 @@ namespace OJTMISApi.Controllers
                     ? query.Where(x => x.Status == "Hired")
                     : query.Where(x => x.Status == status);
 
-                var items = await query
+                // Fetch interns first
+                var interns = await query
                     .OrderBy(x => x.FullName)
                     .ToListAsync();
+
+                // Fetch all schools for abbreviation lookup
+                var schools = await _context.Schools
+                    .AsNoTracking()
+                    .ToDictionaryAsync(
+                        s => (s.Name ?? string.Empty).ToLower().Trim(),
+                        s => s.Abbreviation ?? string.Empty,
+                        StringComparer.OrdinalIgnoreCase);
+
+                // Combine interns with school abbreviations
+                var items = interns.Select(intern => new
+                {
+                    intern.Id,
+                    intern.FullName,
+                    intern.School,
+                    intern.SchoolName,
+                    SchoolAbbreviation = schools.TryGetValue((intern.School ?? string.Empty).ToLower().Trim(), out var abbr) ? abbr : string.Empty,
+                    intern.RequestId,
+                    intern.Status,
+                    intern.ApplicantId,
+                    intern.ApplicantNo,
+                    intern.FirstName,
+                    intern.MiddleName,
+                    intern.LastName,
+                    intern.Suffix,
+                    intern.Email,
+                    intern.ContactNumber,
+                    intern.HouseAddress,
+                    intern.EducationLevel,
+                    intern.Program,
+                    intern.CoordName,
+                    intern.RequiredHours,
+                    intern.GuardianName,
+                    intern.GuardianContact,
+                    intern.RequirementsCsv,
+                    intern.ApplicantOffice,
+                    RequestOffice = intern.ApplicantOffice,
+                    intern.Remarks,
+                    intern.HireDate,
+                    intern.DurationDays,
+                    intern.ExcludeFriday,
+                    intern.StartDate,
+                    intern.EndDate,
+                    intern.CreatedAt,
+                    intern.UpdatedAt
+                }).ToList();
+
                 return Ok(items);
             }
             catch (Exception ex)
@@ -48,13 +96,57 @@ namespace OJTMISApi.Controllers
 
         /// <summary>GET: api/interns/{id}</summary>
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Intern>> GetById(int id)
+        public async Task<ActionResult<object>> GetById(int id)
         {
             try
             {
                 var item = await _context.Interns.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
                 if (item is null) return NotFound(new { message = "Intern with id {id} was not found." });
-                return Ok(item);
+
+                // Get school abbreviation
+                var schoolAbbreviation = await _context.Schools
+                    .Where(s => s.Name != null && s.Name.ToLower().Trim() == (item.School ?? string.Empty).ToLower().Trim())
+                    .Select(s => s.Abbreviation)
+                    .FirstOrDefaultAsync();
+
+                var result = new
+                {
+                    item.Id,
+                    item.FullName,
+                    item.School,
+                    item.SchoolName,
+                    SchoolAbbreviation = schoolAbbreviation ?? string.Empty,
+                    item.RequestId,
+                    item.Status,
+                    item.ApplicantId,
+                    item.ApplicantNo,
+                    item.FirstName,
+                    item.MiddleName,
+                    item.LastName,
+                    item.Suffix,
+                    item.Email,
+                    item.ContactNumber,
+                    item.HouseAddress,
+                    item.EducationLevel,
+                    item.Program,
+                    item.CoordName,
+                    item.RequiredHours,
+                    item.GuardianName,
+                    item.GuardianContact,
+                    item.RequirementsCsv,
+                    item.ApplicantOffice,
+                    RequestOffice = item.ApplicantOffice,
+                    item.Remarks,
+                    item.HireDate,
+                    item.DurationDays,
+                    item.ExcludeFriday,
+                    item.StartDate,
+                    item.EndDate,
+                    item.CreatedAt,
+                    item.UpdatedAt
+                };
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -77,12 +169,23 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = "A record with the same first field already exists." });
             }
 
+            // Look up the school from the Schools table to ensure exact name match for abbreviation lookup
+            var school = await _context.Schools
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Name != null && 
+                    s.Name.ToLower().Trim() == (f2 ?? string.Empty).ToLower().Trim());
+
+            if (!string.IsNullOrEmpty(f2) && school is null)
+            {
+                return BadRequest(new { message = $"The school '{f2}' does not exist in the schools list. Please add it first." });
+            }
+
             var now = DateTime.Now;
             var status = string.IsNullOrWhiteSpace(item.Status) ? "Applicant" : item.Status.Trim();
             var entity = new Intern
             {
                 FullName = f1,
-                School = f2,
+                School = school?.Name ?? f2,
                 Status = status,
                 RequestId = null,
                 CreatedAt = now,
@@ -146,8 +249,19 @@ namespace OJTMISApi.Controllers
                     return Conflict(new { message = "A record with the same first field already exists." });
                 }
 
+                // Look up the school from the Schools table to ensure exact name match for abbreviation lookup
+                var school = await _context.Schools
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Name != null && 
+                        s.Name.ToLower().Trim() == (f2 ?? string.Empty).ToLower().Trim());
+
+                if (!string.IsNullOrEmpty(f2) && school is null)
+                {
+                    return BadRequest(new { message = $"The school '{f2}' does not exist in the schools list. Please add it first." });
+                }
+
                 existing.FullName = f1;
-                existing.School = f2;
+                existing.School = school?.Name ?? f2;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
                 return Ok(existing);

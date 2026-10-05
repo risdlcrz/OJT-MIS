@@ -214,6 +214,17 @@ namespace OJTMISApi.Controllers
             var fullName = BuildFullName(applicant);
             var now = DateTime.Now;
 
+            // Look up the school from the Schools table to ensure exact name match for abbreviation lookup
+            var school = await _context.Schools
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Name != null && 
+                    s.Name.ToLower().Trim() == (applicant.SchoolName ?? string.Empty).ToLower().Trim());
+
+            if (school is null)
+            {
+                return BadRequest(new { message = $"The school '{applicant.SchoolName}' does not exist in the schools list. Please add it first." });
+            }
+
             var intern = new Intern
             {
                 // Carry over ng buong profile ng applicant
@@ -227,8 +238,8 @@ namespace OJTMISApi.Controllers
                 Email = applicant.Email,
                 ContactNumber = applicant.ContactNumber,
                 HouseAddress = applicant.HouseAddress,
-                School = applicant.SchoolName,
-                SchoolName = applicant.SchoolName,
+                School = school.Name,
+                SchoolName = school.Name,
                 EducationLevel = applicant.EducationLevel,
                 Program = applicant.Program,
                 CoordName = applicant.CoordName,
