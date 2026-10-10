@@ -31,44 +31,34 @@
         </div>
 
         <div class="row stats-row">
-          <div class="col-lg-3 col-md-6 mb-4">
-            <div class="stat-card stat-orange">
+          <div class="col-lg-4 col-md-6 mb-4">
+            <a class="stat-card stat-blue" href="/requests.html" @click.prevent="go('requests.html')">
               <div>
-                <span class="stat-label">Active Intern</span>
-                <span class="stat-number">{{ activeInterns }}</span>
-              </div>
-              <i class="fas fa-user-graduate"></i>
-            </div>
-          </div>
-
-          <div class="col-lg-3 col-md-6 mb-4">
-            <div class="stat-card stat-blue">
-              <div>
-                <span class="stat-label">Intern Request</span>
+                <span class="stat-label">Requests</span>
                 <span class="stat-number">{{ internRequests }}</span>
               </div>
               <i class="fas fa-file-alt"></i>
-            </div>
+            </a>
           </div>
 
-          <div class="col-lg-3 col-md-6 mb-4">
-            <div class="stat-card stat-green">
+          <div class="col-lg-4 col-md-6 mb-4">
+            <a class="stat-card stat-purple" href="/applicants.html" @click.prevent="go('applicants.html')">
               <div>
-                <span class="stat-label">Office Requested</span>
-                <span class="stat-number">{{ officesRequested }}</span>
-              </div>
-              <i class="fas fa-building"></i>
-            </div>
-          </div>
-
-          <div class="col-lg-3 col-md-6 mb-4">
-            <div class="stat-card stat-purple">
-              <div>
-                <span class="stat-label">Intern Applicant</span>
+                <span class="stat-label">Applicants</span>
                 <span class="stat-number">{{ internApplicants }}</span>
               </div>
               <i class="fas fa-users"></i>
-            </div>
+            </a>
+          </div>
+
+          <div class="col-lg-4 col-md-6 mb-4">
+            <a class="stat-card stat-orange" href="/internlist.html" @click.prevent="go('internlist.html')">
+              <div>
+                <span class="stat-label">Active Interns</span>
+                <span class="stat-number">{{ activeInterns }}</span>
+              </div>
+              <i class="fas fa-user-graduate"></i>
+            </a>
           </div>
         </div>
       </div>
@@ -83,8 +73,14 @@ import '../assets/css/Dashboard.css'
 
 const activeInterns = ref(0)
 const internRequests = ref(0)
-const officesRequested = ref(0)
 const internApplicants = ref(0)
+
+/* Parehong paraan ng pag-navigate ng BaseLayout: baguhin ang URL tapos
+   ipaalam sa App na muli itong buksan. */
+function go(page) {
+  window.history.pushState({}, '', `/${page}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
 
 async function loadStats() {
   try {
@@ -95,7 +91,6 @@ async function loadStats() {
     ])
     activeInterns.value = interns.length
     internRequests.value = requests.length
-    officesRequested.value = new Set(requests.map(r => r.officeCode)).size
     // Bilangin lamang ang mga hindi pa nahihire para tumugma ito sa
     // Applicants table (tingnan ang displayApplicants sa applicants.vue).
     internApplicants.value = applicants.filter(a => !a.hired).length
