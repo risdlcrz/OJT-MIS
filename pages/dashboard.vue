@@ -96,7 +96,9 @@ async function loadStats() {
     activeInterns.value = interns.length
     internRequests.value = requests.length
     officesRequested.value = new Set(requests.map(r => r.officeCode)).size
-    internApplicants.value = applicants.length
+    // Bilangin lamang ang mga hindi pa nahihire para tumugma ito sa
+    // Applicants table (tingnan ang displayApplicants sa applicants.vue).
+    internApplicants.value = applicants.filter(a => !a.hired).length
   } catch (error) {
     console.error('Failed to load dashboard stats:', error)
   }

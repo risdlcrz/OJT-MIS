@@ -311,8 +311,31 @@ namespace OJTMISApi.Controllers
         {
             var year = DateTime.Now.Year;
             var prefix = $"A-{year}-";
-            var count = await _context.Applicants.CountAsync(a => a.ApplicantNo.StartsWith(prefix));
-            return $"{prefix}{count + 1:D3}";
+
+            // Gamitin ang pinakamataas na numero (hindi ang count), kaya hindi
+            // na-uulit ang numero kahit may naunang mga na-delete na applicant.
+            var nos = await _context.Applicants
+                .Where(a => a.ApplicantNo.StartsWith(prefix))
+                .Select(a => a.ApplicantNo)
+                .ToListAsync();
+
+            var max = 0;
+            foreach (var no in nos)
+            {
+                var tail = no.Substring(prefix.Length);
+                if (int.TryParse(tail, out var n) && n > max) max = n;
+            }
+
+            var next = $"{prefix}{max + 1:D3}";
+
+            // Siguraduhing hindi pa nagagamit (safety kung may butas sa numbering).
+            while (await _context.Applicants.AnyAsync(a => a.ApplicantNo == next))
+            {
+                max++;
+                next = $"{prefix}{max + 1:D3}";
+            }
+
+            return next;
         }
 
         /// <summary>Kopya ng mga field mula sa DTO papunta sa entity.</summary>

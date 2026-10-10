@@ -295,6 +295,17 @@ namespace OJTMISApi.Controllers
                     }
                 }
 
+                // I-delete din ang kaugnay na Applicant record para hindi ito
+                // manatiling "Hired" na walang intern (invisible sa dalawang table).
+                if (entity.ApplicantId is not null)
+                {
+                    var applicant = await _context.Applicants.FindAsync(entity.ApplicantId.Value);
+                    if (applicant is not null)
+                    {
+                        _context.Applicants.Remove(applicant);
+                    }
+                }
+
                 await _context.SaveChangesAsync();
                 return NoContent();
             }
