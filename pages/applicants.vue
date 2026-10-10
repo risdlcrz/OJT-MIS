@@ -1461,10 +1461,18 @@ function statusInfo(applicant) {
     }
 
     if (applicant.accepted) {
-        return {
-            label: 'Accepted',
-            badgeClass: 'badge-success'
-        }
+        /* Nasa orientation flow na: "For orientation" hangga't hindi pa
+           na-mark na done (orientation.confirmed), at "For hiring"
+           pagkatapos nito, para muling handa sa Hire. */
+        return applicant.orientation && applicant.orientation.confirmed
+            ? {
+                label: 'For hiring',
+                badgeClass: 'badge-primary'
+            }
+            : {
+                label: 'For orientation',
+                badgeClass: 'badge-info'
+            }
     }
 
     if (applicant.rejected) {
@@ -1476,7 +1484,7 @@ function statusInfo(applicant) {
 
     return {
         label: 'Completed',
-        badgeClass: 'badge-info'
+        badgeClass: 'badge-secondary'
     }
 }
 

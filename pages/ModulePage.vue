@@ -33,6 +33,7 @@
               <tr v-for="(row, index) in rows" :key="row.id">
                 <td v-for="col in displayColumns" :key="col.prop">
                   <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
+                  <span v-else-if="col.prop === 'status' && row[col.prop]" class="badge" :class="statusBadge(row[col.prop])">{{ row[col.prop] }}</span>
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
                 <td class="text-center text-nowrap">

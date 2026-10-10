@@ -1,0 +1,17 @@
+/* =====================================================================
+   Status badge colors.
+
+   Ang mga table ay gumagamit ng Bootstrap 4 na "badge-*" na klase
+   (badge-success, badge-info, ...) ngunit naka-Bootstrap 5 ang app,
+   kung saan ang .badge ay walang background kaya puro puting text lang
+   ang lumalabas. Dito muna tinutukoy ang kulay para sa lahat ng page.
+   ===================================================================== */
+
+.badge-primary { background-color: #0d6efd; color: #fff; }
+.badge-secondary { background-color: #6c757d; color: #fff; }
+.badge-success { background-color: #198754; color: #fff; }
+.badge-info { background-color: #17a2b8; color: #fff; }
+.badge-warning { background-color: #ffc107; color: #212529; }
+.badge-danger { background-color: #dc3545; color: #fff; }
+.badge-light { background-color: #f8f9fa; color: #212529; }
+.badge-dark { background-color: #212529; color: #fff; }

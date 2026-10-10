@@ -6,6 +6,9 @@ import App from './App.vue'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap'
 
+// Kulay ng status badges sa mga table (badge-* na klase ng BS4).
+import '../assets/css/badges.css'
+
 // Ipinapataas ang layering ng modal/backdrop sa ibabaw ng Bootstrap,
 // para hindi mapupunat ang panel sa likod ng transparent na backdrop.
 import '../assets/css/ojt-modals.css'
