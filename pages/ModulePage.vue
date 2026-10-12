@@ -267,7 +267,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { Modal } from 'bootstrap'
+import { Modal, Toast } from 'bootstrap'
 import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, signatoriesAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
@@ -461,16 +461,13 @@ async function save() {
   isSaving.value = true
   const api = config.value.api
 
-  const payload = {
-    id: form.id || 0,
-    name: form.name,
-    position: form.position,
-    department: form.department || ''
-  }
-  if (config.value.hiring) {
-    payload.status = 'Hired'
-    payload.requestId = Number(form.requestId) || null
-  }
+  /* Ipagpatuloy ang bawat field na nakalista sa config.columns (hal. fullName,
+     school, programCode) — hindi lang ang pangalan/posisyon ng signatory,
+     kaya't ma-validate ng backend ang tamang required fields. */
+  const payload = { id: form.id || 0 }
+  config.value.columns.forEach((c) => { payload[c.prop] = form[c.prop] ?? '' })
+  if ('requestId' in payload) payload.requestId = Number(payload.requestId) || null
+  if (config.value.hiring) payload.status = 'Hired'
 
   try {
     if (isEditing.value) {
@@ -487,9 +484,11 @@ async function save() {
     removeModalBackdrops()
   } catch (e) {
     const msg = getApiErrorMessage(e, 'Failed to save.')
-    // 409 Conflict - duplicate name
+    // 409 Conflict - duplicate record. Gamitin ang mensahe ng API kung mayroon,
+    // dahil iba ang field na tinutukoy ng bawat module (name, fullName, atbp.).
     if (e?.response?.status === 409 || msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('conflict')) {
-      formError.value = 'A signatory with this name already exists. Please choose a different name.'
+      formError.value = e?.response?.data?.message
+        || `A ${config.value.singular.toLowerCase()} with the same name already exists. Please choose a different one.`
     } else {
       formError.value = msg
     }
@@ -564,7 +563,9 @@ function goHome() {
 onMounted(() => {
   formModal = new Modal(formModalEl.value)
   deleteModal = new Modal(deleteModalEl.value)
-  toast = new Modal(toastEl.value, { autohide: false })
+  // Toast ang tamang klase para sa `.toast` element — hindi Modal, dahil
+  // walang `.modal-dialog` sa loob nito kaya magta-throw ng querySelector error.
+  toast = new Toast(toastEl.value, { autohide: false })
   load()
 })
 

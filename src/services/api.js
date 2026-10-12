@@ -52,11 +52,13 @@ apiClient.interceptors.response.use(
         message = data
       } else if (data.message) {
         message = data.message
+      } else if (data.errors) {
+        // ASP.NET Core ValidationProblemDetails shape. Unahin ang mga
+        // partikular na error (hal. "Full Name is required.") bago ang
+        // generic na title na "One or more validation errors occurred."
+        message = Object.values(data.errors).flat().join(' ') || data.title || message
       } else if (data.title) {
         message = data.title
-      } else if (data.errors) {
-        // ASP.NET Core ValidationProblemDetails shape.
-        message = Object.values(data.errors).flat().join(' ') || message
       }
     }
 

@@ -289,7 +289,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { Modal } from 'bootstrap'
+import { Modal, Toast } from 'bootstrap'
 import { getApiErrorMessage, schoolsAPI } from '@/services/api'
 import DatePicker from '@/components/DatePicker.vue'
 
@@ -489,7 +489,9 @@ async function confirmDelete() {
 onMounted(() => {
   formModal = new Modal(formModalEl.value)
   deleteModal = new Modal(deleteModalEl.value)
-  toast = new Modal(document.getElementById('schoolToast'), { autohide: false })
+  // Toast, hindi Modal — walang `.modal-dialog` ang `.toast` kaya magta-throw
+  // ng "'querySelector' called on an object that does not implement interface Element."
+  toast = new Toast(document.getElementById('schoolToast'), { autohide: false })
   toastEl.value = document.getElementById('schoolToast')
 
   loadSchools()
