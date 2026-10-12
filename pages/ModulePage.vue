@@ -498,7 +498,12 @@ async function save() {
   }
 }
 
-function confirmDelete(row) { pending.value = { id: row.id, name: row.name }; deleteModal.show() }
+function confirmDelete(row) {
+  // Intern rows walang `name` field — gamitin ang fullName/applicantNo
+  // (at ang name ng ibang module) bago bumaba sa id.
+  pending.value = { id: row.id, name: row.name || row.fullName || row.applicantNo || row.id }
+  deleteModal.show()
+}
 function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = { id: null, name: '' } } }
 
 function openView(row) {
