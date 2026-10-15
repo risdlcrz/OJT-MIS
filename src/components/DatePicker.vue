@@ -17,31 +17,65 @@
     <Teleport to="body">
       <div ref="dropdown" v-if="isOpen" class="date-picker-dropdown" :style="dropdownStyle" @click.stop>
         <div class="date-picker-header">
-          <button type="button" class="nav-btn" @click="prevYear" title="Previous year">&#171;</button>
-          <button type="button" class="nav-btn" @click="prevMonth" title="Previous month">&#8249;</button>
-          <span class="month-year">{{ monthLabel }} {{ currentYear }}</span>
-          <button type="button" class="nav-btn" @click="nextMonth" title="Next month">&#8250;</button>
-          <button type="button" class="nav-btn" @click="nextYear" title="Next year">&#187;</button>
+          <button type="button" class="nav-btn" @click="navPrevStep" :title="navTitles.stepPrev">&#171;</button>
+          <button type="button" class="nav-btn" @click="navPrevSmall" :title="navTitles.smallPrev">&#8249;</button>
+          <button type="button" class="month-year" @click="toggleHeaderView" :title="`${headerLabel} — click to change`">
+            {{ headerLabel }}
+          </button>
+          <button type="button" class="nav-btn" @click="navNextSmall" :title="navTitles.smallNext">&#8250;</button>
+          <button type="button" class="nav-btn" @click="navNextStep" :title="navTitles.stepNext">&#187;</button>
         </div>
-        <div class="date-picker-weekdays">
-          <span v-for="d in weekdays" :key="d">{{ d }}</span>
-        </div>
-        <div class="date-picker-grid">
+
+        <!-- Day grid -->
+        <template v-if="viewMode === 'days'">
+          <div class="date-picker-weekdays">
+            <span v-for="d in weekdays" :key="d">{{ d }}</span>
+          </div>
+          <div class="date-picker-grid">
+            <button
+              v-for="day in calendarDays"
+              :key="day.date"
+              type="button"
+              class="date-btn"
+              :class="{
+                'other-month': !day.inMonth,
+                'selected': day.isSelected,
+                'today': day.isToday,
+                'disabled': day.disabled
+              }"
+              :disabled="day.disabled"
+              @click="selectDay(day)"
+            >
+              {{ day.date.getDate() }}
+            </button>
+          </div>
+        </template>
+
+        <!-- Quick month selector -->
+        <div v-else-if="viewMode === 'months'" class="date-picker-panel-grid">
           <button
-            v-for="day in calendarDays"
-            :key="day.date"
+            v-for="(label, index) in monthOptions"
+            :key="label"
             type="button"
-            class="date-btn"
-            :class="{
-              'other-month': !day.inMonth,
-              'selected': day.isSelected,
-              'today': day.isToday,
-              'disabled': day.disabled
-            }"
-            :disabled="day.disabled"
-            @click="selectDay(day)"
+            class="panel-btn"
+            :class="{ active: index === currentMonth }"
+            @click="selectMonth(index)"
           >
-            {{ day.date.getDate() }}
+            {{ label }}
+          </button>
+        </div>
+
+        <!-- Quick year selector -->
+        <div v-else class="date-picker-panel-grid">
+          <button
+            v-for="year in yearOptions"
+            :key="year"
+            type="button"
+            class="panel-btn"
+            :class="{ active: year === currentYear }"
+            @click="selectYear(year)"
+          >
+            {{ year }}
           </button>
         </div>
       </div>
@@ -82,6 +116,29 @@ const formattedValue = computed(() => {
 
 const monthLabel = computed(() => {
   return new Date(currentYear.value, currentMonth.value).toLocaleString(undefined, { month: 'long' })
+})
+
+/* Compact popover view state: header click cycles days -> months -> years. */
+const viewMode = ref('days')
+const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const yearPageStart = computed(() => Math.floor(currentYear.value / 12) * 12)
+const yearOptions = computed(() => Array.from({ length: 12 }, (_, i) => yearPageStart.value + i))
+
+const headerLabel = computed(() => {
+  if (viewMode.value === 'days') return `${monthLabel.value} ${currentYear.value}`
+  if (viewMode.value === 'months') return `${currentYear.value}`
+  return `${yearPageStart.value} - ${yearPageStart.value + 11}`
+})
+
+const navTitles = computed(() => {
+  if (viewMode.value === 'days') {
+    return { stepPrev: 'Previous year', smallPrev: 'Previous month', smallNext: 'Next month', stepNext: 'Next year' }
+  }
+  if (viewMode.value === 'months') {
+    return { stepPrev: 'Previous 12 years', smallPrev: 'Previous year', smallNext: 'Next year', stepNext: 'Next 12 years' }
+  }
+  return { stepPrev: 'Previous 12 years', smallPrev: 'Previous 12 years', smallNext: 'Next 12 years', stepNext: 'Next 12 years' }
 })
 
 const minDate = computed(() => {
@@ -156,6 +213,47 @@ function nextMonth() { currentMonth.value = (currentMonth.value + 1) % 12; if (c
 function prevYear() { currentYear.value-- }
 function nextYear() { currentYear.value++ }
 
+/* Header click cycles the quick selector: days -> months -> years. */
+function toggleHeaderView() {
+  if (viewMode.value === 'days') viewMode.value = 'months'
+  else if (viewMode.value === 'months') viewMode.value = 'years'
+  else viewMode.value = 'days'
+}
+
+function selectMonth(index) {
+  currentMonth.value = index
+  viewMode.value = 'days'
+}
+
+function selectYear(year) {
+  currentYear.value = year
+  viewMode.value = 'months'
+}
+
+/* '<' and '>': month-by-month in the day grid, year-by-year in the panels. */
+function navPrevSmall() {
+  if (viewMode.value === 'days') return prevMonth()
+  if (viewMode.value === 'months') { currentYear.value -= 1; return }
+  currentYear.value -= 12
+}
+
+function navNextSmall() {
+  if (viewMode.value === 'days') return nextMonth()
+  if (viewMode.value === 'months') { currentYear.value += 1; return }
+  currentYear.value += 12
+}
+
+/* '<<' and '>>': year-by-year in the day grid, 12-year jumps in the panels. */
+function navPrevStep() {
+  if (viewMode.value === 'days') return prevYear()
+  currentYear.value -= 12
+}
+
+function navNextStep() {
+  if (viewMode.value === 'days') return nextYear()
+  currentYear.value += 12
+}
+
 function handleOutsideClick(e) {
   if (!isOpen.value) return
   const w = wrapper.value
@@ -171,6 +269,7 @@ function open() {
     currentMonth.value = parsedValue.value.getMonth()
     currentYear.value = parsedValue.value.getFullYear()
   }
+  viewMode.value = 'days'
   isOpen.value = true
   nextTick(() => positionDropdown())
   document.addEventListener('click', handleOutsideClick)
@@ -185,22 +284,15 @@ function positionDropdown() {
   const w = wrapper.value
   const d = dropdown.value
   if (!w || !d) return
+  // Always render the popover above the input so it isn't trapped inside the modal.
   const rect = w.getBoundingClientRect()
-  const dropdownHeight = d.offsetHeight || 320
-  const spaceBelow = window.innerHeight - rect.bottom
-  const spaceAbove = rect.top
-
-  if (spaceBelow < dropdownHeight && spaceAbove >= dropdownHeight) {
-    d.style.top = `${rect.top + window.scrollY - dropdownHeight - 4}px`
-    d.style.left = `${rect.left + window.scrollX}px`
-    d.style.minWidth = `${rect.width}px`
-    d.classList.add('opens-up')
-  } else {
-    d.style.top = `${rect.bottom + window.scrollY + 4}px`
-    d.style.left = `${rect.left + window.scrollX}px`
-    d.style.minWidth = `${rect.width}px`
-    d.classList.remove('opens-up')
-  }
+  d.style.width = `${rect.width}px`
+  d.style.left = `${rect.left + rect.width / 2}px`
+  d.style.bottom = `${rect.bottom + window.scrollY + 4}px`
+  d.style.transform = `translateX(-50%) translateY(-100%)`
+  d.style.top = 'auto'
+  d.classList.add('opens-up')
+  d.classList.remove('opens-down')
 }
 
 const dropdownStyle = computed(() => {
@@ -223,31 +315,96 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
 .date-picker-icon { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #6c757d; cursor: pointer; }
 .date-picker-dropdown {
   background: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 0.5rem;
-  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
   padding: 0.75rem;
-  min-width: 260px;
+  min-width: 276px;
   font-family: inherit;
   position: absolute;
-  z-index: 2147483647;
+  z-index: 9999;
+  max-height: 280px;
+  overflow-y: auto;
 }
-.date-picker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-.nav-btn { background: none; border: none; font-size: 1rem; color: #f97316; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.25rem; transition: background 0.15s; }
-.nav-btn:hover:not(:disabled) { background: #fff7ed; }
+.date-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.125rem;
+  margin-bottom: 0.5rem;
+}
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  line-height: 1;
+  color: #2563eb;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-btn:hover:not(:disabled) { background: #eff6ff; }
 .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.month-year { font-weight: 600; color: #1a1a2e; }
-.date-picker-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.75rem; font-weight: 600; color: #6c757d; text-transform: uppercase; margin-bottom: 0.25rem; }
+.month-year {
+  flex: 1;
+  background: none;
+  border: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1e293b;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background 0.15s, color 0.15s;
+}
+.month-year:hover { background: #eff6ff; color: #2563eb; }
+.date-picker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
 .date-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .date-btn {
-  aspect-ratio: 1; border: none; background: transparent; border-radius: 0.375rem;
-  font-size: 0.875rem; color: #212529; cursor: pointer; transition: all 0.1s;
+  aspect-ratio: 1; border: none; background: transparent; border-radius: 0.5rem;
+  font-size: 0.8125rem; color: #334155; cursor: pointer; transition: background 0.12s, color 0.12s;
   display: flex; align-items: center; justify-content: center;
 }
-.date-btn:hover:not(.disabled):not(.selected) { background: #fff7ed; color: #f97316; }
-.date-btn.today { font-weight: 600; color: #f97316; }
-.date-btn.selected { background: #f97316; color: #fff; }
-.date-btn.selected:hover { background: #ea580c; }
-.date-btn.other-month { color: #adb5bd; }
-.date-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+.date-btn:hover:not(.disabled):not(.selected) { background: #eff6ff; color: #2563eb; }
+.date-btn.today { font-weight: 700; color: #2563eb; }
+.date-btn.selected { background: #2563eb; color: #fff; font-weight: 600; }
+.date-btn.selected:hover { background: #1d4ed8; }
+.date-btn.other-month { color: #cbd5e1; }
+.date-btn.disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Quick month / year selector panels */
+.date-picker-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.375rem;
+  padding: 0.125rem;
+}
+.panel-btn {
+  border: none;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.panel-btn:hover { background: #eff6ff; color: #2563eb; }
+.panel-btn.active { background: #2563eb; color: #fff; font-weight: 600; }
+.panel-btn.active:hover { background: #1d4ed8; color: #fff; }
 </style>

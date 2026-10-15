@@ -94,7 +94,7 @@
       aria-labelledby="schoolFormModalLabel"
       aria-hidden="true"
     >
-      <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-dialog modal-dialog-centered modal-lg" style="overflow: visible;">
         <div class="modal-content">
           <form novalidate @submit.prevent="saveSchool">
             <div class="modal-header">
@@ -119,36 +119,40 @@
                 <div class="col-md-6">
                   <label class="form-label fw-semibold">College Courses (Programs)</label>
                   <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                    <div v-for="course in collegeCourseOptions" :key="course" class="form-check">
+                    <label
+                      v-for="course in collegeCourseOptions"
+                      :key="course"
+                      class="form-check"
+                    >
                       <input
-                        :id="`course-${course}`"
                         type="checkbox"
                         class="form-check-input"
                         :value="course"
-                        :checked="form.collegeCourses.includes(course)"
-                        @change="toggleArrayItem(form.collegeCourses, course, $event)"
+                        v-model="form.collegeCourses"
                         :disabled="isSaving"
                       />
-                      <label :for="`course-${course}`" class="form-check-label">{{ course }}</label>
-                    </div>
+                      <span class="form-check-label">{{ course }}</span>
+                    </label>
                   </div>
                 </div>
 
                 <div class="col-md-6">
                   <label class="form-label fw-semibold">Senior High School Strands</label>
                   <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                    <div v-for="strand in seniorHighSchoolStrandOptions" :key="strand" class="form-check">
+                    <label
+                      v-for="strand in seniorHighSchoolStrandOptions"
+                      :key="strand"
+                      class="form-check"
+                    >
                       <input
-                        :id="`strand-${strand}`"
                         type="checkbox"
                         class="form-check-input"
                         :value="strand"
-                        :checked="form.seniorHighSchoolStrands.includes(strand)"
-                        @change="toggleArrayItem(form.seniorHighSchoolStrands, strand, $event)"
+                        v-model="form.seniorHighSchoolStrands"
                         :disabled="isSaving"
                       />
-                      <label :for="`strand-${strand}`" class="form-check-label">{{ strand }}</label>
-                    </div>
+                      <span class="form-check-label">{{ strand }}</span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -213,8 +217,10 @@
 
               <div class="mb-0">
                 <label for="schoolMoaExpiry" class="form-label fw-semibold">MOA Expiry Date</label>
-                <DatePicker
+                <input
                   id="schoolMoaExpiry"
+                  type="date"
+                  class="form-control"
                   v-model="form.moaExpiry"
                   :disabled="isSaving"
                 />
@@ -329,7 +335,6 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Modal, Toast } from 'bootstrap'
 import { getApiErrorMessage, schoolsAPI } from '@/services/api'
-import DatePicker from '@/components/DatePicker.vue'
 
 const schools = ref([])
 const isLoading = ref(false)
@@ -397,19 +402,6 @@ const emptyForm = () => {
   form.moaExpiry = ''
   submitted.value = false
   formError.value = ''
-}
-
-function toggleArrayItem(array, item, event) {
-  if (event.target.checked) {
-    if (!array.includes(item)) {
-      array.push(item)
-    }
-  } else {
-    const idx = array.indexOf(item)
-    if (idx > -1) {
-      array.splice(idx, 1)
-    }
-  }
 }
 
 function showToast(message, variant = 'success') {
@@ -481,14 +473,50 @@ function openCreateModal() {
   formModal.show()
 }
 
+/**
+ * Normalises a school's stored course/strand value into a plain string array.
+ *
+ * The EF value converter normally deserialises the JSON column, so the API
+ * returns real arrays. Older/raw records, however, may arrive as a JSON
+ * string ('["BSIT","BSN"]') or a CSV string ('BSIT,BSN'). This always returns
+ * a fresh array so the checkbox v-model never mutates the source object, and
+ * trims each entry so it strictly matches the option values Vue compares
+ * against when deciding which checkboxes to tick.
+ */
+function toArray(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => String(item).trim()).filter(Boolean)
+  }
+
+  if (typeof value === 'string') {
+    const text = value.trim()
+    if (!text) return []
+
+    if (text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text)
+        if (Array.isArray(parsed)) {
+          return parsed.map(item => String(item).trim()).filter(Boolean)
+        }
+      } catch {
+        /* Not valid JSON; fall through and treat it as CSV. */
+      }
+    }
+
+    return text.split(',').map(item => item.trim()).filter(Boolean)
+  }
+
+  return []
+}
+
 function openEditModal(school) {
   emptyForm()
   form.id = school.id
   form.name = school.name
   form.abbreviation = school.abbreviation || ''
   form.address = school.address
-  form.collegeCourses = [...(school.collegeCourses || [])]
-  form.seniorHighSchoolStrands = [...(school.seniorHighSchoolStrands || [])]
+  form.collegeCourses = toArray(school.collegeCourses)
+  form.seniorHighSchoolStrands = toArray(school.seniorHighSchoolStrands)
   form.moaStatus = school.moaStatus || false
   form.moaExpiry = school.moaExpiry ? school.moaExpiry.slice(0, 10) : ''
   formModal.show()

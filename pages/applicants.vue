@@ -423,10 +423,12 @@
 
                                     <select
                                         id="schoolName"
+                                        v-model="selectedSchoolName"
                                         class="form-control"
                                         required
+                                        @change="onSchoolChange"
                                     >
-                                        <option value="" selected disabled>
+                                        <option value="" disabled>
                                             Select School
                                         </option>
 
@@ -436,25 +438,23 @@
                                     </select>
                                 </div>
 
-                                <!-- Course -->
+                                <!-- Course / Strand (filtered by the selected school) -->
                                 <div class="col-md-6 mb-3">
-                                    <label>Course</label>
+                                    <label>Course / Strand</label>
 
                                     <select
                                         id="educationLevel"
+                                        v-model="selectedCourseStrand"
                                         class="form-control"
+                                        :disabled="!selectedSchoolName"
                                     >
-                                        <option value="" selected disabled>
-                                            Select Course
+                                        <option value="" disabled>
+                                            {{ selectedSchoolName ? 'Select Course / Strand' : 'Select a school first' }}
                                         </option>
 
-                                        <option> BS Computer Science </option>
-                                        <option> BS Information Technology </option>
-                                        <option> BS Business Administration </option>
-                                        <option> BS Accountancy </option>
-                                        <option> BS Computer Engineering </option>
-                                        <option> BS Electrical Engineering </option>
-                                        <option> Other </option>
+                                        <option v-for="option in courseStrandOptions" :key="option" :value="option">
+                                            {{ option }}
+                                        </option>
                                     </select>
                                 </div>
                             </div>
@@ -1208,6 +1208,68 @@ const OFFICES_JSON = '/assets/json/offices.json'
 /* Schools loaded from API for the school dropdown */
 const schools = ref([])
 
+/* Selected school (by name) and the Course/Strand choices it offers.
+   These drive the cascading Course/Strand dropdown: when the school
+   changes, the choices are rebuilt from that school's CollegeCourses
+   and SeniorHighSchoolStrands (stored in the Schools table as JSON). */
+const selectedSchoolName = ref('')
+const selectedCourseStrand = ref('')
+const courseStrandOptions = ref([])
+
+/**
+ * Normalises a school's stored offering value into a plain string array.
+ * The API normally returns real arrays (the EF value converter deserialises
+ * the JSON column), but this also tolerates JSON strings ('["A","B"]') and
+ * CSV strings ('A,B') for older/raw records.
+ */
+function parseSchoolList(value) {
+    if (Array.isArray(value)) {
+        return value.map(item => String(item).trim()).filter(Boolean)
+    }
+
+    if (typeof value === 'string') {
+        const text = value.trim()
+        if (!text) return []
+
+        if (text.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(text)
+                if (Array.isArray(parsed)) {
+                    return parsed.map(item => String(item).trim()).filter(Boolean)
+                }
+            } catch {
+                /* Not valid JSON; fall through and treat it as CSV. */
+            }
+        }
+
+        return text.split(',').map(item => item.trim()).filter(Boolean)
+    }
+
+    return []
+}
+
+/**
+ * Rebuild the Course/Strand choices from the selected school's stored
+ * offerings (CollegeCourses + SeniorHighSchoolStrands). The previous
+ * selection is always cleared because it may not exist for the new school.
+ */
+function onSchoolChange() {
+    selectedCourseStrand.value = ''
+
+    const school = schools.value.find(s => s.name === selectedSchoolName.value)
+
+    if (!school) {
+        courseStrandOptions.value = []
+        return
+    }
+
+    const courses = parseSchoolList(school.collegeCourses)
+    const strands = parseSchoolList(school.seniorHighSchoolStrands)
+
+    // Merge both lists and drop duplicates while keeping their order.
+    courseStrandOptions.value = [...new Set([...courses, ...strands])]
+}
+
 /* Fallback office list, used if offices.json is missing or empty,
    so the Office field is never stuck with nothing to pick from. */
 const FALLBACK_OFFICES = [
@@ -1586,6 +1648,11 @@ async function saveApplicant() {
 
         /* Reset form */
         document.getElementById('ojtForm')?.reset()
+
+        /* Reset the cascading Course/Strand state as well. */
+        selectedSchoolName.value = ''
+        selectedCourseStrand.value = ''
+        courseStrandOptions.value = []
 
         isApplicantModalOpen.value = false
 

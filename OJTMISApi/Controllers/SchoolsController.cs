@@ -161,6 +161,8 @@ namespace OJTMISApi.Controllers
                 Name = name,
                 Abbreviation = abbreviation,
                 Address = address,
+                CollegeCourses = school.CollegeCourses ?? new List<string>(),
+                SeniorHighSchoolStrands = school.SeniorHighSchoolStrands ?? new List<string>(),
                 MoaStatus = moaStatus,
                 MoaExpiry = moaExpiry,
                 CreatedAt = now,
@@ -234,6 +236,8 @@ namespace OJTMISApi.Controllers
                 existing.Name = name;
                 existing.Abbreviation = abbreviation;
                 existing.Address = address;
+                existing.CollegeCourses = school.CollegeCourses ?? new List<string>();
+                existing.SeniorHighSchoolStrands = school.SeniorHighSchoolStrands ?? new List<string>();
                 existing.MoaStatus = moaStatus;
                 existing.MoaExpiry = moaExpiry;
                 var now = DateTime.Now;
