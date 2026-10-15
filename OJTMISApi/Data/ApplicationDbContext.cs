@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using OJTMISApi.Models;
+using System.Text.Json;
 
 namespace OJTMISApi.Data
 {
@@ -33,6 +35,24 @@ namespace OJTMISApi.Data
                 entity.Property(s => s.Address)
                       .IsRequired()
                       .HasMaxLength(500);
+
+                entity.Property(s => s.CollegeCourses)
+                      .HasConversion(
+                          values => JsonSerializer.Serialize(values, (JsonSerializerOptions?)null),
+                          value => JsonSerializer.Deserialize<List<string>>(value, (JsonSerializerOptions?)null) ?? new List<string>())
+                      .Metadata.SetValueComparer(new ValueComparer<List<string>>(
+                          (left, right) => left!.SequenceEqual(right!),
+                          value => value.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode())),
+                          value => value.ToList()));
+
+                entity.Property(s => s.SeniorHighSchoolStrands)
+                      .HasConversion(
+                          values => JsonSerializer.Serialize(values, (JsonSerializerOptions?)null),
+                          value => JsonSerializer.Deserialize<List<string>>(value, (JsonSerializerOptions?)null) ?? new List<string>())
+                      .Metadata.SetValueComparer(new ValueComparer<List<string>>(
+                          (left, right) => left!.SequenceEqual(right!),
+                          value => value.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode())),
+                          value => value.ToList()));
 
                 // Timestamps are assigned by the model/controller (DateTime.Now), not by the
                 // database, so no provider-specific default value SQL is used. This keeps the

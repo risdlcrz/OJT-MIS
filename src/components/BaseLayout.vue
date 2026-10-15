@@ -407,7 +407,6 @@ const ALLOWED_PAGES = [
   'dtr.html',
   'idgenerate.html',
   'utility.html',
-  'programs.html',
   'signatories.html'
 ]
 
@@ -486,7 +485,6 @@ const pageMeta = computed(() => {
     'dtr.html': { title: 'Daily Time Records', section: 'Forms', sectionIcon: 'fas fa-file' },
     'idgenerate.html': { title: 'ID Generation', section: 'Forms', sectionIcon: 'fas fa-file' },
     'utility.html': { title: 'Utility' },
-    'programs.html': { title: 'Programs / Strands', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
     'signatories.html': { title: 'Signatories', section: 'System Settings', sectionIcon: 'fas fa-cogs' }
   }[props.currentPage] || { title: 'OJTMIS' })
 })

@@ -86,10 +86,6 @@
       "icon": "fas fa-cogs",
       "submenu": [
         {
-          "name": "Programs / Strands",
-          "link": "programs.html"
-        },
-        {
           "name": "Schools",
           "link": "schools.html"
         },

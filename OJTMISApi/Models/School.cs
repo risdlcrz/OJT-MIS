@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
 
 namespace OJTMISApi.Models
 {
@@ -20,6 +21,10 @@ namespace OJTMISApi.Models
         [Required(ErrorMessage = "Address is required.")]
         [StringLength(500, ErrorMessage = "Address cannot exceed 500 characters.")]
         public string Address { get; set; } = string.Empty;
+
+        public List<string> CollegeCourses { get; set; } = new();
+
+        public List<string> SeniorHighSchoolStrands { get; set; } = new();
 
         /// <summary>
         /// MOA (Memorandum of Agreement) status.

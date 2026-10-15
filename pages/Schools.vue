@@ -94,7 +94,7 @@
       aria-labelledby="schoolFormModalLabel"
       aria-hidden="true"
     >
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
           <form novalidate @submit.prevent="saveSchool">
             <div class="modal-header">
@@ -113,6 +113,44 @@
             <div class="modal-body">
               <div v-if="formError" class="alert alert-danger py-2">
                 {{ formError }}
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">College Courses (Programs)</label>
+                  <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                    <div v-for="course in collegeCourseOptions" :key="course" class="form-check">
+                      <input
+                        :id="`course-${course}`"
+                        type="checkbox"
+                        class="form-check-input"
+                        :value="course"
+                        :checked="form.collegeCourses.includes(course)"
+                        @change="toggleArrayItem(form.collegeCourses, course, $event)"
+                        :disabled="isSaving"
+                      />
+                      <label :for="`course-${course}`" class="form-check-label">{{ course }}</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Senior High School Strands</label>
+                  <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                    <div v-for="strand in seniorHighSchoolStrandOptions" :key="strand" class="form-check">
+                      <input
+                        :id="`strand-${strand}`"
+                        type="checkbox"
+                        class="form-check-input"
+                        :value="strand"
+                        :checked="form.seniorHighSchoolStrands.includes(strand)"
+                        @change="toggleArrayItem(form.seniorHighSchoolStrands, strand, $event)"
+                        :disabled="isSaving"
+                      />
+                      <label :for="`strand-${strand}`" class="form-check-label">{{ strand }}</label>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -302,7 +340,40 @@ const submitted = ref(false)
 const notification = reactive({ message: '', variant: 'success' })
 const notificationTimeout = ref(null)
 
-const form = reactive({ id: 0, name: '', abbreviation: '', address: '', moaStatus: false, moaExpiry: '' })
+const collegeCourseOptions = [
+  'BS Information Technology',
+  'BS Computer Science',
+  'BS Information Systems',
+  'BS Accountancy',
+  'BS Business Administration',
+  'BS Civil Engineering',
+  'BS Electrical Engineering',
+  'BS Mechanical Engineering',
+  'BS Education',
+  'BS Nursing',
+  'BS Hospitality Management'
+]
+
+const seniorHighSchoolStrandOptions = [
+  'STEM',
+  'ABM',
+  'HUMSS',
+  'GAS',
+  'TVL',
+  'Arts and Design Track',
+  'Sports Track'
+]
+
+const form = reactive({
+  id: 0,
+  name: '',
+  abbreviation: '',
+  address: '',
+  collegeCourses: [],
+  seniorHighSchoolStrands: [],
+  moaStatus: false,
+  moaExpiry: ''
+})
 const isEditing = computed(() => form.id > 0)
 
 const formModalEl = ref(null)
@@ -320,10 +391,25 @@ const emptyForm = () => {
   form.name = ''
   form.abbreviation = ''
   form.address = ''
+  form.collegeCourses = []
+  form.seniorHighSchoolStrands = []
   form.moaStatus = false
   form.moaExpiry = ''
   submitted.value = false
   formError.value = ''
+}
+
+function toggleArrayItem(array, item, event) {
+  if (event.target.checked) {
+    if (!array.includes(item)) {
+      array.push(item)
+    }
+  } else {
+    const idx = array.indexOf(item)
+    if (idx > -1) {
+      array.splice(idx, 1)
+    }
+  }
 }
 
 function showToast(message, variant = 'success') {
@@ -401,6 +487,8 @@ function openEditModal(school) {
   form.name = school.name
   form.abbreviation = school.abbreviation || ''
   form.address = school.address
+  form.collegeCourses = [...(school.collegeCourses || [])]
+  form.seniorHighSchoolStrands = [...(school.seniorHighSchoolStrands || [])]
   form.moaStatus = school.moaStatus || false
   form.moaExpiry = school.moaExpiry ? school.moaExpiry.slice(0, 10) : ''
   formModal.show()
@@ -428,6 +516,8 @@ async function saveSchool() {
     name: form.name,
     abbreviation: form.abbreviation,
     address: form.address,
+    collegeCourses: form.collegeCourses,
+    seniorHighSchoolStrands: form.seniorHighSchoolStrands,
     moaStatus: form.moaStatus,
     moaExpiry: form.moaExpiry || null
   }
