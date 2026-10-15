@@ -80,3 +80,65 @@
   background-color: #0f172a;
   opacity: 0.5;
 }
+
+/* =====================================================================
+   Intern Request Modal: Max height & flex layout for scrollable content
+   ===================================================================== */
+
+#modalInternRequest .modal-dialog {
+  max-height: 75vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#modalInternRequest .modal-content {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 75vh !important;
+  overflow: hidden !important;
+}
+
+#modalInternRequest .modal-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: calc(75vh - 110px) !important;
+  /* Enable standard scrollbar behavior */
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styling for webkit browsers */
+#modalInternRequest .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+#modalInternRequest .modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#modalInternRequest .modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+#modalInternRequest .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+#modalInternRequest .modal-header {
+  flex-shrink: 0 !important;
+  z-index: 10 !important;
+}
+
+#modalInternRequest .modal-footer {
+  position: sticky !important;
+  bottom: 0 !important;
+  background: #ffffff !important;
+  padding: 12px 24px !important;
+  z-index: 10 !important;
+  flex-shrink: 0 !important;
+  border-top: 1px solid #eaeaea !important;
+}
+

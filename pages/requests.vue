@@ -27,9 +27,10 @@
                         <label class="col-sm-4 col-form-label font-weight-bold">Select Department</label>
                         <div class="col-sm-8">
                             <select class="form-control" id="requestOffice" v-model="requestForm.officeCode" required>
-                                <option selected disabled value="">Select a department</option>
-                                <option v-for="office in offices" :key="office.code" :value="office.code">{{ office.name }}</option>
+                                <option selected disabled value="">{{ filteredOffices.length === 0 ? 'No departments available' : 'Select a department' }}</option>
+                                <option v-for="office in filteredOffices" :key="office.code" :value="office.code">{{ office.name }}</option>
                             </select>
+                            <small v-if="filteredOffices.length === 0" class="text-muted d-block mt-1">No supervisors are registered for any department.</small>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -146,6 +147,17 @@ const isSaving = ref(false)
 const loadError = ref('')
 const requestForm = ref({ officeCode: '', count: 1, skills: '', description: '' })
 
+const filteredOffices = computed(() => {
+  return offices.value.filter(office => {
+    return signatories.value.some(sig =>
+      office.code.toLowerCase() === sig.department?.toLowerCase() ||
+      office.name.toLowerCase() === sig.department?.toLowerCase() ||
+      sig.department?.toLowerCase().includes(office.code.toLowerCase()) ||
+      office.name.toLowerCase().includes(sig.department?.toLowerCase() || '')
+    )
+  })
+})
+
 const matchedSignatory = computed(() => {
   if (!requestForm.value.officeCode) return null
   const office = offices.value.find(o => o.code === requestForm.value.officeCode)
@@ -225,4 +237,11 @@ onMounted(async () => {
         signatories.value = []
     }
 })
+
+// Reset officeCode if selected office is no longer available
+watch(() => filteredOffices.value, (newFilteredOffices) => {
+  if (requestForm.value.officeCode && !newFilteredOffices.find(o => o.code === requestForm.value.officeCode)) {
+    requestForm.value.officeCode = ''
+  }
+}, { deep: true })
 </script>

@@ -305,7 +305,7 @@
                         id="ojtForm"
                         @submit.prevent="saveApplicant"
                     >
-                        <div class="modal-body p-4">
+                        <div class="modal-body p-4" style="overflow-y: auto;">
 
                             <small class="section-title">
                                 Personal Information
@@ -539,7 +539,7 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0">
+                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
                             <button
                                 type="submit"
                                 id="saveOjtApplicant"
@@ -595,7 +595,7 @@
                     </div>
 
                     <form @submit.prevent="saveRequirements">
-                        <div class="modal-body p-4">
+                        <div class="modal-body p-4" style="overflow-y: auto;">
                             <p class="text-muted">
                                 Applicant No.:
                                 <strong>{{ reqModalApplicantNo }}</strong>
@@ -621,7 +621,7 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0">
+                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
                             <button type="submit" class="btn btn-success px-4 modern-btn">
                                 <i class="fas fa-save mr-1"></i>
                                 Save Requirements
@@ -669,7 +669,7 @@
                     </div>
 
                     <form @submit.prevent="saveEvaluation">
-                        <div class="modal-body p-4">
+                        <div class="modal-body p-4" style="overflow-y: auto;">
                             <p class="text-muted">
                                 Applicant No.:
                                 <strong>{{ evalApplicantNo }}</strong>
@@ -712,7 +712,7 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0">
+                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
                             <button type="submit" class="btn btn-success px-4 modern-btn">
                                 <i class="fas fa-check mr-1"></i>
                                 Continue to Hire
@@ -760,7 +760,7 @@
                     </div>
 
                     <form @submit.prevent="submitHire">
-                        <div class="modal-body p-4">
+                        <div class="modal-body p-4" style="overflow-y: auto;">
                             <p class="text-muted">
                                 Applicant No.:
                                 <strong>{{ hireApplicantNo }}</strong>
@@ -870,7 +870,7 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0">
+                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
                             <button type="submit" class="btn btn-success px-4 modern-btn" :disabled="isHiring">
                                 <i class="fas fa-user-check mr-1"></i>
                                 {{ isHiring ? 'Hiring...' : 'Confirm Hire' }}
@@ -1065,7 +1065,7 @@
                         </p>
                     </div>
 
-                    <div class="modal-footer border-0 pt-0">
+                    <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
                         <button
                             type="button"
                             class="btn btn-outline-secondary px-4"
@@ -1091,7 +1091,7 @@
             role="dialog"
             :aria-hidden="!isScheduleModalOpen"
         >
-            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-dialog modal-lg modal-dialog-centered" role="document" style="max-height: 85vh;">
                 <div class="modal-content modern-modal">
                     <div class="modal-header modern-modal-header">
                         <h5 class="modal-title font-weight-bold">
@@ -1108,7 +1108,7 @@
                     </div>
 
                     <form @submit.prevent="saveSchedule">
-                        <div class="modal-body p-4">
+                        <div class="modal-body p-4" style="overflow-y: auto;">
                             <p class="text-muted">
                                 Applicant No.:
                                 <strong>{{ schedApplicantNo }}</strong>
@@ -1157,7 +1157,7 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0">
+                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
                             <button type="submit" class="btn btn-primary px-4 modern-btn">
                                 Save Schedule
                             </button>
