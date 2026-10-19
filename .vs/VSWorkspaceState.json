@@ -1,9 +1,8 @@
 {
   "ExpandedNodes": [
     "",
-    "\\OJTMISApi",
-    "\\OJTMISApi\\Controllers"
+    "\\assets"
   ],
-  "SelectedNode": "\\OJTMISApi\\Controllers\\ProgramsController.cs",
+  "SelectedNode": "\\OJTMISApi",
   "PreviewInSolutionExplorer": false
 }
