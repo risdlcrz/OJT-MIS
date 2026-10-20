@@ -1,24 +1,30 @@
 <template>
   <div
     class="app-shell hold-transition sidebar-mini layout-fixed layout-navbar-fixed"
-    :class="{ 'sidebar-fullscreen-open': sidebarFullscreen, 'sidebar-collapsed': sidebarCollapsed }"
+    :class="{ 'sidebar-fullscreen-open': sidebarFullscreen, 'sidebar-collapsed': sidebarCollapsed, 'shell-hero-mode': isHeroPage }"
   >
-    <header class="main-header navbar navbar-expand navbar-orange navbar-dark elevation-2">
-      <a href="/dashboard.html" class="main-header-logo" aria-label="OJTMIS Dashboard" @click="navigate($event, 'dashboard.html')">
-        <img src="/assets/images/logo.png" alt="OJTMIS Logo" />
-        <span>OJTMIS</span>
-      </a>
-
+    <header class="main-header navbar navbar-expand navbar-dark">
       <button
         type="button"
-        class="nav-link shell-menu-toggle"
-        :aria-expanded="String(sidebarFullscreen || !sidebarCollapsed)"
-        :aria-label="sidebarFullscreen || sidebarCollapsed ? 'Expand navigation menu' : 'Collapse navigation menu'"
-        title="Toggle sidebar"
+        class="shell-mobile-toggle d-md-none"
+        aria-label="Open navigation menu"
         @click="toggleSidebar"
       >
         <i class="fas fa-bars"></i>
       </button>
+
+      <nav class="shell-nav" aria-label="Primary">
+        <a
+          v-for="item in headerNav"
+          :key="item.name"
+          :href="headerLink(item)"
+          class="shell-nav-link"
+          :class="{ active: isHeaderActive(item) }"
+          @click.prevent="onHeaderNav($event, item)"
+        >
+          {{ item.name }}
+        </a>
+      </nav>
 
       <div class="navbar-user dropdown" :class="{ show: isUserMenuOpen }">
         <button
@@ -198,10 +204,24 @@
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4" :aria-hidden="sidebarFullscreen ? 'false' : undefined">
       <div class="brand-header">
-        <a href="/" class="brand-link text-center bg-orange">
+        <a
+          href="/dashboard.html"
+          class="brand-link"
+          aria-label="OJTMIS Dashboard"
+          @click="navigate($event, 'dashboard.html')"
+        >
           <img src="/assets/images/logo.png" alt="OJTMIS Logo" class="brand-logo" />
-          <span class="brand-text font-weight-bold text-light">OJTMIS</span>
         </a>
+        <button
+          type="button"
+          class="shell-menu-toggle"
+          :aria-expanded="String(sidebarFullscreen || !sidebarCollapsed)"
+          aria-label="Toggle navigation menu"
+          title="Toggle sidebar"
+          @click="toggleSidebar"
+        >
+          <i class="fas fa-bars"></i>
+        </button>
       </div>
 
       <nav class="sidebar mt-3" aria-label="Main navigation">
@@ -246,6 +266,12 @@
           </li>
         </ul>
       </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="sidebar-logout" title="Sign out" aria-label="Sign out" @click="logout">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
     </aside>
     <button
       v-if="sidebarFullscreen"
@@ -255,33 +281,6 @@
       @click="closeSidebar"
     ></button>
     <main class="content-wrapper shell-content">
-      <section class="content-header">
-        <div class="container-fluid">
-          <nav class="modern-breadcrumb" aria-label="Breadcrumb">
-            <ol class="breadcrumb-list">
-              <li class="breadcrumb-item">
-                <a href="/dashboard.html" class="breadcrumb-link" @click="navigate($event, 'dashboard.html')">
-                  <i class="fas fa-home"></i>
-                  <span>Dashboard</span>
-                </a>
-              </li>
-              <li v-if="pageMeta.section" class="breadcrumb-item">
-                <a class="breadcrumb-link">
-                  <i :class="pageMeta.sectionIcon"></i>
-                  <span>{{ pageMeta.section }}</span>
-                </a>
-              </li>
-              <li v-if="pageMeta.title !== 'Dashboard'" class="breadcrumb-item breadcrumb-item--active" aria-current="page">
-                <span class="breadcrumb-current">
-                  <i :class="pageMeta.sectionIcon || 'fas fa-file'"></i>
-                  <span>{{ pageMeta.title }}</span>
-                </span>
-              </li>
-            </ol>
-          </nav>
-        </div>
-      </section>
-
       <section class="content shell-body">
         <slot />
       </section>
@@ -407,7 +406,9 @@ const ALLOWED_PAGES = [
   'dtr.html',
   'idgenerate.html',
   'utility.html',
-  'signatories.html'
+  'signatories.html',
+  'account.html',
+  'contact.html'
 ]
 
 /* ---- Global Dialog state ---- */
@@ -491,6 +492,38 @@ const pageMeta = computed(() => {
 
 const menu = ref([])
 const user = ref({ name: 'User', menu: [] })
+
+/* Ang hero (dashboard) ay buong background ang ipinapakita. */
+const isHeroPage = computed(() => props.currentPage === 'dashboard.html')
+
+/* Mga nasa tuktok na navbar: lahat maliban sa Contact Us. */
+const headerNav = computed(() =>
+  menu.value.filter((item) => (item.name || '').trim().toLowerCase() !== 'contact us')
+)
+
+function headerLink(item) {
+  if (item.link) return item.link
+  const first = item.submenu?.[0]
+  return first ? resolveLink(first) : '#'
+}
+
+function onHeaderNav(event, item) {
+  if (!item.link && item.submenu?.length) {
+    toggleMenu(item)
+    navigate(event, resolveLink(item.submenu[0]))
+    return
+  }
+  navigate(event, item.link)
+}
+
+function isHeaderActive(item) {
+  return item.link ? isActive(item.link) : hasActiveChild(item)
+}
+
+function logout() {
+  window.history.pushState({}, '', '/login.html')
+  emit('navigate', 'login.html')
+}
 
 /* Ang pangalan sa navbar ay galing sa naka-login na session
    (First + Last), hindi na sa menu.json. */
@@ -788,26 +821,29 @@ body {
 
 .app-shell {
   min-height: 100vh;
-  background-color: #f4f7fb;
-  background-image: linear-gradient(rgba(6, 64, 43, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 64, 43, 0.035) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-color: #6b4a1c;
+  background-image:
+    linear-gradient(to right, rgba(120, 80, 20, 0.6), rgba(120, 30, 30, 0.7)),
+    url('../../assets/images/login-bg.jpg');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 @media (min-width: 768px) {
   .app-shell > .main-header {
-    width: calc(100% - 190px);
-    margin-left: 190px !important;
+    width: calc(100% - 232px);
+    margin-left: 232px !important;
   }
 
   .app-shell > .main-sidebar {
     top: 0;
-    width: 190px;
-    background: #000;
+    width: 232px;
   }
 
-  .app-shell > .content-wrapper,
-  .app-shell > .main-footer {
-    margin-left: 190px !important;
+  .app-shell > .content-wrapper {
+    margin-left: 232px !important;
   }
 
   .app-shell .main-header-logo {
@@ -823,18 +859,20 @@ body {
     width: 65px;
   }
 
-  .sidebar-collapsed > .content-wrapper,
-  .sidebar-collapsed > .main-footer {
+  .sidebar-collapsed > .content-wrapper {
     margin-left: 65px !important;
   }
 
   .sidebar-collapsed .brand-link {
-    padding: 0.7rem 0.45rem;
+    padding: 0;
   }
 
   .sidebar-collapsed .brand-text,
-  .sidebar-collapsed .nav-sidebar p,
   .sidebar-collapsed .nav-treeview {
+    display: none !important;
+  }
+
+  .sidebar-collapsed .nav-sidebar .nav-link p {
     display: none !important;
   }
 
@@ -849,7 +887,7 @@ body {
   .sidebar-collapsed .nav-sidebar .nav-link {
     justify-content: center;
     width: 100%;
-    min-height: 42px;
+    min-height: 46px;
     padding: 0.72rem 0.4rem;
   }
 
@@ -865,10 +903,6 @@ body {
   .sidebar-collapsed .nav-sidebar .nav-item {
     width: 100%;
   }
-
-  .sidebar-collapsed .nav-sidebar .nav-link.active {
-    box-shadow: 0 8px 16px rgba(255, 140, 26, 0.24);
-  }
 }
 
 .main-header-logo,
@@ -880,11 +914,19 @@ body {
 
 .main-sidebar {
   position: fixed;
-  top: 57px;
+  top: 0;
   bottom: 0;
   left: 0;
-  width: 190px;
+  width: 232px;
   z-index: 1030;
+  display: flex;
+  flex-direction: column;
+  background: rgba(74, 44, 16, 0.42);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 8px 0 30px rgba(30, 15, 5, 0.18);
+  overflow: hidden;
   transition: transform 0.28s ease, width 0.28s ease, top 0.28s ease;
 }
 
@@ -903,12 +945,21 @@ body {
 .brand-header {
   display: flex;
   align-items: center;
-  width: 100%;
+  justify-content: space-between;
   gap: 0.35rem;
+  width: 100%;
+  height: 64px;
+  padding: 0 0.95rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  flex: 0 0 auto;
 }
 
 .brand-link {
-  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .sidebar-close {
@@ -957,12 +1008,213 @@ body {
 
 .main-header-logo img,
 .brand-link .brand-logo {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.shell-menu-toggle {
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.4rem 0.45rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.shell-menu-toggle:hover,
+.shell-menu-toggle:focus {
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+.shell-mobile-toggle {
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 1.15rem;
+  padding: 0.4rem 0.6rem;
+  margin-right: 0.35rem;
+  cursor: pointer;
+}
+
+/* ---------- Sidebar navigation (photo reference) ---------- */
+.main-sidebar .sidebar {
+  flex: 1 1 auto;
+  max-height: none;
+  padding: 0.35rem 0 0.5rem;
+  overflow-y: auto;
+}
+
+.main-sidebar .nav-sidebar .nav-link {
+  gap: 0.9rem;
+  margin: 0 !important;
+  padding: 0.85rem 1.1rem !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.main-sidebar .nav-sidebar .nav-link i.nav-icon {
+  width: 22px;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.main-sidebar .nav-sidebar .nav-link .right {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.main-sidebar .nav-sidebar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+}
+
+.main-sidebar .nav-sidebar .nav-link.active,
+.main-sidebar .nav-sidebar .nav-link.menu-open,
+.main-sidebar .nav-sidebar .nav-link.active-parent {
+  background: linear-gradient(90deg, #dd8117 0%, #f0a43a 100%) !important;
+  color: #ffffff !important;
+  box-shadow: inset 4px 0 0 #ffd79a !important;
+}
+
+.main-sidebar .nav-treeview {
+  margin: 0;
+  padding-left: 0;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.main-sidebar .nav-treeview > .nav-item > .nav-link {
+  margin: 0 !important;
+  padding: 0.72rem 1.1rem 0.72rem 2.7rem !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #ffe9d2 !important;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.main-sidebar .nav-treeview > .nav-item > .nav-link:hover {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.main-sidebar .nav-treeview > .nav-item > .nav-link.active {
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  padding: 0.72rem 1.1rem 0.72rem 2.7rem !important;
+}
+
+.sidebar-footer {
+  flex: 0 0 auto;
+  padding: 0.7rem 1.1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-logout {
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 1.15rem;
+  padding: 0.35rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.sidebar-logout:hover,
+.sidebar-logout:focus {
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+/* ---------- Top navigation (photo reference) ---------- */
+.app-shell > .main-header.navbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 64px;
+  padding: 0 1.25rem;
+  display: flex;
+  align-items: center;
+  background: rgba(74, 44, 16, 0.32);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  border: 0;
+  box-shadow: none;
+}
+
+.shell-nav {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 1.9rem;
+}
+
+.shell-nav-link {
+  padding: 0.4rem 0;
+  border-bottom: 2px solid transparent;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.shell-nav-link:hover,
+.shell-nav-link:focus {
+  border-bottom-color: rgba(255, 215, 154, 0.6);
+  color: #ffd79a;
+  text-decoration: none;
+}
+
+.shell-nav-link.active {
+  border-bottom-color: #ffd79a;
+  color: #ffffff;
+}
+
+.app-shell .navbar-user .nav-link {
+  border-radius: 999px !important;
+  background: #ef8b1c;
+  color: #ffffff !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.5rem 1.05rem !important;
+}
+
+.app-shell .navbar-user .nav-link:hover,
+.app-shell .navbar-user .nav-link:focus {
+  background: #dd7a0f;
+  color: #ffffff !important;
+}
+
+.app-shell .navbar-user .user-name-btn {
+  border-radius: 999px 0 0 999px !important;
+}
+
+.app-shell .navbar-user .user-caret-btn {
+  border-radius: 0 999px 999px 0 !important;
+  background: #dd7a0f;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .main-header-logo:hover,
@@ -1058,8 +1310,15 @@ body {
   display: block;
 }
 
+.app-shell > .content-wrapper {
+  margin-left: 232px;
+  min-height: 100vh;
+  padding: 80px 16px 16px 10px;
+  background: transparent !important;
+}
+
 .shell-content {
-  min-height: calc(100vh - 57px - 58px);
+  min-height: calc(100vh - 64px);
 }
 
 #changePasswordModal {
@@ -1128,7 +1387,25 @@ body {
 }
 
 .shell-body {
-  padding-bottom: 2rem;
+  min-height: calc(100vh - 96px);
+  padding: 1.5rem;
+  background: #fdfbf1;
+  border-radius: 5px;
+  box-shadow: 0 18px 40px rgba(40, 20, 5, 0.16);
+  color: #2b2118;
+}
+
+/* Dashboard: buong background ang eksena, walang cream panel. */
+.shell-hero-mode > .content-wrapper {
+  padding: 64px 0 0;
+}
+
+.shell-hero-mode .shell-body {
+  min-height: calc(100vh - 64px);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .applicant-modal-dialog {
@@ -1195,8 +1472,7 @@ body {
 }
 
 .app-shell > .main-footer {
-  margin-left: 190px;
-  margin-bottom: 0;
+  display: none;
 }
 
 .shell-page-heading {
@@ -1266,11 +1542,32 @@ body {
 
 @media (max-width: 767.98px) {
   .shell-content {
-    min-height: calc(100vh - 57px - 70px);
+    min-height: calc(100vh - 64px);
   }
 
-  .app-shell > .main-footer {
-    margin-left: 0;
+  .app-shell > .main-header.navbar {
+    width: 100%;
+    margin-left: 0 !important;
+    height: 60px;
+    padding: 0 0.85rem;
+  }
+
+  .app-shell > .content-wrapper {
+    margin-left: 0 !important;
+    padding: 70px 10px 10px;
+  }
+
+  .shell-nav {
+    display: none;
+  }
+
+  .app-shell .navbar-user {
+    margin-left: auto;
+  }
+
+  .shell-body {
+    min-height: calc(100vh - 80px);
+    padding: 1rem;
   }
 
   .app-shell .main-header-logo {

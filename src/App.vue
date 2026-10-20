@@ -22,7 +22,9 @@ const APP_PAGES = [
   'dtr.html',
   'idgenerate.html',
   'utility.html',
-  'signatories.html'
+  'signatories.html',
+  'account.html',
+  'contact.html'
 ]
 
 const pageComponents = {
@@ -37,6 +39,8 @@ const pageComponents = {
   'idgenerate.html': ModulePage,
   'utility.html': ModulePage,
   'signatories.html': ModulePage,
+  'account.html': ModulePage,
+  'contact.html': ModulePage,
   'forbidden.html': ForbiddenPage
 }
 

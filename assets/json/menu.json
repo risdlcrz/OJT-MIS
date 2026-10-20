@@ -20,80 +20,82 @@
   "menu": [
     {
       "name": "Dashboard",
-      "icon": "fas fa-home",
+      "icon": "fas fa-tachometer-alt",
       "link": "dashboard.html"
     },
 
     {
-      "name": "Request",
-      "icon": "fas fa-exchange-alt",
+      "name": "Account",
+      "icon": "far fa-user-circle",
       "submenu": [
         {
-          "name": "List of Requests",
+          "name": "Account Information",
+          "link": "account.html"
+        }
+      ]
+    },
+
+    {
+      "name": "Requests",
+      "icon": "far fa-file-alt",
+      "submenu": [
+        {
+          "name": "Applicant Requests",
           "link": "requests.html"
-        }
-      ]
-    },
-
-    {
-      "name": "Applicants",
-      "icon": "fas fa-hdd",
-      "submenu": [
-        {
-          "name": "List of Applicants",
-          "link": "applicants.html"
-        },
-        {
-          "name": "Schedule Orientation",
-          "link": "applicants.html#schedule"
-        }
-      ]
-    },
-
-    {
-      "name": "Intern List",
-      "icon": "fas fa-list",
-      "link": "internlist.html"
-    },
-
-    {
-      "name": "Forms",
-      "icon": "fas fa-file",
-      "submenu": [
-        {
-          "name": "Issuance of COC",
-          "link": "forms.html"
-        },
-        {
-          "name": "Daily Time Records",
-          "link": "dtr.html"
-        },
-        {
-          "name": "ID Generation",
-          "link": "idgenerate.html"
-        }
-      ]
-    },
-
-    {
-      "name": "Utility",
-      "icon": "fas fa-tools",
-      "link": "utility.html"
-    },
-
-    {
-      "name": "System Settings",
-      "icon": "fas fa-cogs",
-      "submenu": [
-        {
-          "name": "Schools",
-          "link": "schools.html"
         },
         {
           "name": "Signatories",
           "link": "signatories.html"
+        },
+        {
+          "name": "Schools",
+          "link": "schools.html"
         }
       ]
+    },
+
+    {
+      "name": "Monitoring",
+      "icon": "fas fa-users",
+      "submenu": [
+        {
+          "name": "Applicant List",
+          "link": "applicants.html"
+        },
+        {
+          "name": "Intern List",
+          "link": "internlist.html"
+        },
+        {
+          "name": "Orientation Scheduling",
+          "link": "applicants.html#schedule"
+        },
+        {
+          "name": "Daily Time Record",
+          "link": "dtr.html"
+        }
+      ]
+    },
+
+    {
+      "name": "Forms & Documents",
+      "icon": "far fa-folder",
+      "submenu": [
+        {
+          "name": "ID Generation",
+          "link": "idgenerate.html"
+        },
+        {
+          "name": "Certificate of Completion",
+          "link": "forms.html"
+        }
+      ]
+    },
+
+    {
+      "name": "Contact Us",
+      "icon": "far fa-clock",
+      "link": "contact.html"
     }
   ]
 }

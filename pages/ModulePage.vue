@@ -305,7 +305,9 @@ const MODULES = {
   'forms.html': { title: 'Issuance of COC' },
   'dtr.html': { title: 'Daily Time Records' },
   'idgenerate.html': { title: 'ID Generation' },
-  'utility.html': { title: 'Utility' }
+  'utility.html': { title: 'Utility' },
+  'account.html': { title: 'Account Information' },
+  'contact.html': { title: 'Contact Us' }
 }
 
 /* Ang page ay ipinapasa bilang prop (mula sa App.vue) para mag-re-render

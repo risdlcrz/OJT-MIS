@@ -179,7 +179,7 @@ onMounted(() => {
     overflow-y: auto;
     background-color: #6b4a1c;
     background-position: center;
-    background-size: cover;
+    background-size: 1550px;
     background-repeat: no-repeat;
     font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;

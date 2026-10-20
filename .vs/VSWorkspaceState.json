@@ -1,10 +1,9 @@
 {
   "ExpandedNodes": [
     "",
-    "\\assets",
     "\\OJTMISApi",
-    "\\OJTMISApi\\Controllers"
+    "\\OJTMISApi\\Controllers",
+    "\\OJTMISApi\\Models"
   ],
-  "SelectedNode": "\\OJTMISApi\\Controllers\\SignatoriesController.cs",
   "PreviewInSolutionExplorer": false
 }

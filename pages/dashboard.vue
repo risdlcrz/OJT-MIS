@@ -2,31 +2,15 @@
   <section class="content dashboard-page">
     <div class="row">
       <div class="col-md-12">
-        <div class="card dashboard-hero-card">
-          <div class="card-body clearfix">
-            <div class="row align-items-center">
-              <div class="bannerWrapper">
-                <div class="banner">
-                  <div class="bannerImageWrapper">
-                    <div class="banner-col banner-col-1">&nbsp;</div>
-                    <div class="banner-col banner-col-2">&nbsp;</div>
-                    <div class="banner-col banner-col-3">&nbsp;</div>
-                    <div class="banner-col banner-col-4">&nbsp;</div>
-                  </div>
-                  <div class="paper1 bannerPaper d-none d-md-block"></div>
-                  <div class="paper2 bannerPaper d-none d-md-block"></div>
-                  <div class="paper3 bannerPaper d-none d-md-block"></div>
-                </div>
-                <blockquote class="quote-Theme">
-                  <div>
-                    <p class="hero-kicker">OJT Management System</p>
-                    <span class="font-weight-light display-4 d-none d-md-block logoSysName">OJTMIS</span>
-                    <span class="font-weight-light display-5 d-none d-sm-block d-md-none logoSysName">OJTMIS</span>
-                    <span class="font-weight-light display-6 d-block d-sm-none logoSysName">OJTMIS</span>
-                  </div>
-                </blockquote>
-              </div>
-            </div>
+        <div class="ojt-hero">
+          <h1 class="ojt-hero-title">OJTMS</h1>
+          <div class="ojt-hero-actions">
+            <a class="ojt-btn ojt-btn-primary" href="/requests.html" @click.prevent="go('requests.html')">
+              Request for Intern
+            </a>
+            <a class="ojt-btn ojt-btn-ghost" href="/internlist.html" @click.prevent="go('internlist.html')">
+              Monitor Interns
+            </a>
           </div>
         </div>
 
