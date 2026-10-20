@@ -1,118 +1,108 @@
 <template>
-
-
-    <!-- Loader -->
-    <div id="preloader">
-        <div id="status">
-            <div class="spinner"></div>
-        </div>
-    </div>
-
-    <!-- Begin page -->
-    <div class="accountbg"></div>
-
-    <div class="account-pages mt-5 pt-5">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-md-8 col-lg-5 col-xl-4">
-                    <div class="card">
-                        <div class="card-body">
-                            
-                            <div class="p-3">
-                                <div class="float-text text-center">
-                                    <a href="javascript: void(0);" class="logo-admin">
-                                        <img src="../assets/images/logo.png" height="70" alt="logo">
-                                    </a>
-                                    <h4 class="font-18 mt-3 m-b-5">OJT-MIS</h4>
-                                    <p class="login-note">Sign in to continue to your dashboard</p>
-                                </div>
-                            </div>
-
-                            <div class="p-3">
-
-                        <form class="form-horizontal" id="loginForm" @submit.prevent="submit">
-                            <div class="loginWrapper">
-                                <div class="mb-3" v-if="mode === 'signup'">
-                                    <div class="row">
-                                        <div class="col-sm-6 mb-2">
-                                            <label class="form-label" for="firstName">First Name</label>
-                                            <input v-model.trim="firstName" type="text" class="form-control" id="firstName"
-                                                   maxlength="50" required>
-                                        </div>
-                                        <div class="col-sm-6 mb-2">
-                                            <label class="form-label" for="lastName">Last Name</label>
-                                            <input v-model.trim="lastName" type="text" class="form-control" id="lastName"
-                                                   maxlength="50" required>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="email">Email</label>
-                                    <input v-model.trim="email" type="email" class="form-control" id="email"
-                                           placeholder="Enter email address" name="loginid" autocomplete="email"
-                                           maxlength="256" required>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label" for="emailpassword">Password</label>
-                                    <input v-model="password" type="password" class="form-control" id="emailpassword"
-                                           :placeholder="mode === 'signup' ? 'At least 8 characters' : 'Enter password'"
-                                           name="password" :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
-                                           maxlength="100" required>
-                                </div>
-
-                                <p v-if="errorMessage" class="text-danger" role="alert">{{ errorMessage }}</p>
-
-                                <div class="row mt-4">
-                                    <div class="col-sm-6">
-                                        <span class="text-muted small">
-                                            {{ mode === 'signup' ? 'Bagong account? Mag-sign up.' : 'Wala pang account?' }}
-                                            <a href="#" class="text-primary" @click.prevent="toggleMode">
-                                                {{ mode === 'signup' ? 'Mag-sign in' : 'Sign up' }}
-                                            </a>
-                                        </span>
-                                    </div>
-                                    <div class="col-sm-6 text-end">
-                                        <button class="btn btn-primary w-md waves-effect waves-light" type="submit" :disabled="isBusy">
-                                            <span v-if="isBusy" class="spinner-border spinner-border-sm me-1"></span>
-                                            {{ mode === 'signup' ? 'Sign Up' : 'Log In' }}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="mb-0 row">
-                                    <div class="col-12 mt-4 text-center">
-                                        <a href="#" class="text-muted"><i class="mdi mdi-lock"></i>Forgot your password?</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-
-                            </div>
-
-
-                        </div>
-                    </div>
-                    <div class="mt-5 text-center position-relative text-white">
-                        <div class="d-none d-sm-block">
-                            <span class="text-sm">System Version <span class="myAppInfo_Version text-Theme">1.0.0</span></span>
-                        </div>
-                        <span class="lead text-Theme text-shadow">
-                            © 2026 OJT-MIS
-                        </span>
-                        <span class="d-none d-md-block footer-note">Developed and Maintained by Information Systems Development and Maintenance Division (ISDMD), Information Technology Office</span>
-
-                    </div>
-
+    <div
+        class="login-page"
+        :style="{ backgroundImage: `linear-gradient(to right, rgba(120, 80, 20, 0.6), rgba(120, 30, 30, 0.7)), url(${loginBackground})` }"
+    >
+        <main class="login-panel">
+            <!-- Seal -->
+            <header class="login-header">
+                <div class="login-seal">
+                    <img src="../assets/images/logo.png" alt="Commission on Audit seal" />
                 </div>
-            </div>
-        </div>
+                <h1 class="login-heading">Sign in with email</h1>
+            </header>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="login-form" @submit.prevent="submit">
+                <!-- Email -->
+                <div class="login-field">
+                    <input
+                        id="email"
+                        v-model.trim="email"
+                        type="email"
+                        class="login-input"
+                        placeholder="Email..."
+                        name="loginid"
+                        autocomplete="email"
+                        aria-label="Email"
+                        maxlength="256"
+                        required
+                    />
+                </div>
+
+                <!-- Password -->
+                <div class="login-field">
+                    <input
+                        id="emailpassword"
+                        v-model="password"
+                        type="password"
+                        class="login-input"
+                        :placeholder="mode === 'signup' ? 'At least 8 characters' : 'Password...'"
+                        name="password"
+                        :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
+                        aria-label="Password"
+                        maxlength="100"
+                        required
+                    />
+                    <div class="login-forgot">
+                        <a href="#" class="login-forgot-link" @click.prevent>Forgot password?</a>
+                    </div>
+                </div>
+
+                <!-- Sign Up Fields (Hidden by default) -->
+                <div v-if="mode === 'signup'" class="login-name-row">
+                    <input
+                        id="firstName"
+                        v-model.trim="firstName"
+                        type="text"
+                        class="login-input"
+                        placeholder="First Name..."
+                        name="firstName"
+                        autocomplete="given-name"
+                        aria-label="First name"
+                        maxlength="50"
+                        required
+                    />
+                    <input
+                        id="lastName"
+                        v-model.trim="lastName"
+                        type="text"
+                        class="login-input"
+                        placeholder="Last Name..."
+                        name="lastName"
+                        autocomplete="family-name"
+                        aria-label="Last name"
+                        maxlength="50"
+                        required
+                    />
+                </div>
+
+                <!-- Error Message -->
+                <p v-if="errorMessage" class="login-error" role="alert">{{ errorMessage }}</p>
+
+                <!-- Submit Button -->
+                <button type="submit" class="login-submit" :disabled="isBusy">
+                    <span
+                        v-if="isBusy"
+                        class="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                    ></span>
+                    {{ mode === 'signup' ? 'Sign Up' : 'Login' }}
+                </button>
+            </form>
+
+            <!-- Sign Up / Sign In Toggle -->
+            <footer class="login-footer">
+                <span class="login-footer-text">
+                    {{ mode === 'signup' ? 'Already have an account?' : "Don't have an account yet?" }}
+                </span>
+                <a href="#" class="login-footer-link" @click.prevent="toggleMode">
+                    {{ mode === 'signup' ? 'Sign in' : 'Sign up' }}
+                </a>
+            </footer>
+        </main>
     </div>
-
-
-    <%-- Javascripts --%>
-    
 </template>
 
 <script setup>
@@ -120,6 +110,7 @@ import { onMounted, ref } from 'vue'
 import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
+import loginBackground from '../assets/images/login-bg.jpg'
 import { authAPI, getApiErrorMessage } from '@/services/api'
 
 const mode = ref('login')
@@ -174,3 +165,286 @@ onMounted(() => {
     }
 })
 </script>
+
+<style scoped>
+/* Full-screen page with background photo + warm gradient overlay */
+.login-page {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px;
+    overflow-y: auto;
+    background-color: #6b4a1c;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Centered glassmorphism card */
+.login-panel {
+    width: 100%;
+    max-width: 430px;
+    margin: auto;
+    padding: 46px 30px 44px;
+    border-radius: 1.5rem;
+    background: rgba(30, 30, 30, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(180%);
+    color: #ffffff;
+    text-align: center;
+}
+
+/* Seal + heading */
+.login-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 42px;
+}
+
+.login-seal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.login-seal img {
+    width: 54px;
+    height: 54px;
+    object-fit: contain;
+}
+
+.login-heading {
+    margin: 0;
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+}
+
+/* Form */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.login-input {
+    width: 100%;
+    padding: 14px 20px;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1f2937;
+    font-family: inherit;
+    line-height: 1.5;
+    outline: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    transition: box-shadow 0.2s ease;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+.login-input::placeholder {
+    color: #8b9099;
+    opacity: 1;
+}
+
+.login-input:focus {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35), 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.login-name-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* Forgot password */
+.login-forgot {
+    display: flex;
+    justify-content: flex-end;
+    padding-right: 2px;
+}
+
+.login-forgot-link {
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.2s ease;
+}
+
+.login-forgot-link:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Error */
+.login-error {
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid rgba(254, 202, 202, 0.4);
+    border-radius: 12px;
+    background: rgba(153, 27, 27, 0.3);
+    color: #fee2e2;
+    font-size: 12.5px;
+    line-height: 1.45;
+    text-align: left;
+}
+
+/* Primary button */
+.login-submit {
+    align-self: center;
+    min-width: 160px;
+    padding: 15px 38px;
+    border: 0;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #1f2937;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+    cursor: pointer;
+    margin-top: -6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.login-submit:hover:not(:disabled) {
+    background: #f5f5f5;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    transform: translateY(-1px);
+}
+
+.login-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.login-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.login-submit .spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+    vertical-align: -0.15em;
+}
+
+/* Footer links */
+.login-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    margin-top: 38px;
+}
+
+.login-footer-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.login-footer-link {
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.2s ease;
+}
+
+.login-footer-link:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 480px) {
+    .login-page {
+        padding: 16px;
+    }
+
+    .login-panel {
+        padding: 30px 22px 26px;
+        border-radius: 1.25rem;
+    }
+
+    .login-header {
+        gap: 12px;
+        margin-bottom: 26px;
+    }
+
+    .login-seal {
+        width: 62px;
+        height: 62px;
+    }
+
+    .login-seal img {
+        width: 46px;
+        height: 46px;
+    }
+
+    .login-heading {
+        font-size: 18px;
+    }
+
+    .login-name-row {
+        grid-template-columns: 1fr;
+    }
+
+    .login-submit {
+        width: 100%;
+    }
+}
+
+@media (max-height: 700px) {
+    .login-panel {
+        padding: 28px 30px 26px;
+    }
+
+    .login-header {
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .login-form {
+        gap: 14px;
+    }
+
+    .login-footer {
+        margin-top: 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-input,
+    .login-submit,
+    .login-forgot-link,
+    .login-footer-link {
+        transition: none;
+    }
+}
+</style>
