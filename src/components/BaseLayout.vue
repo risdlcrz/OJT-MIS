@@ -880,6 +880,21 @@ body {
     display: none !important;
   }
 
+  .sidebar-collapsed .brand-header {
+    justify-content: center;
+    padding: 0 0.25rem;
+  }
+
+  .sidebar-collapsed .brand-link {
+    display: none;
+  }
+
+  .sidebar-collapsed .shell-menu-toggle {
+    width: 100%;
+    padding: 0.7rem 0;
+    font-size: 1.25rem;
+  }
+
   .sidebar-collapsed .sidebar {
     padding: 0.8rem 0.35rem 1rem;
   }
