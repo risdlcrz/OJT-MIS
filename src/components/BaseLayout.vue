@@ -13,181 +13,8 @@
         <i class="fas fa-bars"></i>
       </button>
 
-      <div class="navbar-user dropdown" :class="{ show: isUserMenuOpen }">
-        <button
-          type="button"
-          class="nav-link user-name-btn"
-          title="Click to change your display name"
-          @click="openEditName"
-        >
-          <i class="fas fa-user mr-1"></i>{{ user.name }}
-          <span v-if="roleLabel" class="badge text-bg-secondary ms-2">{{ roleLabel }}</span>
-        </button>
-        <button
-          type="button"
-          class="nav-link user-caret-btn"
-          :aria-expanded="String(isUserMenuOpen)"
-          aria-label="Open user menu"
-          @click="toggleUserMenu"
-        >
-          <i class="fas fa-caret-down"></i>
-        </button>
-        <div v-if="user.menu?.length" class="dropdown-menu dropdown-menu-right" :class="{ show: isUserMenuOpen }">
-          <a
-            v-for="item in user.menu"
-            :key="item.name"
-            :href="item.link"
-            class="dropdown-item"
-            @click="onUserMenuItemClick($event, item)"
-          >
-            <i :class="[item.icon, 'mr-2']"></i>{{ item.name }}
-          </a>
-        </div>
-      </div>
+      <span class="navbar-greeting">Hello {{ userName }}</span>
     </header>
-
-    <!-- ================= EDIT DISPLAY NAME MODAL ================= -->
-    <div
-      id="editNameModal"
-      class="modal fade"
-      :class="{ show: isEditNameOpen }"
-      :style="{ display: isEditNameOpen ? 'block' : 'none' }"
-      tabindex="-1"
-      role="dialog"
-      :aria-hidden="!isEditNameOpen"
-    >
-      <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content modern-modal">
-          <div class="modal-header modern-modal-header">
-            <h5 class="modal-title font-weight-bold">Change Display Name</h5>
-            <button type="button" class="close" aria-label="Close" @click="closeEditName">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-
-          <form @submit.prevent="submitEditName">
-            <div class="modal-body p-4">
-              <div v-if="editNameError" class="alert alert-danger py-2">
-                {{ editNameError }}
-              </div>
-
-              <div class="form-group mb-0">
-                <label for="editNameInput">Display Name</label>
-                <input
-                  id="editNameInput"
-                  v-model="editNameValue"
-                  type="text"
-                  class="form-control"
-                  maxlength="40"
-                  required
-                  autofocus
-                />
-              </div>
-            </div>
-
-            <div class="modal-footer border-0 pt-0">
-              <button type="submit" class="btn btn-success px-4 modern-btn">
-                <i class="fas fa-save mr-1"></i>
-                Save
-              </button>
-              <button type="button" class="btn btn-outline-secondary px-4" @click="closeEditName">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="isEditNameOpen"
-      class="modal-backdrop fade show"
-      @click="closeEditName"
-    ></div>
-
-    <!-- ================= CHANGE PASSWORD MODAL ================= -->
-    <div
-      id="changePasswordModal"
-      class="modal fade"
-      :class="{ show: isChangePasswordOpen }"
-      :style="{ display: isChangePasswordOpen ? 'block' : 'none' }"
-      tabindex="-1"
-      role="dialog"
-      :aria-hidden="!isChangePasswordOpen"
-    >
-      <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content modern-modal">
-          <div class="modal-header modern-modal-header">
-            <h5 class="modal-title font-weight-bold">Change Password</h5>
-            <button type="button" class="close" aria-label="Close" @click="closeChangePassword">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-
-          <form @submit.prevent="submitChangePassword">
-            <div class="modal-body p-4">
-              <div v-if="changePasswordError" class="alert alert-danger py-2">
-                {{ changePasswordError }}
-              </div>
-
-              <div class="form-group">
-                <label for="currentPassword">Current Password</label>
-                <input
-                  id="currentPassword"
-                  v-model="currentPassword"
-                  type="password"
-                  class="form-control"
-                  autocomplete="current-password"
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="newPassword">New Password</label>
-                <input
-                  id="newPassword"
-                  v-model="newPassword"
-                  type="password"
-                  class="form-control"
-                  autocomplete="new-password"
-                  minlength="6"
-                  required
-                />
-              </div>
-
-              <div class="form-group mb-0">
-                <label for="confirmPassword">Confirm New Password</label>
-                <input
-                  id="confirmPassword"
-                  v-model="confirmPassword"
-                  type="password"
-                  class="form-control"
-                  autocomplete="new-password"
-                  minlength="6"
-                  required
-                />
-              </div>
-            </div>
-
-            <div class="modal-footer border-0 pt-0">
-              <button type="submit" class="btn btn-success px-4 modern-btn">
-                <i class="fas fa-key mr-1"></i>
-                Update Password
-              </button>
-              <button type="button" class="btn btn-outline-secondary px-4" @click="closeChangePassword">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="isChangePasswordOpen"
-      class="modal-backdrop fade show"
-      @click="closeChangePassword"
-    ></div>
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4" :aria-hidden="sidebarFullscreen ? 'false' : undefined">
       <div class="brand-header">
@@ -234,7 +61,8 @@
               :title="sidebarCollapsed ? item.name : undefined"
               @click="navigate($event, item.link)"
             >
-              <i :class="['nav-icon', item.icon]"></i>
+              <i v-if="item.svgIcon" class="nav-icon" v-html="item.svgIcon"></i>
+              <i v-else :class="['nav-icon', item.icon]"></i>
               <p>{{ item.name }}</p>
             </a>
 
@@ -478,7 +306,6 @@ const pageMeta = computed(() => {
 })
 
 const menu = ref([])
-const user = ref({ name: 'User', menu: [] })
 
 /* Ang hero (dashboard) ay buong background ang ipinapakita. */
 const isHeroPage = computed(() => props.currentPage === 'dashboard.html')
@@ -488,134 +315,14 @@ function logout() {
   emit('navigate', 'login.html')
 }
 
-/* Ang pangalan sa navbar ay galing sa naka-login na session
-   (First + Last), hindi na sa menu.json. */
-const ROLE_LABELS = { HRAdmin: 'HR Admin', Supervisor: 'Supervisor', Intern: 'Intern' }
+/* Ang pangalan sa navbar greeting ay galing sa naka-login na session
+   (Full Name), hindi na sa menu.json. */
+const userName = computed(() => currentUser()?.fullName || 'User')
 
-const sessionProfile = currentUser()
-
-const roleLabel = computed(() => {
-  const role = sessionProfile?.roles?.[0]
-  return role ? ROLE_LABELS[role] || role : ''
-})
-const isUserMenuOpen = ref(false)
 const openMenus = ref(new Set())
 const sidebarFullscreen = ref(false)
 const sidebarCollapsed = ref(false)
 let previousBodyOverflow = ''
-
-/* ---- Edit Display Name state ---- */
-const DISPLAY_NAME_KEY = 'ojtmis_display_name'
-
-const isEditNameOpen = ref(false)
-const editNameValue = ref('')
-const editNameError = ref('')
-
-function openEditName() {
-  editNameValue.value = user.value.name
-  editNameError.value = ''
-  isEditNameOpen.value = true
-}
-
-function closeEditName() {
-  isEditNameOpen.value = false
-  editNameError.value = ''
-}
-
-function submitEditName() {
-  const trimmed = editNameValue.value.trim()
-
-  if (!trimmed) {
-    editNameError.value = 'Please enter a name.'
-    return
-  }
-
-  user.value = { ...user.value, name: trimmed }
-  localStorage.setItem(DISPLAY_NAME_KEY, trimmed)
-
-  closeEditName()
-}
-
-/* ---- Change Password state ---- */
-
-const CURRENT_PASSWORD_KEY = 'ojtmis_password'
-const DEFAULT_PASSWORD = 'password123'
-
-const isChangePasswordOpen = ref(false)
-const currentPassword = ref('')
-const newPassword = ref('')
-const confirmPassword = ref('')
-const changePasswordError = ref('')
-
-function getStoredPassword() {
-  return localStorage.getItem(CURRENT_PASSWORD_KEY) || DEFAULT_PASSWORD
-}
-
-function openChangePassword() {
-  currentPassword.value = ''
-  newPassword.value = ''
-  confirmPassword.value = ''
-  changePasswordError.value = ''
-  isChangePasswordOpen.value = true
-}
-
-function closeChangePassword() {
-  isChangePasswordOpen.value = false
-  currentPassword.value = ''
-  newPassword.value = ''
-  confirmPassword.value = ''
-  changePasswordError.value = ''
-}
-
-async function submitChangePassword() {
-  changePasswordError.value = ''
-
-  if (currentPassword.value !== getStoredPassword()) {
-    changePasswordError.value = 'Current password is incorrect.'
-    return
-  }
-
-  if (newPassword.value.length < 6) {
-    changePasswordError.value = 'New password must be at least 6 characters.'
-    return
-  }
-
-  if (newPassword.value !== confirmPassword.value) {
-    changePasswordError.value = 'New password and confirmation do not match.'
-    return
-  }
-
-  localStorage.setItem(CURRENT_PASSWORD_KEY, newPassword.value)
-
-  closeChangePassword()
-
-  await showAlert('Password updated successfully.')
-}
-
-/* "Change Password" ang dropdown item na walang sariling page, kaya binubuksan
-   ang modal sa halip na sundan ang href. Ang ibang item (e.g. Logout) ay
-   sumusunod pa rin sa normal na link nito. */
-function onUserMenuItemClick(event, item) {
-  const name = (item.name || '').trim().toLowerCase()
-
-  if (name === 'change password') {
-    event.preventDefault()
-    closeUserMenu()
-    openChangePassword()
-    return
-  }
-
-  if (name === 'logout') {
-    // Huwag na ang full page reload: basta na ang SPA navigation para
-    // malinis ang session at hindi ma-trigger ang auto-redirect ng login.
-    event.preventDefault()
-    closeUserMenu()
-    navigate(event, 'login.html')
-    return
-  }
-
-  closeUserMenu()
-}
 
 /* "applicants.html#schedule" -> { page: 'applicants.html', hash: '#schedule' } */
 function splitLink(link) {
@@ -676,14 +383,6 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-function toggleUserMenu() {
-  isUserMenuOpen.value = !isUserMenuOpen.value
-}
-
-function closeUserMenu() {
-  isUserMenuOpen.value = false
-}
-
 function closeSidebar() {
   sidebarFullscreen.value = false
 }
@@ -708,17 +407,13 @@ function navigate(event, link) {
 }
 
 function handleKeydown(event) {
-  if (event.key === 'Escape') closeSidebar()
+  if (event.key !== 'Escape') return
+
+  closeSidebar()
 }
 
 function handleResize() {
   if (window.innerWidth < 768) sidebarCollapsed.value = false
-}
-
-function handleDocumentClick(event) {
-  const userDropdown = document.querySelector('.navbar-user')
-  if (!userDropdown || userDropdown.contains(event.target)) return
-  closeUserMenu()
 }
 
 onMounted(() => {
@@ -726,21 +421,8 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
   window.addEventListener('hashchange', syncHash)
   window.addEventListener('popstate', syncHash)
-  document.addEventListener('click', handleDocumentClick)
 
   menu.value = menuConfig.menu || []
-  user.value = {
-    ...menuConfig.navbar?.user,
-    ...sessionProfile,
-    name: sessionProfile?.fullName || menuConfig.navbar?.user?.name || 'User'
-  }
-
-  /* Ang pangalang binago via "Change Display Name" ay naka-save sa
-     localStorage, kaya nananatili ito kahit mag-refresh o bumalik. */
-  const savedName = localStorage.getItem(DISPLAY_NAME_KEY)
-  if (savedName) {
-    user.value = { ...user.value, name: savedName }
-  }
 
   openMenus.value = new Set(menu.value.filter(hasActiveChild).map((item) => item.name))
 
@@ -756,7 +438,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('hashchange', syncHash)
   window.removeEventListener('popstate', syncHash)
-  document.removeEventListener('click', handleDocumentClick)
   document.body.style.overflow = previousBodyOverflow
 })
 
@@ -885,7 +566,7 @@ body {
 
 .main-header-logo,
 .shell-menu-toggle,
-.navbar-user {
+.navbar-greeting {
   position: relative;
   z-index: 1040;
 }
@@ -899,9 +580,9 @@ body {
   z-index: 1030;
   display: flex;
   flex-direction: column;
-  background: rgba(74, 44, 16, 0.42);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  background: rgba(30, 15, 12, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border-right: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 8px 0 30px rgba(30, 15, 5, 0.18);
   overflow: hidden;
@@ -1129,38 +810,24 @@ body {
   padding: 0 1.25rem;
   display: flex;
   align-items: center;
-  background: rgba(74, 44, 16, 0.32);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  background: rgba(30, 15, 12, 0.82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border: 0;
   box-shadow: none;
 }
 
-.app-shell .navbar-user .nav-link {
-  border-radius: 999px !important;
-  background: #ef8b1c;
-  color: #ffffff !important;
-  font-size: 0.72rem;
+/* Greeting text sa top-right ng navigation bar (walang dropdown). */
+.app-shell .navbar-greeting {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  color: #ffffff;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.5rem 1.05rem !important;
-}
-
-.app-shell .navbar-user .nav-link:hover,
-.app-shell .navbar-user .nav-link:focus {
-  background: #dd7a0f;
-  color: #ffffff !important;
-}
-
-.app-shell .navbar-user .user-name-btn {
-  border-radius: 999px 0 0 999px !important;
-}
-
-.app-shell .navbar-user .user-caret-btn {
-  border-radius: 0 999px 999px 0 !important;
-  background: #dd7a0f;
-  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  user-select: none;
 }
 
 .main-header-logo:hover,
@@ -1219,43 +886,6 @@ body {
   }
 }
 
-.navbar-user {
-  margin-left: auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.navbar-user .nav-link {
-  color: #fff !important;
-  background: #ff8c1a;
-}
-
-.navbar-user .nav-link:hover,
-.navbar-user .nav-link:focus {
-  color: #fff !important;
-  background: #e67300;
-}
-
-.navbar-user .user-name-btn {
-  border-radius: 999px 0 0 999px;
-  padding: 0.45rem 0.75rem 0.45rem 0.9rem;
-}
-
-.navbar-user .user-caret-btn {
-  border-radius: 0 999px 999px 0;
-  padding: 0.45rem 0.85rem 0.45rem 0.5rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-.navbar-user .dropdown-menu {
-  margin-top: 0.5rem;
-}
-
-.navbar-user .dropdown-menu.show {
-  display: block;
-}
-
 .app-shell > .content-wrapper {
   margin-left: 232px;
   min-height: 100vh;
@@ -1265,20 +895,6 @@ body {
 
 .shell-content {
   min-height: calc(100vh - 64px);
-}
-
-#changePasswordModal {
-  z-index: 1060;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-#changePasswordModal .modal-dialog {
-  margin: 1.75rem auto;
-}
-
-#changePasswordModal ~ .modal-backdrop {
-  z-index: 1055;
 }
 
 .modern-modal {
@@ -1503,9 +1119,6 @@ body {
     padding: 70px 10px 10px;
   }
 
-  .app-shell .navbar-user {
-    margin-left: auto;
-  }
   .shell-body {
     min-height: calc(100vh - 80px);
     padding: 1rem;
