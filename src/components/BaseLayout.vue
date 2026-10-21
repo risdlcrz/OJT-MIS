@@ -13,19 +13,6 @@
         <i class="fas fa-bars"></i>
       </button>
 
-      <nav class="shell-nav" aria-label="Primary">
-        <a
-          v-for="item in headerNav"
-          :key="item.name"
-          :href="headerLink(item)"
-          class="shell-nav-link"
-          :class="{ active: isHeaderActive(item) }"
-          @click.prevent="onHeaderNav($event, item)"
-        >
-          {{ item.name }}
-        </a>
-      </nav>
-
       <div class="navbar-user dropdown" :class="{ show: isUserMenuOpen }">
         <button
           type="button"
@@ -495,30 +482,6 @@ const user = ref({ name: 'User', menu: [] })
 
 /* Ang hero (dashboard) ay buong background ang ipinapakita. */
 const isHeroPage = computed(() => props.currentPage === 'dashboard.html')
-
-/* Mga nasa tuktok na navbar: lahat maliban sa Contact Us. */
-const headerNav = computed(() =>
-  menu.value.filter((item) => (item.name || '').trim().toLowerCase() !== 'contact us')
-)
-
-function headerLink(item) {
-  if (item.link) return item.link
-  const first = item.submenu?.[0]
-  return first ? resolveLink(first) : '#'
-}
-
-function onHeaderNav(event, item) {
-  if (!item.link && item.submenu?.length) {
-    toggleMenu(item)
-    navigate(event, resolveLink(item.submenu[0]))
-    return
-  }
-  navigate(event, item.link)
-}
-
-function isHeaderActive(item) {
-  return item.link ? isActive(item.link) : hasActiveChild(item)
-}
 
 function logout() {
   window.history.pushState({}, '', '/login.html')
@@ -1173,38 +1136,6 @@ body {
   box-shadow: none;
 }
 
-.shell-nav {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 1.9rem;
-}
-
-.shell-nav-link {
-  padding: 0.4rem 0;
-  border-bottom: 2px solid transparent;
-  color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.shell-nav-link:hover,
-.shell-nav-link:focus {
-  border-bottom-color: rgba(255, 215, 154, 0.6);
-  color: #ffd79a;
-  text-decoration: none;
-}
-
-.shell-nav-link.active {
-  border-bottom-color: #ffd79a;
-  color: #ffffff;
-}
-
 .app-shell .navbar-user .nav-link {
   border-radius: 999px !important;
   background: #ef8b1c;
@@ -1572,14 +1503,9 @@ body {
     padding: 70px 10px 10px;
   }
 
-  .shell-nav {
-    display: none;
-  }
-
   .app-shell .navbar-user {
     margin-left: auto;
   }
-
   .shell-body {
     min-height: calc(100vh - 80px);
     padding: 1rem;
