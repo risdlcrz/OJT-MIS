@@ -1,0 +1,73 @@
+/* Brand accent (orange) replaces Bootstrap's default blue. */
+:root {
+  --bs-primary: #ff8c1a;
+  --bs-primary-rgb: 255, 140, 26;
+  --bs-link-color: #ff8c1a;
+  --bs-link-hover-color: #e07712;
+}
+
+.text-dark {
+  color: #1E0F0C !important;
+}
+
+.btn-primary,
+.btn-primary:focus {
+  --bs-btn-bg: #ff8c1a;
+  --bs-btn-border-color: #ff8c1a;
+  --bs-btn-hover-bg: #e07712;
+  --bs-btn-hover-border-color: #e07712;
+  --bs-btn-active-bg: #cc6a0f;
+  --bs-btn-active-border-color: #cc6a0f;
+  --bs-btn-disabled-bg: #ff8c1a;
+  --bs-btn-disabled-border-color: #ff8c1a;
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
+  color: #fff;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: #ff8c1a;
+  --bs-btn-border-color: #ff8c1a;
+  --bs-btn-hover-bg: #ff8c1a;
+  --bs-btn-hover-border-color: #ff8c1a;
+  --bs-btn-active-bg: #e07712;
+  --bs-btn-active-border-color: #e07712;
+}
+
+.badge-primary,
+.badge-info {
+  background-color: #ff8c1a;
+  color: #fff;
+}
+
+.text-primary,
+.page-link {
+  color: #ff8c1a !important;
+}
+
+.page-link:hover,
+.page-item.active .page-link {
+  background-color: #ff8c1a;
+  border-color: #ff8c1a;
+  color: #fff;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #ff8c1a;
+  box-shadow: 0 0 0 0.2rem rgba(255, 140, 26, 0.18);
+}
+
+a {
+  color: #ff8c1a;
+}
+
+/* Itim na teksto -> #1E0F0C sa buong app. */
+body,
+h1, h2, h3, h4, h5, h6,
+.table,
+.form-control,
+.form-select {
+  color: #1E0F0C;
+}

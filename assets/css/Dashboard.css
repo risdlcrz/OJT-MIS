@@ -440,7 +440,7 @@ body {
     min-height: calc(100vh - 64px);
     padding: 2.4rem 1.6rem 2.8rem;
     background: transparent;
-    color: #2b2118;
+    color: #1E0F0C;
 }
 
 .ojt-section-title {
@@ -486,7 +486,7 @@ body {
     margin: 0 0 0.35rem;
     font-size: 1rem;
     font-weight: 700;
-    color: #2b2118;
+    color: #1E0F0C;
 }
 
 .ojt-info-meta {
@@ -525,7 +525,7 @@ body {
     padding: 0.45rem 0;
     border-bottom: 1px dashed #eee3d0;
     font-size: 0.88rem;
-    color: #4a3c2a;
+    color: #1E0F0C;
 }
 
 .ojt-list li:last-child {
@@ -589,7 +589,7 @@ body {
     height: auto;
     min-height: 128px;
     padding: 20px 22px;
-    color: #4a3212;
+    color: #1E0F0C;
     transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.25s ease;
 }
 
@@ -598,11 +598,11 @@ body {
 }
 
 .ojt-summary .stat-label {
-    color: #5f4626;
+    color: #1E0F0C;
 }
 
 .ojt-summary .stat-number {
-    color: #5a3a10;
+    color: #1E0F0C;
 }
 
 .ojt-summary .stat-card:hover {

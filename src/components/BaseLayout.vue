@@ -814,7 +814,8 @@ body {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border: 0;
-  box-shadow: none;
+  box-shadow: 0 6px 18px rgba(30, 15, 12, 0.22);
+  z-index: 1035;
 }
 
 /* Greeting text sa top-right ng navigation bar (walang dropdown). */
@@ -889,7 +890,7 @@ body {
 .app-shell > .content-wrapper {
   margin-left: 232px;
   min-height: 100vh;
-  padding: 80px 16px 16px 10px;
+  padding: 64px 0 0;
   background: transparent !important;
 }
 
@@ -918,7 +919,7 @@ body {
 .modern-modal label {
   display: block;
   margin-bottom: 0.45rem;
-  color: #334155;
+  color: #1E0F0C;
   font-weight: 600;
 }
 
@@ -929,8 +930,8 @@ body {
 }
 
 .modern-modal .form-control:focus {
-  border-color: #0f766e;
-  box-shadow: 0 0 0 0.2rem rgba(15, 118, 110, 0.12);
+  border-color: #ff8c1a;
+  box-shadow: 0 0 0 0.2rem rgba(255, 140, 26, 0.18);
 }
 
 .modern-modal .modal-footer {
@@ -949,12 +950,12 @@ body {
 }
 
 .shell-body {
-  min-height: calc(100vh - 96px);
+  min-height: calc(100vh - 64px);
   padding: 1.5rem;
   background: #fdfbf1;
-  border-radius: 5px;
-  box-shadow: 0 18px 40px rgba(40, 20, 5, 0.16);
-  color: #2b2118;
+  border-radius: 0;
+  box-shadow: none;
+  color: #1E0F0C;
 }
 
 /* Dashboard: buong background ang eksena, walang cream panel. */
@@ -1048,7 +1049,7 @@ body {
 .shell-eyebrow {
   display: block;
   margin-bottom: 0.35rem;
-  color: #0f766e;
+  color: #ff8c1a;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -1057,7 +1058,7 @@ body {
 
 .shell-page-heading h1 {
   margin: 0;
-  color: #102a26;
+  color: #1E0F0C;
   font-size: clamp(1.75rem, 3vw, 2.7rem);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -1116,11 +1117,11 @@ body {
 
   .app-shell > .content-wrapper {
     margin-left: 0 !important;
-    padding: 70px 10px 10px;
+    padding: 60px 0 0;
   }
 
   .shell-body {
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 60px);
     padding: 1rem;
   }
 

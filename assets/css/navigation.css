@@ -220,7 +220,7 @@
 
 .breadcrumb-link:hover,
 .breadcrumb-link:focus {
-    color: #1e293b;
+    color: #1E0F0C;
     background: #f1f5f9;
     text-decoration: none;
     outline: none;
@@ -241,7 +241,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    color: #1e293b;
+    color: #1E0F0C;
     padding: 0.25rem 0.35rem;
     border-radius: 6px;
     white-space: nowrap;

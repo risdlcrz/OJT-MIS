@@ -343,12 +343,12 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
   border: none;
   font-size: 1rem;
   line-height: 1;
-  color: #2563eb;
+  color: #ff8c1a;
   cursor: pointer;
   border-radius: 0.5rem;
   transition: background 0.15s, color 0.15s;
 }
-.nav-btn:hover:not(:disabled) { background: #eff6ff; }
+.nav-btn:hover:not(:disabled) { background: #fff3e5; }
 .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .month-year {
   flex: 1;
@@ -356,13 +356,13 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
   border: none;
   font-weight: 600;
   font-size: 0.9rem;
-  color: #1e293b;
+  color: #1E0F0C;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 0.5rem;
   transition: background 0.15s, color 0.15s;
 }
-.month-year:hover { background: #eff6ff; color: #2563eb; }
+.month-year:hover { background: #fff3e5; color: #ff8c1a; }
 .date-picker-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -376,13 +376,13 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
 .date-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .date-btn {
   aspect-ratio: 1; border: none; background: transparent; border-radius: 0.5rem;
-  font-size: 0.8125rem; color: #334155; cursor: pointer; transition: background 0.12s, color 0.12s;
+  font-size: 0.8125rem; color: #1E0F0C; cursor: pointer; transition: background 0.12s, color 0.12s;
   display: flex; align-items: center; justify-content: center;
 }
-.date-btn:hover:not(.disabled):not(.selected) { background: #eff6ff; color: #2563eb; }
-.date-btn.today { font-weight: 700; color: #2563eb; }
-.date-btn.selected { background: #2563eb; color: #fff; font-weight: 600; }
-.date-btn.selected:hover { background: #1d4ed8; }
+.date-btn:hover:not(.disabled):not(.selected) { background: #fff3e5; color: #ff8c1a; }
+.date-btn.today { font-weight: 700; color: #ff8c1a; }
+.date-btn.selected { background: #ff8c1a; color: #fff; font-weight: 600; }
+.date-btn.selected:hover { background: #e07712; }
 .date-btn.other-month { color: #cbd5e1; }
 .date-btn.disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -400,11 +400,11 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
   padding: 0.5rem 0.25rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #334155;
+  color: #1E0F0C;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
-.panel-btn:hover { background: #eff6ff; color: #2563eb; }
-.panel-btn.active { background: #2563eb; color: #fff; font-weight: 600; }
-.panel-btn.active:hover { background: #1d4ed8; color: #fff; }
+.panel-btn:hover { background: #fff3e5; color: #ff8c1a; }
+.panel-btn.active { background: #ff8c1a; color: #fff; font-weight: 600; }
+.panel-btn.active:hover { background: #e07712; color: #fff; }
 </style>

@@ -255,7 +255,7 @@ onMounted(() => {
     border: 0;
     border-radius: 999px;
     background: #ffffff;
-    color: #1f2937;
+    color: #1E0F0C;
     font-family: inherit;
     line-height: 1.5;
     outline: none;
@@ -321,7 +321,7 @@ onMounted(() => {
     border: 0;
     border-radius: 999px;
     background: #ffffff;
-    color: #1f2937;
+    color: #1E0F0C;
     font-family: inherit;
     font-size: 15px;
     font-weight: 700;

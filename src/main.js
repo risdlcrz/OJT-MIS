@@ -13,4 +13,7 @@ import '../assets/css/badges.css'
 // para hindi mapupunat ang panel sa likod ng transparent na backdrop.
 import '../assets/css/ojt-modals.css'
 
+// Orange accent + dark text color para sa buong app.
+import '../assets/css/theme.css'
+
 createApp(App).mount('#app')

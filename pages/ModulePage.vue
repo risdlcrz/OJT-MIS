@@ -187,7 +187,7 @@
            role="dialog" aria-modal="true" aria-label="Intern Details" @click.self="closeView">
         <div class="modal-content shadow-lg border-0" style="background: linear-gradient(135deg, #f97316 0%, #ffffff 100%); border-radius: 12px; width: 720px; max-width: 100%; max-height: calc(100vh - 1.5rem); display: flex; flex-direction: column; box-shadow: 0 1rem 3rem rgba(0,0,0,0.175);">
           <div class="modal-header bg-transparent border-0 px-4 pt-4 pb-2">
-            <h5 class="modal-title fw-bold" style="color: #1a1a2e;">Intern Details</h5>
+            <h5 class="modal-title fw-bold" style="color: #1E0F0C;">Intern Details</h5>
             <button type="button" class="btn-close" aria-label="Close" :disabled="isSaving" @click="closeView"></button>
           </div>
           <div class="modal-body p-4 overflow-auto">
@@ -195,39 +195,39 @@
               <div class="row g-3">
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Applicant No.</label>
-                <div class="fw-bold fs-5" style="color: #1a1a2e;">{{ viewIntern.applicantNo || '-' }}</div>
+                <div class="fw-bold fs-5" style="color: #1E0F0C;">{{ viewIntern.applicantNo || '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Full Name</label>
-                <div class="fw-bold fs-5" style="color: #1a1a2e;">{{ viewIntern.fullName || '-' }}</div>
+                <div class="fw-bold fs-5" style="color: #1E0F0C;">{{ viewIntern.fullName || '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">School</label>
-                <div style="color: #212529;">{{ viewIntern.SchoolAbbreviation || viewIntern.school || '-' }}</div>
+                <div style="color: #1E0F0C;">{{ viewIntern.SchoolAbbreviation || viewIntern.school || '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Program</label>
-                <div style="color: #212529;">{{ viewIntern.program || '-' }}</div>
+                <div style="color: #1E0F0C;">{{ viewIntern.program || '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Contact No.</label>
-                <div style="color: #212529;">{{ viewIntern.contactNumber || '-' }}</div>
+                <div style="color: #1E0F0C;">{{ viewIntern.contactNumber || '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Department</label>
-                <div style="color: #212529;">{{ viewIntern.requestOffice || (viewIntern.requestId ? `#${viewIntern.requestId}` : '-') }}</div>
+                <div style="color: #1E0F0C;">{{ viewIntern.requestOffice || (viewIntern.requestId ? `#${viewIntern.requestId}` : '-') }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Hours Rendered</label>
-                <div class="fw-bold" style="color: #1a1a2e;">{{ viewIntern.durationDays != null ? viewIntern.durationDays * 8 : '-' }}</div>
+                <div class="fw-bold" style="color: #1E0F0C;">{{ viewIntern.durationDays != null ? viewIntern.durationDays * 8 : '-' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">OJT Period</label>
-                <div style="color: #212529;">{{ formatOJTPeriod(viewIntern) }}</div>
+                <div style="color: #1E0F0C;">{{ formatOJTPeriod(viewIntern) }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Fridays</label>
-                <div style="color: #212529;">{{ viewIntern.excludeFriday ? 'Excluded' : 'Included' }}</div>
+                <div style="color: #1E0F0C;">{{ viewIntern.excludeFriday ? 'Excluded' : 'Included' }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Status</label>
