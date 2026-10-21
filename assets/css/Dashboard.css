@@ -572,17 +572,17 @@ body {
     }
 }
 
-/* ---------- Floating glass cards (glassmorphism) ----------
-   Each card floats individually on the page background with its own
-   translucent surface, backdrop blur, soft edge and deep shadow. */
+/* ---------- Floating glass cards (light glassmorphism) ----------
+   Translucent white surface, blur + saturation, hairline light border
+   and soft shadow so the background scene shows through the cards. */
 .ojt-summary .stat-card,
 .ojt-info {
-    background: rgba(255, 255, 255, 0.85);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.6) 100%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+    border: 0;
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
 }
 
 .ojt-summary .stat-card {
@@ -594,7 +594,7 @@ body {
 }
 
 .ojt-summary .stat-card i {
-    color: #a35d12;
+    color: #ff8c1a;
 }
 
 .ojt-summary .stat-label {
@@ -606,8 +606,32 @@ body {
 }
 
 .ojt-summary .stat-card:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
     transform: translateY(-4px);
+}
+
+/* Text sa loob ng light glass cards: itim para madaling basahin. */
+.ojt-info h3 {
+    color: #b35c05;
+}
+
+.ojt-info-main {
+    color: #1E0F0C;
+}
+
+.ojt-info-meta,
+.ojt-list li {
+    color: #3d2f28;
+}
+
+.ojt-list li {
+    border-bottom-color: rgba(30, 15, 12, 0.14);
+}
+
+.ojt-chip {
+    background: rgba(255, 255, 255, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    color: #7a3f04;
 }
 
 /* Nakasama sa transition ang reveal animation (opacity/transform). */
@@ -616,7 +640,7 @@ body {
 }
 
 .ojt-info:hover {
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
     transform: translateY(-4px);
 }
 
