@@ -2,8 +2,8 @@
   "ExpandedNodes": [
     "",
     "\\OJTMISApi",
-    "\\OJTMISApi\\Controllers",
-    "\\OJTMISApi\\Models"
+    "\\pages",
+    "\\references"
   ],
   "PreviewInSolutionExplorer": false
 }

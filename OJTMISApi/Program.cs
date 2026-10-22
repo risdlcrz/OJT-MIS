@@ -108,6 +108,12 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ---------------------------------------------------------------------
+// Database schema: apply any pending EF Core migrations before serving
+// requests, so a fresh/empty database becomes usable automatically.
+// ---------------------------------------------------------------------
+await ApplyMigrationsAsync(app);
+
+// ---------------------------------------------------------------------
 // Seed: roles + default HR Admin account.
 // ---------------------------------------------------------------------
 await SeedAsync(app);
@@ -182,6 +188,32 @@ static void PrintPortInUse(int port, string url)
     Console.Error.WriteLine("===========================================================");
     Console.Error.WriteLine();
     Environment.Exit(1);
+}
+
+static async Task ApplyMigrationsAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // Nothing to do when the database does not exist yet and the server
+    // will not create it (e.g. limited rights) - surface a clear message.
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine();
+        Console.Error.WriteLine("===========================================================");
+        Console.Error.WriteLine(" ERROR: Could not apply database migrations.");
+        Console.Error.WriteLine($" {ex.Message}");
+        Console.Error.WriteLine();
+        Console.Error.WriteLine(" Check the 'DefaultConnection' connection string and");
+        Console.Error.WriteLine(" that the target database exists and is reachable.");
+        Console.Error.WriteLine("===========================================================");
+        Console.Error.WriteLine();
+        Environment.Exit(1);
+    }
 }
 
 static async Task SeedAsync(WebApplication app)
