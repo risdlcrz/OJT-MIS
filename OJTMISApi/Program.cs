@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using OJTMISApi.Controllers;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +16,12 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<NotificationInterceptor>();
+
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+    options.UseSqlServer(connectionString)
+           .AddInterceptors(serviceProvider.GetRequiredService<NotificationInterceptor>()));
 
 // ---------------------------------------------------------------------
 // Identity + JWT

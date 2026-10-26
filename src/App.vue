@@ -6,6 +6,7 @@ import DashboardPage from '../pages/dashboard.vue'
 import RequestsPage from '../pages/requests.vue'
 import ApplicantsPage from '../pages/applicants.vue'
 import SchoolsPage from '../pages/Schools.vue'
+import AccountPage from '../pages/account.vue'
 import ModulePage from '../pages/ModulePage.vue'
 import ForbiddenPage from '../pages/forbidden.vue'
 import { clearSession, currentUser, isHRAdmin } from './services/api'
@@ -33,13 +34,13 @@ const pageComponents = {
   'requests.html': RequestsPage,
   'applicants.html': ApplicantsPage,
   'schools.html': SchoolsPage,
+  'account.html': AccountPage,
   'internlist.html': ModulePage,
   'forms.html': ModulePage,
   'dtr.html': ModulePage,
   'idgenerate.html': ModulePage,
   'utility.html': ModulePage,
   'signatories.html': ModulePage,
-  'account.html': ModulePage,
   'contact.html': ModulePage,
   'forbidden.html': ForbiddenPage
 }

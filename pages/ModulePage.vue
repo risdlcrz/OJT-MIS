@@ -306,7 +306,6 @@ const MODULES = {
   'dtr.html': { title: 'Daily Time Records' },
   'idgenerate.html': { title: 'ID Generation' },
   'utility.html': { title: 'Utility' },
-  'account.html': { title: 'Account Information' },
   'contact.html': { title: 'Contact Us' }
 }
 

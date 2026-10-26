@@ -34,9 +34,23 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+// Modules na sinusubaybayan ng notification bell. Kapag may successful na
+// CRUD dito, agad na nagre-refresh ang bell (hindi na hihintayin ang poll).
+const NOTIFICATION_MODULES = ['/schools', '/signatories', '/applicants', '/interns', '/internrequests']
+
 // Normalise API failures so callers can always read a human-readable message.
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const method = (response.config.method || '').toLowerCase()
+    const url = response.config.url || ''
+    const isMonitored = NOTIFICATION_MODULES.some((path) => url.startsWith(path))
+
+    if (isMonitored && ['post', 'put', 'patch', 'delete'].includes(method)) {
+      window.dispatchEvent(new Event('ojt:notifications-changed'))
+    }
+
+    return response
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken')
@@ -162,5 +176,26 @@ export const internRequestsAPI = {
 }
 export const programsAPI = crud('programs')
 export const signatoriesAPI = crud('signatories')
+export const notificationsAPI = {
+  getAll: async (take = 20) => (await apiClient.get('/notifications', { params: { take } })).data,
+  markRead: async (id) => (await apiClient.patch(`/notifications/${id}/read`)).data,
+  markAllRead: async () => (await apiClient.patch('/notifications/read-all')).data,
+  clear: async () => (await apiClient.delete('/notifications')).data
+}
+
+/** Kasalukuyang account: profile at change-password. */
+export const accountAPI = {
+  getProfile: async () => (await apiClient.get('/account/profile')).data,
+  updateProfile: async (payload) => (await apiClient.put('/account/profile', payload)).data,
+  changePassword: async (payload) => (await apiClient.post('/account/change-password', payload)).data
+}
+
+/** HR Admin only: listahan at pamamahala ng user accounts. */
+export const adminUsersAPI = {
+  getAll: async (role = '') =>
+    (await apiClient.get('/admin/users', { params: role ? { role } : {} })).data,
+  create: async (payload) => (await apiClient.post('/admin/users', payload)).data,
+  update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data
+}
 
 export default apiClient

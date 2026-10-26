@@ -14,6 +14,9 @@ namespace OJTMISApi.Models
 
         public string? Office { get; set; }
 
+        /// <summary>Data URL ng profile picture (naka-resize na sa 256x256 JPEG).</summary>
+        public string? AvatarUrl { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         /// <summary>Pangalan na ipinapakita sa navbar (First + Last).</summary>

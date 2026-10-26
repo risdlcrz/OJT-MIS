@@ -19,6 +19,7 @@ namespace OJTMISApi.Data
         public DbSet<Signatory> Signatories { get; set; } = null!;
         public DbSet<InternRequest> InternRequests { get; set; } = null!;
         public DbSet<Applicant> Applicants { get; set; } = null!;
+        public DbSet<Notification> Notifications { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -122,6 +123,34 @@ namespace OJTMISApi.Data
 
                 entity.Property(a => a.CreatedAt).ValueGeneratedNever();
                 entity.Property(a => a.UpdatedAt).ValueGeneratedNever();
+            });
+
+            modelBuilder.Entity<ApplicationUser>(entity =>
+            {
+                // Profile picture is stored as a resized data URL, so it needs
+                // an unbounded column instead of Identity's default nvarchar(max)
+                // for custom properties (which is already the case, but this
+                // keeps the intent explicit in the model).
+                entity.Property(u => u.AvatarUrl)
+                      .HasColumnType("nvarchar(max)");
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(n => n.Id);
+
+                entity.Property(n => n.UserId).IsRequired().HasMaxLength(450);
+                entity.Property(n => n.Title).IsRequired().HasMaxLength(200);
+                entity.Property(n => n.Message).IsRequired().HasMaxLength(500);
+                entity.Property(n => n.Module).IsRequired().HasMaxLength(50);
+                entity.Property(n => n.CreatedAt).ValueGeneratedNever();
+
+                entity.HasIndex(n => new { n.UserId, n.CreatedAt });
+
+                entity.HasOne<ApplicationUser>()
+                      .WithMany()
+                      .HasForeignKey(n => n.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
