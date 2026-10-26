@@ -718,12 +718,30 @@ async function printCard() {
 
 .idgen-workspace {
   display: grid;
-  grid-template-columns: minmax(300px, 350px) minmax(0, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 1.15rem;
   align-items: start;
 }
 
+/* Keep the editor and the badge preview in view while the page scrolls. */
+.idgen-sidebar,
+.idgen-preview {
+  position: sticky;
+  top: 5rem;
+  min-width: 0;
+}
+
+/* The card scrolls internally; its header stays pinned. The height accounts
+   for the fixed navbar, page padding, and the toolbar above the workspace. */
+.idgen-sidebar > .card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 11.5rem);
+  overflow: hidden;
+}
+
 .idgen-sidebar-head {
+  flex: 0 0 auto;
   background: #fff7ec;
   border-bottom: 1px solid #f3e4d3;
 }
@@ -736,13 +754,29 @@ async function printCard() {
 
 .idgen-form {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 1.1rem;
-  padding: 1.1rem 1.15rem 1.25rem;
+  min-height: 0;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem 1.05rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #dcc9b6 transparent;
+  scrollbar-gutter: stable;
+}
+
+.idgen-form::-webkit-scrollbar {
+  width: 8px;
+}
+
+.idgen-form::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #e0cdb9;
 }
 
 .idgen-form-section + .idgen-form-section {
-  padding-top: 1.1rem;
+  padding-top: 0.85rem;
   border-top: 1px dashed #e9dccd;
 }
 
@@ -752,7 +786,7 @@ async function printCard() {
   justify-content: space-between;
   gap: 0.75rem;
   margin: 0;
-  padding: 0.15rem 0;
+  padding: 0.1rem 0;
   color: #a85300;
   font-size: 0.72rem;
   font-weight: 800;
@@ -797,32 +831,38 @@ async function printCard() {
 
 /* Space only when the section is expanded, so closed rows stay compact. */
 .idgen-form-section[open] > .idgen-form-heading {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+/* Tighter field rhythm inside the accordion. */
+.idgen-form .mb-3 {
+  margin-bottom: 0.6rem !important;
 }
 
 .idgen-form .form-label {
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.25rem;
   color: #4a3931;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
 .idgen-form .form-control {
-  font-size: 0.86rem;
+  padding: 0.34rem 0.55rem;
+  font-size: 0.84rem;
 }
 
 .idgen-hint {
-  margin-top: 0.35rem;
+  margin-top: 0.25rem;
   color: #8a7a71;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1.35;
 }
 
 .idgen-media {
   display: flex;
-  gap: 0.85rem;
+  gap: 0.7rem;
   align-items: flex-start;
-  padding: 0.8rem;
+  padding: 0.65rem;
   border: 1px solid #efe3d6;
   border-radius: 0.75rem;
   background: #fffdf9;
@@ -855,7 +895,7 @@ async function printCard() {
 }
 
 .idgen-media--signature {
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.7rem;
 }
 
 .idgen-signature-thumb {
@@ -883,7 +923,7 @@ async function printCard() {
 }
 
 .idgen-switch {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.55rem;
 }
 
 .idgen-switch .form-check-label {
@@ -895,7 +935,7 @@ async function printCard() {
 .idgen-preview {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.65rem;
   min-width: 0;
 }
 
@@ -904,7 +944,7 @@ async function printCard() {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .idgen-preview-eyebrow {
@@ -923,7 +963,7 @@ async function printCard() {
 
 .idgen-preview-stage {
   display: block;
-  padding: clamp(0.9rem, 2.2vw, 2rem);
+  padding: clamp(0.6rem, 1.2vw, 0.9rem);
   border: 1px solid #eadccb;
   border-radius: 1rem;
   background:
@@ -938,16 +978,32 @@ async function printCard() {
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: clamp(1rem, 2.5vw, 2rem);
+  gap: clamp(0.6rem, 1vw, 0.9rem);
   width: max-content;
   margin: 0 auto;
 }
 
 .idgen-card-wrap {
+  --idgen-card-scale: 1;
+  --idgen-card-width: 88mm;
+  --idgen-card-height: 125mm;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.45rem;
+}
+
+/* Scale the badges from the top so the preview can be enlarged while still
+   fitting beside the editor. The margins keep the layout box in sync with the
+   scaled box (negative when shrinking, positive when enlarging). */
+.idgen-card-wrap > .idgen-card {
+  flex: 0 0 auto;
+  margin:
+    0
+    calc((1 - var(--idgen-card-scale)) * var(--idgen-card-width) / -2)
+    calc((1 - var(--idgen-card-scale)) * var(--idgen-card-height) * -1);
+  transform: scale(var(--idgen-card-scale));
+  transform-origin: top center;
 }
 
 .idgen-card-tag {
@@ -982,7 +1038,6 @@ async function printCard() {
   color: var(--idgen-ink);
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   line-height: 1.25;
-  page: idcard;
   box-shadow:
     0 1px 2px rgba(54, 31, 12, 0.12),
     0 12px 24px -14px rgba(54, 31, 12, 0.4),
@@ -1452,9 +1507,27 @@ async function printCard() {
 }
 
 /* ---------------------------- RESPONSIVE ---------------------------- */
-@media (max-width: 1199.98px) {
+/* Below ~1360px the 100%-scale badge pair no longer clears the split view,
+   so the panels stack and the preview gets the full page width. */
+@media (max-width: 1359.98px) {
   .idgen-workspace {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked layout: let the page scroll normally and show the full form. */
+  .idgen-sidebar,
+  .idgen-preview {
+    position: static;
+    top: auto;
+  }
+
+  .idgen-sidebar > .card {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .idgen-form {
+    overflow-y: visible;
   }
 }
 
@@ -1469,18 +1542,35 @@ async function printCard() {
   }
 }
 
+/* Large desktop monitors have room for an even bigger preview. */
+@media (min-width: 1600px) {
+  .idgen-card-wrap {
+    --idgen-card-scale: 1.1;
+  }
+}
+
+@media (min-width: 1920px) {
+  .idgen-card-wrap {
+    --idgen-card-scale: 1.2;
+  }
+}
+
 /* ---------------------------- PRINT ---------------------------- */
-/* Named page so the 88 x 125 mm size applies only to the ID cards,
-   not to other printable pages in the app. */
-@page idcard {
-  size: 88mm 125mm;
+/* One A4 sheet holds front and back side by side (88 + 8 + 88 = 184 mm).
+   The page margin stays 0 so the browser does not reserve space for its
+   title/URL header and footer. The 10 mm quiet zone is recreated as padding
+   on the print container, which keeps the cards inside the printer's
+   non-printable edge. Print at 100% / Default scale with headers & footers off
+   if the browser adds them anyway. */
+@page {
+  size: A4 portrait;
   margin: 0;
 }
 
 @media print {
   html,
   body {
-    width: 88mm !important;
+    width: auto !important;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
@@ -1489,9 +1579,32 @@ async function printCard() {
     background: #fff !important;
   }
 
+  /* Hide every non-printable surface: app chrome, controls, and hints. */
+  nav,
+  .main-header,
+  .main-sidebar,
+  .main-footer,
+  .sidebar-backdrop,
+  .modal,
+  .idgen-toolbar,
+  .idgen-sidebar,
+  .idgen-preview-head,
+  .idgen-card-tag,
+  .no-print {
+    display: none !important;
+  }
+
+  .idgen-page button,
+  .idgen-page input,
+  .idgen-page textarea,
+  .idgen-page select,
+  .idgen-page .btn {
+    display: none !important;
+  }
+
   .app-shell {
     display: block !important;
-    width: 88mm !important;
+    width: auto !important;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
@@ -1499,27 +1612,11 @@ async function printCard() {
     background: #fff !important;
   }
 
-  .app-shell > .main-header,
-  .app-shell > .main-sidebar,
-  .app-shell > .main-footer,
-  .app-shell > .sidebar-backdrop,
-  .app-shell > .modal {
-    display: none !important;
-  }
-
-  .app-shell > .content-wrapper {
-    display: block !important;
-    width: 88mm !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #fff !important;
-  }
-
+  .app-shell > .content-wrapper,
   .shell-content,
   .shell-body {
     display: block !important;
-    width: 88mm !important;
+    width: auto !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -1529,13 +1626,21 @@ async function printCard() {
     box-shadow: none !important;
   }
 
-  .idgen-page,
+  /* 10 mm safe area around the cutting guides (A4 = 210 x 297 mm). */
+  .idgen-page {
+    display: block !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    background: #fff !important;
+  }
+
   .idgen-workspace,
   .idgen-preview,
-  .idgen-preview-stage,
-  .idgen-cards {
+  .idgen-preview-stage {
+    position: static !important;
     display: block !important;
-    width: 88mm !important;
+    width: auto !important;
     min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -1546,11 +1651,20 @@ async function printCard() {
     overflow: visible !important;
   }
 
-  .idgen-toolbar,
-  .idgen-sidebar,
-  .idgen-preview-head,
-  .idgen-card-tag {
-    display: none !important;
+  /* Front and back stay on one row: 184 mm inside the 190 mm usable width. */
+  .idgen-cards {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 8mm !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
   }
 
   .idgen-card-wrap {
@@ -1558,22 +1672,27 @@ async function printCard() {
     width: 88mm !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  .idgen-card-wrap + .idgen-card-wrap {
-    break-before: page;
-    page-break-before: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .idgen-card {
     width: 88mm !important;
     height: 125mm !important;
     margin: 0 !important;
-    border: 0 !important;
+    /* Crisp cutting guide around the physical badge. */
+    border: 1px solid #000 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    transform: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  /* Never add a trailing break after the last badge. */
+  .idgen-card-wrap:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }
 </style>
