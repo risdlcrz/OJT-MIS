@@ -1,0 +1,1482 @@
+<template>
+  <section class="idgen-page">
+    <div class="idgen-toolbar">
+      <div>
+        <h2 class="idgen-title">ID Generation</h2>
+        <p class="idgen-subtitle">
+          Customize the student trainee details, then print the front and back on separate 88&nbsp;mm &times; 125&nbsp;mm cards.
+        </p>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary" @click="resetForm">
+          <i class="fas fa-rotate-left me-1"></i> Reset
+        </button>
+        <button type="button" class="btn btn-primary" @click="printCard">
+          <i class="fas fa-print me-1"></i> Print ID
+        </button>
+      </div>
+    </div>
+
+    <div class="idgen-workspace">
+      <!-- ================= EDITOR ================= -->
+      <aside class="idgen-sidebar">
+        <div class="card shadow-sm">
+          <div class="card-header idgen-sidebar-head">
+            <h3 class="card-title mb-0"><i class="far fa-id-card me-2"></i>Card Details</h3>
+          </div>
+
+          <div class="card-body idgen-form">
+            <div class="idgen-form-section">
+              <h4 class="idgen-form-heading">Trainee</h4>
+
+              <div class="mb-3">
+                <label for="idgenFullName" class="form-label">Full Name</label>
+                <input
+                  id="idgenFullName"
+                  v-model="form.fullName"
+                  type="text"
+                  class="form-control"
+                  maxlength="60"
+                  placeholder="LOVELY ROSE L. ANDAYA"
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="idgenOffice" class="form-label">Office / Department</label>
+                <input
+                  id="idgenOffice"
+                  v-model="form.office"
+                  type="text"
+                  class="form-control"
+                  maxlength="60"
+                  placeholder="AS - INFORMATION TECHNOLOGY OFFICE"
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="idgenNumber" class="form-label">ID Number</label>
+                <input
+                  id="idgenNumber"
+                  v-model="form.idNumber"
+                  type="text"
+                  class="form-control"
+                  maxlength="30"
+                  placeholder="2026-007"
+                />
+              </div>
+
+              <div class="idgen-media">
+                <div class="idgen-media-thumb">
+                  <img v-if="photoUrl" :src="photoUrl" alt="Trainee photo preview" />
+                  <i v-else class="far fa-user"></i>
+                </div>
+                <div class="idgen-media-body">
+                  <div class="d-flex flex-wrap gap-2">
+                    <label class="btn btn-sm btn-outline-primary mb-0">
+                      <i class="fas fa-camera me-1"></i>
+                      {{ photoUrl ? 'Change Photo' : 'Upload Photo' }}
+                      <input type="file" accept="image/*" class="d-none" @change="handlePhotoChange" />
+                    </label>
+                    <button
+                      v-if="photoUrl"
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="photoUrl = ''"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <p class="idgen-hint mb-0">JPG or PNG, up to 5 MB. Cropped to a 7:9 portrait (35 × 45 mm).</p>
+                  <p v-if="photoError" class="text-danger small mb-0 mt-1">{{ photoError }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="idgen-form-section">
+              <h4 class="idgen-form-heading">Assignment &amp; Dates</h4>
+
+              <div class="row g-2">
+                <div class="col-6">
+                  <label for="idgenStarted" class="form-label">Date Started</label>
+                  <input id="idgenStarted" v-model="form.dateStarted" type="date" class="form-control" />
+                </div>
+                <div class="col-6">
+                  <label for="idgenValid" class="form-label">Valid Until</label>
+                  <input id="idgenValid" v-model="form.validUntil" type="date" class="form-control" />
+                </div>
+                <div class="col-12">
+                  <label for="idgenIssued" class="form-label">Date Issued</label>
+                  <input id="idgenIssued" v-model="form.dateIssued" type="date" class="form-control" />
+                </div>
+              </div>
+            </div>
+
+            <div class="idgen-form-section">
+              <h4 class="idgen-form-heading">School</h4>
+
+              <div class="mb-3">
+                <label for="idgenSchoolName" class="form-label">School Name</label>
+                <input
+                  id="idgenSchoolName"
+                  v-model="form.schoolName"
+                  type="text"
+                  class="form-control"
+                  maxlength="80"
+                  placeholder="COMMONWEALTH HIGH SCHOOL"
+                />
+              </div>
+
+              <div class="mb-0">
+                <label for="idgenSchoolAddress" class="form-label">School Address</label>
+                <input
+                  id="idgenSchoolAddress"
+                  v-model="form.schoolAddress"
+                  type="text"
+                  class="form-control"
+                  maxlength="120"
+                  placeholder="ECOLS ST., BRGY. COMMONWEALTH, QUEZON CITY"
+                />
+              </div>
+            </div>
+
+            <div class="idgen-form-section">
+              <h4 class="idgen-form-heading">Emergency Contact</h4>
+
+              <div class="mb-3">
+                <label for="idgenEmergencyName" class="form-label">Contact Name</label>
+                <input
+                  id="idgenEmergencyName"
+                  v-model="form.emergencyName"
+                  type="text"
+                  class="form-control"
+                  maxlength="60"
+                  placeholder="MARYROSE L. ANDAYA"
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="idgenEmergencyAddress" class="form-label">Contact Address</label>
+                <input
+                  id="idgenEmergencyAddress"
+                  v-model="form.emergencyAddress"
+                  type="text"
+                  class="form-control"
+                  maxlength="140"
+                  placeholder="239 DON FABIAN ST. BRGY. COMMONWEALTH, QUEZON CITY"
+                />
+              </div>
+
+              <div class="mb-0">
+                <label for="idgenEmergencyNumber" class="form-label">Contact Number</label>
+                <input
+                  id="idgenEmergencyNumber"
+                  v-model="form.emergencyNumber"
+                  type="tel"
+                  class="form-control"
+                  maxlength="30"
+                  placeholder="0906 921 1834"
+                />
+              </div>
+            </div>
+
+            <div class="idgen-form-section">
+              <h4 class="idgen-form-heading">Authorized Signatory</h4>
+
+              <div class="mb-3">
+                <label for="idgenSignatoryName" class="form-label">Signatory Name</label>
+                <input
+                  id="idgenSignatoryName"
+                  v-model="form.signatoryName"
+                  type="text"
+                  class="form-control"
+                  maxlength="60"
+                  placeholder="RODULFO A. DUZON, JR"
+                />
+              </div>
+
+              <div class="mb-3">
+                <label for="idgenSignatoryPosition" class="form-label">Position</label>
+                <input
+                  id="idgenSignatoryPosition"
+                  v-model="form.signatoryPosition"
+                  type="text"
+                  class="form-control"
+                  maxlength="60"
+                  placeholder="Administrative Officer V"
+                />
+              </div>
+
+              <div class="mb-0">
+                <label for="idgenSignatoryOffice" class="form-label">Office / Division</label>
+                <input
+                  id="idgenSignatoryOffice"
+                  v-model="form.signatoryOffice"
+                  type="text"
+                  class="form-control"
+                  maxlength="60"
+                  placeholder="HRMO-HRDMID"
+                />
+              </div>
+            </div>
+
+            <div class="idgen-form-section">
+              <h4 class="idgen-form-heading">Signature &amp; QR</h4>
+
+              <div class="idgen-media idgen-media--signature">
+                <div class="idgen-signature-thumb">
+                  <img v-if="signatureUrl" :src="signatureUrl" alt="Trainee signature preview" />
+                  <span v-else>Signature</span>
+                </div>
+                <div class="idgen-media-body">
+                  <div class="d-flex flex-wrap gap-2">
+                    <label class="btn btn-sm btn-outline-primary mb-0">
+                      <i class="fas fa-pen-nib me-1"></i>
+                      {{ signatureUrl ? 'Change Signature' : 'Upload Signature' }}
+                      <input type="file" accept="image/*" class="d-none" @change="handleSignatureChange" />
+                    </label>
+                    <button
+                      v-if="signatureUrl"
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="signatureUrl = ''"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <p class="idgen-hint mb-0">Optional PNG or JPG, up to 2 MB. A signature line is printed when empty.</p>
+                  <p v-if="signatureError" class="text-danger small mb-0 mt-1">{{ signatureError }}</p>
+                </div>
+              </div>
+
+              <div class="form-check form-switch idgen-switch">
+                <input
+                  id="idgenAutoQr"
+                  v-model="autoQr"
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                />
+                <label for="idgenAutoQr" class="form-check-label">Generate QR from ID details</label>
+              </div>
+
+              <label for="idgenQrValue" class="form-label">QR Content</label>
+              <textarea
+                id="idgenQrValue"
+                v-model="qrValue"
+                class="form-control form-control-sm"
+                rows="3"
+                maxlength="300"
+                :disabled="autoQr"
+              ></textarea>
+              <p v-if="qrError" class="text-danger small mb-0 mt-1">{{ qrError }}</p>
+              <p v-else class="idgen-hint mb-0 mt-1">
+                Scans to a verification summary of the ID number, name, office, and validity.
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ================= PREVIEW ================= -->
+      <div class="idgen-preview">
+        <div class="idgen-preview-head">
+          <div>
+            <span class="idgen-preview-eyebrow">Live Preview</span>
+            <p class="idgen-preview-note mb-0">
+              <i class="fas fa-ruler-combined me-1"></i> 88 mm &times; 125 mm &middot; front and back print on separate pages
+            </p>
+          </div>
+        </div>
+
+        <div class="idgen-cards">
+          <div class="idgen-card-wrap">
+            <span class="idgen-card-tag">Front</span>
+
+            <article class="idgen-card idgen-card--front" aria-label="Student trainee ID front">
+              <header class="idgen-front-head">
+                <div class="idgen-seal" aria-hidden="true">
+                  <span class="idgen-seal-star">&#9733;</span>
+                  <strong>COA</strong>
+                </div>
+                <div class="idgen-head-copy">
+                  <span class="idgen-republic">Republic of the Philippines</span>
+                  <strong class="idgen-agency">COMMISSION ON AUDIT</strong>
+                  <span class="idgen-agency-address">Commonwealth Ave., Quezon City</span>
+                </div>
+              </header>
+
+              <div class="idgen-bar idgen-bar--title">STUDENT TRAINEE</div>
+
+              <div class="idgen-front-body">
+                <div class="idgen-photo-col">
+                  <div class="idgen-photo">
+                    <img v-if="photoUrl" :src="photoUrl" alt="Trainee portrait" />
+                    <div v-else class="idgen-photo-empty">
+                      <i class="far fa-user"></i>
+                      <span>PHOTO</span>
+                    </div>
+                  </div>
+
+                  <div class="idgen-signature">
+                    <div class="idgen-signature-image">
+                      <img v-if="signatureUrl" :src="signatureUrl" alt="Trainee signature" />
+                    </div>
+                    <div class="idgen-signature-rule">Trainee Signature</div>
+                  </div>
+                </div>
+
+                <div class="idgen-details">
+                  <h2 class="idgen-name">{{ form.fullName || 'STUDENT NAME' }}</h2>
+                  <div class="idgen-name-rule"></div>
+
+                  <p class="idgen-meta">
+                    <span>Date Started</span>
+                    <strong>{{ formattedDates.started }}</strong>
+                  </p>
+                  <p class="idgen-meta">
+                    <span>Valid Until</span>
+                    <strong>{{ formattedDates.validUntil }}</strong>
+                  </p>
+                  <p class="idgen-meta">
+                    <span>Date Issued</span>
+                    <strong>{{ formattedDates.issued }}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div class="idgen-bar idgen-bar--office">{{ form.office || 'OFFICE / DEPARTMENT' }}</div>
+
+              <div class="idgen-qr-block">
+                <div class="idgen-qr-frame">
+                  <img v-if="qrDataUrl" :src="qrDataUrl" alt="ID verification QR code" />
+                  <div v-else class="idgen-qr-empty">QR</div>
+                </div>
+                <span class="idgen-qr-caption">Scan to verify</span>
+              </div>
+
+              <footer class="idgen-card-footer">
+                <span>No. {{ form.idNumber || '—' }}</span>
+              </footer>
+            </article>
+          </div>
+
+          <div class="idgen-card-wrap">
+            <span class="idgen-card-tag">Back</span>
+
+            <article class="idgen-card idgen-card--back" aria-label="Student trainee ID back">
+              <div class="idgen-watermark" aria-hidden="true">
+                <div class="idgen-watermark-seal">COA</div>
+                <span class="idgen-watermark-text">Student Trainee</span>
+              </div>
+
+              <div class="idgen-back-inner">
+                <div class="idgen-bar idgen-bar--title">SCHOOL INFORMATION</div>
+
+                <div class="idgen-back-school">
+                  <strong>{{ form.schoolName || 'SCHOOL NAME' }}</strong>
+                  <span>{{ form.schoolAddress || 'SCHOOL ADDRESS' }}</span>
+                </div>
+
+                <div class="idgen-back-section">
+                  <div class="idgen-back-section-title">IN CASE OF EMERGENCY, PLEASE NOTIFY</div>
+
+                  <dl class="idgen-back-rows">
+                    <div class="idgen-back-row">
+                      <dt>Name</dt>
+                      <dd>{{ form.emergencyName || '—' }}</dd>
+                    </div>
+                    <div class="idgen-back-row">
+                      <dt>Address</dt>
+                      <dd>{{ form.emergencyAddress || '—' }}</dd>
+                    </div>
+                    <div class="idgen-back-row">
+                      <dt>Contact No.</dt>
+                      <dd>{{ form.emergencyNumber || '—' }}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div class="idgen-back-verify">
+                  <div class="idgen-qr-frame idgen-qr-frame--small">
+                    <img v-if="qrDataUrl" :src="qrDataUrl" alt="ID verification QR code" />
+                    <div v-else class="idgen-qr-empty">QR</div>
+                  </div>
+                  <span class="idgen-qr-caption">Scan to verify</span>
+                </div>
+
+                <div class="idgen-back-signatory">
+                  <div class="idgen-signatory-line"></div>
+                  <strong>{{ form.signatoryName || 'AUTHORIZED SIGNATORY' }}</strong>
+                  <span>{{ form.signatoryPosition || 'POSITION' }}</span>
+                  <span>{{ form.signatoryOffice || 'OFFICE / DIVISION' }}</span>
+                </div>
+
+                <footer class="idgen-back-footer">
+                  If found, please return to Human Resource Database Management Information Division (HRDMID),
+                  HRMO or call 02 8951 0905
+                </footer>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script setup>
+import { computed, inject, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import QRCode from 'qrcode'
+
+const defaultForm = {
+  fullName: 'LOVELY ROSE L. ANDAYA',
+  office: 'AS - INFORMATION TECHNOLOGY OFFICE',
+  idNumber: '2026-007',
+  dateStarted: '2026-06-01',
+  validUntil: '2026-12-31',
+  dateIssued: '2026-06-01',
+  schoolName: 'COMMONWEALTH HIGH SCHOOL',
+  schoolAddress: 'ECOLS ST. BRGY COMMONWEALTH, QUEZON CITY',
+  emergencyName: 'MARYROSE L. ANDAYA',
+  emergencyAddress: '239 DON FABIAN ST. BRGY. COMMONWEALTH, QUEZON CITY',
+  emergencyNumber: '0906 921 1834',
+  signatoryName: 'RODULFO A. DUZON, JR',
+  signatoryPosition: 'Administrative Officer V',
+  signatoryOffice: 'HRMO-HRDMID'
+}
+
+const form = reactive({ ...defaultForm })
+const photoUrl = ref('')
+const signatureUrl = ref('')
+const photoError = ref('')
+const signatureError = ref('')
+const autoQr = ref(true)
+const qrValue = ref('')
+const qrDataUrl = ref('')
+const qrError = ref('')
+
+const dialog = inject('dialog', null)
+
+const MONTHS = ['JAN.', 'FEB.', 'MAR.', 'APR.', 'MAY', 'JUN.', 'JUL.', 'AUG.', 'SEP.', 'OCT.', 'NOV.', 'DEC.']
+
+function formatDate(value) {
+  if (!value) return '\u2014'
+
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+
+  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+}
+
+const formattedDates = computed(() => ({
+  started: formatDate(form.dateStarted),
+  validUntil: formatDate(form.validUntil),
+  issued: formatDate(form.dateIssued)
+}))
+
+const defaultQrValue = computed(() =>
+  [
+    'OJT-MIS STUDENT TRAINEE ID',
+    `ID No.: ${form.idNumber || 'N/A'}`,
+    `Name: ${form.fullName || 'N/A'}`,
+    `Office: ${form.office || 'N/A'}`,
+    `Valid Until: ${formattedDates.value.validUntil}`
+  ].join('\n')
+)
+
+const qrPayload = computed(() => (autoQr.value ? defaultQrValue.value : qrValue.value.trim()))
+
+/* Keep the editable QR text in sync while auto-generation is enabled. */
+watch(
+  defaultQrValue,
+  (value) => {
+    if (autoQr.value) qrValue.value = value
+  },
+  { immediate: true }
+)
+
+/* Re-enabling auto mode refreshes the textarea with the current details. */
+watch(autoQr, (enabled) => {
+  if (enabled) qrValue.value = defaultQrValue.value
+})
+
+let qrRequest = 0
+
+async function renderQr(value) {
+  const request = ++qrRequest
+
+  if (!value) {
+    qrDataUrl.value = ''
+    qrError.value = ''
+    return
+  }
+
+  try {
+    const dataUrl = await QRCode.toDataURL(value, {
+      margin: 0,
+      width: 320,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#201714', light: '#FFFFFF' }
+    })
+
+    if (request === qrRequest) {
+      qrDataUrl.value = dataUrl
+      qrError.value = ''
+    }
+  } catch (error) {
+    if (request === qrRequest) {
+      qrDataUrl.value = ''
+      qrError.value = 'Could not generate the QR code. Try shorter content.'
+    }
+  }
+}
+
+watch(qrPayload, renderQr, { immediate: true })
+
+onBeforeUnmount(() => {
+  qrRequest += 1
+})
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      const image = new Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('Could not read that image.'))
+      image.src = reader.result
+    }
+
+    reader.onerror = () => reject(new Error('Could not read the selected file.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function cropImage(file, targetWidth, targetHeight) {
+  const image = await loadImage(file)
+  const canvas = document.createElement('canvas')
+  canvas.width = targetWidth
+  canvas.height = targetHeight
+
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Could not process that image.')
+
+  const scale = Math.max(targetWidth / image.width, targetHeight / image.height)
+  const width = image.width * scale
+  const height = image.height * scale
+
+  context.drawImage(image, (targetWidth - width) / 2, (targetHeight - height) / 2, width, height)
+  return canvas.toDataURL('image/jpeg', 0.9)
+}
+
+async function fitImage(file, maxWidth, maxHeight) {
+  const image = await loadImage(file)
+  const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1)
+  const width = Math.max(1, Math.round(image.width * scale))
+  const height = Math.max(1, Math.round(image.height * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Could not process that image.')
+
+  context.drawImage(image, 0, 0, width, height)
+  return canvas.toDataURL('image/png')
+}
+
+function validateImage(file, maxBytes) {
+  if (!file) return 'No file selected.'
+  if (!file.type.startsWith('image/')) return 'Please choose an image file.'
+  if (file.size > maxBytes) return `Image must be ${Math.round(maxBytes / (1024 * 1024))} MB or smaller.`
+  return ''
+}
+
+async function handlePhotoChange(event) {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  photoError.value = ''
+
+  const problem = validateImage(file, 5 * 1024 * 1024)
+  if (problem) {
+    photoError.value = problem
+    return
+  }
+
+  try {
+    photoUrl.value = await cropImage(file, 490, 630)
+  } catch (error) {
+    photoError.value = error.message || 'Could not read that image.'
+  }
+}
+
+async function handleSignatureChange(event) {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  signatureError.value = ''
+
+  const problem = validateImage(file, 2 * 1024 * 1024)
+  if (problem) {
+    signatureError.value = problem
+    return
+  }
+
+  try {
+    signatureUrl.value = await fitImage(file, 600, 240)
+  } catch (error) {
+    signatureError.value = error.message || 'Could not read that image.'
+  }
+}
+
+async function resetForm() {
+  const message = 'Reset all ID fields to their defaults?'
+
+  if (dialog?.showConfirm) {
+    const confirmed = await dialog.showConfirm(message, 'Reset ID')
+    if (!confirmed) return
+  } else if (!window.confirm(message)) {
+    return
+  }
+
+  Object.assign(form, defaultForm)
+  photoUrl.value = ''
+  signatureUrl.value = ''
+  photoError.value = ''
+  signatureError.value = ''
+  autoQr.value = true
+}
+
+async function printCard() {
+  /* Make sure the preview QR is ready before the browser snapshots the page. */
+  if (qrPayload.value && !qrDataUrl.value) {
+    await renderQr(qrPayload.value)
+  }
+
+  window.print()
+}
+</script>
+
+<style>
+/* =====================================================================
+   ID Generation
+   Card sizes use physical units so the screen preview matches print.
+   All selectors are prefixed with .idgen- to avoid touching the app shell.
+   ===================================================================== */
+.idgen-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.idgen-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.idgen-title {
+  margin: 0;
+  color: #1e0f0c;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.idgen-subtitle {
+  margin: 0.25rem 0 0;
+  max-width: 62ch;
+  color: #74655d;
+  font-size: 0.88rem;
+}
+
+.idgen-workspace {
+  display: grid;
+  grid-template-columns: minmax(310px, 370px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.idgen-sidebar-head {
+  background: #fff7ec;
+  border-bottom: 1px solid #f3e4d3;
+}
+
+.idgen-sidebar-head .card-title {
+  color: #1e0f0c;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.idgen-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.1rem 1.15rem 1.25rem;
+}
+
+.idgen-form-section + .idgen-form-section {
+  padding-top: 1.1rem;
+  border-top: 1px dashed #e9dccd;
+}
+
+.idgen-form-heading {
+  margin: 0 0 0.75rem;
+  color: #a85300;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.idgen-form .form-label {
+  margin-bottom: 0.3rem;
+  color: #4a3931;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.idgen-form .form-control {
+  font-size: 0.86rem;
+}
+
+.idgen-hint {
+  margin-top: 0.35rem;
+  color: #8a7a71;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.idgen-media {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: 0.8rem;
+  border: 1px solid #efe3d6;
+  border-radius: 0.75rem;
+  background: #fffdf9;
+}
+
+.idgen-media-thumb {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 80px;
+  overflow: hidden;
+  border: 1px solid #e5d6c6;
+  border-radius: 0.5rem;
+  background: #f7eee3;
+  color: #b98d68;
+  font-size: 1.5rem;
+}
+
+.idgen-media-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.idgen-media-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.idgen-media--signature {
+  margin-bottom: 0.9rem;
+}
+
+.idgen-signature-thumb {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 52px;
+  overflow: hidden;
+  padding: 0.25rem;
+  border: 1px solid #e5d6c6;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #b7a597;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.idgen-signature-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.idgen-switch {
+  margin-bottom: 0.75rem;
+}
+
+.idgen-switch .form-check-label {
+  color: #4a3931;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.idgen-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.idgen-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.idgen-preview-eyebrow {
+  display: block;
+  color: #1e0f0c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.idgen-preview-note {
+  color: #8a7a71;
+  font-size: 0.75rem;
+}
+
+.idgen-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.idgen-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.idgen-card-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: #f1e3d2;
+  color: #8a541f;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------- ID CARD ---------------------------- */
+.idgen-card {
+  --idgen-ink: #201714;
+  --idgen-accent: #f26522;
+  --idgen-accent-dark: #c24a10;
+  --idgen-paper: #fffdf8;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 88mm;
+  height: 125mm;
+  overflow: hidden;
+  border: 1px solid #cfc1b3;
+  border-radius: 2mm;
+  background: var(--idgen-paper);
+  color: var(--idgen-ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.25;
+  page: idcard;
+  box-shadow: 0 18px 40px rgba(54, 31, 12, 0.18);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.idgen-card--back {
+  background: #fffefb;
+}
+
+.idgen-front-head {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  padding: 2.6mm 4mm;
+  background: var(--idgen-accent);
+  color: #fff;
+}
+
+.idgen-seal {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 11mm;
+  height: 11mm;
+  border: 0.5mm solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--idgen-accent);
+  line-height: 1;
+}
+
+.idgen-seal-star {
+  color: var(--idgen-accent);
+  font-size: 3.2pt;
+}
+
+.idgen-seal strong {
+  font-size: 6.4pt;
+  letter-spacing: 0.04em;
+}
+
+.idgen-head-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.idgen-republic {
+  color: #ffe9dc;
+  font-size: 4.4pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.idgen-agency {
+  margin: 0.5mm 0;
+  font-size: 8.6pt;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  line-height: 1.1;
+}
+
+.idgen-agency-address {
+  color: #ffe9dc;
+  font-size: 4.4pt;
+  letter-spacing: 0.03em;
+}
+
+.idgen-bar {
+  padding: 1.6mm 3mm;
+  text-align: center;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.idgen-bar--title {
+  background: var(--idgen-ink);
+  color: #fff;
+  font-size: 6.4pt;
+  letter-spacing: 0.16em;
+}
+
+.idgen-bar--office {
+  background: var(--idgen-accent);
+  color: #fff;
+  font-size: 5.8pt;
+  letter-spacing: 0.08em;
+}
+
+.idgen-front-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 3.5mm;
+  padding: 3mm 4mm 1.6mm;
+}
+
+.idgen-photo-col {
+  display: flex;
+  flex: 0 0 35mm;
+  flex-direction: column;
+  width: 35mm;
+}
+
+.idgen-photo {
+  flex: 0 0 auto;
+  width: 35mm;
+  height: 45mm;
+  overflow: hidden;
+  border: 0.4mm solid var(--idgen-ink);
+  border-radius: 0.8mm;
+  background: #f5eee5;
+}
+
+.idgen-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.idgen-photo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 1mm;
+  color: #b5906c;
+  font-size: 3.8pt;
+  letter-spacing: 0.14em;
+}
+
+.idgen-photo-empty i {
+  font-size: 15pt;
+}
+
+.idgen-details {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  height: 45mm;
+}
+
+.idgen-name {
+  margin: 0 0 1.2mm;
+  color: #1b100b;
+  font-size: 10.2pt;
+  font-weight: 800;
+  line-height: 1.08;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.idgen-name-rule {
+  width: 18mm;
+  height: 0.8mm;
+  margin-bottom: 2mm;
+  background: var(--idgen-accent);
+}
+
+.idgen-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2mm;
+  margin: 0 0 0.9mm;
+  padding-bottom: 0.6mm;
+  border-bottom: 0.15mm dashed #d8c8b8;
+  font-size: 5.3pt;
+  line-height: 1.25;
+}
+
+.idgen-meta:last-child {
+  margin-bottom: 0;
+}
+
+.idgen-meta span {
+  color: #7a675b;
+  font-size: 4.5pt;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.idgen-meta strong {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.idgen-signature {
+  margin: 1.2mm 0 0;
+  text-align: center;
+}
+
+.idgen-signature-image {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 5mm;
+}
+
+.idgen-signature-image img {
+  max-width: 33mm;
+  max-height: 5mm;
+  object-fit: contain;
+}
+
+.idgen-signature-rule {
+  padding-top: 0.7mm;
+  border-top: 0.3mm solid var(--idgen-ink);
+  color: #5d4431;
+  font-size: 4pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.idgen-qr-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  padding: 1mm 0 2.6mm;
+}
+
+.idgen-qr-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 23mm;
+  height: 23mm;
+  overflow: hidden;
+  background: #fff;
+}
+
+.idgen-qr-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.idgen-qr-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 0.3mm dashed #cdbba8;
+  color: #b7a597;
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.idgen-qr-caption {
+  margin-top: 0.8mm;
+  color: #7a675b;
+  font-size: 3.9pt;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.idgen-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2mm;
+  margin-top: auto;
+  padding: 1.8mm 4mm;
+  background: var(--idgen-ink);
+  color: #fff;
+  font-size: 4.6pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------- BACK SIDE ---------------------------- */
+.idgen-watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2mm;
+  opacity: 0.055;
+  pointer-events: none;
+}
+
+.idgen-watermark-seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52mm;
+  height: 52mm;
+  border: 2.5mm double var(--idgen-ink);
+  border-radius: 50%;
+  color: var(--idgen-ink);
+  font-size: 24pt;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.idgen-watermark-text {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.idgen-back-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.idgen-back-school {
+  padding: 4.2mm 5mm 3.4mm;
+  text-align: left;
+}
+
+.idgen-back-school strong {
+  display: block;
+  margin: 0 0 0.8mm;
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.idgen-back-school > span:last-child {
+  display: block;
+  color: #5d4c41;
+  font-size: 5.1pt;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.idgen-back-section {
+  margin: 3.4mm 0 0;
+}
+
+.idgen-back-section-title {
+  padding: 1.8mm 3mm;
+  background: var(--idgen-accent);
+  color: #fff;
+  font-size: 5.2pt;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.idgen-back-rows {
+  margin: 0;
+  padding: 0 3mm;
+}
+
+.idgen-back-row {
+  display: grid;
+  grid-template-columns: 17mm minmax(0, 1fr);
+  gap: 2mm;
+  padding: 1.5mm 0;
+  border-bottom: 0.15mm solid #e6d9ca;
+}
+
+.idgen-back-row:last-child {
+  border-bottom: 0;
+}
+
+.idgen-back-row dt {
+  color: #8d7766;
+  font-size: 4.4pt;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.idgen-back-row dd {
+  margin: 0;
+  font-size: 5.4pt;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.idgen-back-verify {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 3mm 0 2mm;
+}
+
+.idgen-qr-frame--small {
+  width: 22mm;
+  height: 22mm;
+}
+
+.idgen-back-verify .idgen-qr-caption {
+  margin-top: 1.2mm;
+}
+
+.idgen-back-signatory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4mm;
+  padding: 0 9mm 6mm;
+  text-align: center;
+}
+
+.idgen-signatory-line {
+  width: 100%;
+  margin-bottom: 1.2mm;
+  border-top: 0.3mm solid var(--idgen-ink);
+}
+
+.idgen-back-signatory strong {
+  font-size: 6pt;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.idgen-back-signatory span {
+  color: #5d4c41;
+  font-size: 4.8pt;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.idgen-back-footer {
+  padding: 2mm 4mm;
+  background: var(--idgen-ink);
+  color: #fff;
+  font-size: 4pt;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+/* ---------------------------- RESPONSIVE ---------------------------- */
+@media (max-width: 1199.98px) {
+  .idgen-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .idgen-toolbar .btn {
+    flex: 1 1 auto;
+  }
+
+  .idgen-cards {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* ---------------------------- PRINT ---------------------------- */
+/* Named page so the 88 x 125 mm size applies only to the ID cards,
+   not to other printable pages in the app. */
+@page idcard {
+  size: 88mm 125mm;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    width: 88mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    width: 88mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .app-shell > .main-header,
+  .app-shell > .main-sidebar,
+  .app-shell > .main-footer,
+  .app-shell > .sidebar-backdrop,
+  .app-shell > .modal {
+    display: none !important;
+  }
+
+  .app-shell > .content-wrapper {
+    display: block !important;
+    width: 88mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .shell-content,
+  .shell-body {
+    display: block !important;
+    width: 88mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .idgen-page,
+  .idgen-workspace,
+  .idgen-preview,
+  .idgen-cards {
+    display: block !important;
+    width: 88mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #fff !important;
+  }
+
+  .idgen-toolbar,
+  .idgen-sidebar,
+  .idgen-preview-head,
+  .idgen-card-tag {
+    display: none !important;
+  }
+
+  .idgen-card-wrap {
+    display: block !important;
+    width: 88mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .idgen-card-wrap + .idgen-card-wrap {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .idgen-card {
+    width: 88mm !important;
+    height: 125mm !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+</style>

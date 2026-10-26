@@ -304,7 +304,6 @@ const MODULES = {
   },
   'forms.html': { title: 'Issuance of COC' },
   'dtr.html': { title: 'Daily Time Records' },
-  'idgenerate.html': { title: 'ID Generation' },
   'utility.html': { title: 'Utility' },
   'contact.html': { title: 'Contact Us' }
 }

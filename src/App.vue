@@ -7,6 +7,7 @@ import RequestsPage from '../pages/requests.vue'
 import ApplicantsPage from '../pages/applicants.vue'
 import SchoolsPage from '../pages/Schools.vue'
 import AccountPage from '../pages/account.vue'
+import IdGeneratePage from '../pages/idgenerate.vue'
 import ModulePage from '../pages/ModulePage.vue'
 import ForbiddenPage from '../pages/forbidden.vue'
 import { clearSession, currentUser, isHRAdmin } from './services/api'
@@ -38,7 +39,7 @@ const pageComponents = {
   'internlist.html': ModulePage,
   'forms.html': ModulePage,
   'dtr.html': ModulePage,
-  'idgenerate.html': ModulePage,
+  'idgenerate.html': IdGeneratePage,
   'utility.html': ModulePage,
   'signatories.html': ModulePage,
   'contact.html': ModulePage,
