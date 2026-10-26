@@ -27,8 +27,11 @@
           </div>
 
           <div class="card-body idgen-form">
-            <div class="idgen-form-section">
-              <h4 class="idgen-form-heading">Trainee</h4>
+            <details class="idgen-form-section" open>
+              <summary class="idgen-form-heading">
+                <span>Personal</span>
+                <i class="fas fa-chevron-right idgen-section-chevron" aria-hidden="true"></i>
+              </summary>
 
               <div class="mb-3">
                 <label for="idgenFullName" class="form-label">Full Name</label>
@@ -91,10 +94,13 @@
                   <p v-if="photoError" class="text-danger small mb-0 mt-1">{{ photoError }}</p>
                 </div>
               </div>
-            </div>
+            </details>
 
-            <div class="idgen-form-section">
-              <h4 class="idgen-form-heading">Assignment &amp; Dates</h4>
+            <details class="idgen-form-section" open>
+              <summary class="idgen-form-heading">
+                <span>Dates</span>
+                <i class="fas fa-chevron-right idgen-section-chevron" aria-hidden="true"></i>
+              </summary>
 
               <div class="row g-2">
                 <div class="col-6">
@@ -110,10 +116,13 @@
                   <input id="idgenIssued" v-model="form.dateIssued" type="date" class="form-control" />
                 </div>
               </div>
-            </div>
+            </details>
 
-            <div class="idgen-form-section">
-              <h4 class="idgen-form-heading">School</h4>
+            <details class="idgen-form-section">
+              <summary class="idgen-form-heading">
+                <span>School</span>
+                <i class="fas fa-chevron-right idgen-section-chevron" aria-hidden="true"></i>
+              </summary>
 
               <div class="mb-3">
                 <label for="idgenSchoolName" class="form-label">School Name</label>
@@ -138,10 +147,13 @@
                   placeholder="ECOLS ST., BRGY. COMMONWEALTH, QUEZON CITY"
                 />
               </div>
-            </div>
+            </details>
 
-            <div class="idgen-form-section">
-              <h4 class="idgen-form-heading">Emergency Contact</h4>
+            <details class="idgen-form-section" open>
+              <summary class="idgen-form-heading">
+                <span>Emergency</span>
+                <i class="fas fa-chevron-right idgen-section-chevron" aria-hidden="true"></i>
+              </summary>
 
               <div class="mb-3">
                 <label for="idgenEmergencyName" class="form-label">Contact Name</label>
@@ -178,10 +190,13 @@
                   placeholder="0906 921 1834"
                 />
               </div>
-            </div>
+            </details>
 
-            <div class="idgen-form-section">
-              <h4 class="idgen-form-heading">Authorized Signatory</h4>
+            <details class="idgen-form-section">
+              <summary class="idgen-form-heading">
+                <span>Authorized Signatory</span>
+                <i class="fas fa-chevron-right idgen-section-chevron" aria-hidden="true"></i>
+              </summary>
 
               <div class="mb-3">
                 <label for="idgenSignatoryName" class="form-label">Signatory Name</label>
@@ -218,10 +233,13 @@
                   placeholder="HRMO-HRDMID"
                 />
               </div>
-            </div>
+            </details>
 
-            <div class="idgen-form-section">
-              <h4 class="idgen-form-heading">Signature &amp; QR</h4>
+            <details class="idgen-form-section">
+              <summary class="idgen-form-heading">
+                <span>Signature &amp; QR</span>
+                <i class="fas fa-chevron-right idgen-section-chevron" aria-hidden="true"></i>
+              </summary>
 
               <div class="idgen-media idgen-media--signature">
                 <div class="idgen-signature-thumb">
@@ -273,7 +291,7 @@
               <p v-else class="idgen-hint mb-0 mt-1">
                 Scans to a verification summary of the ID number, name, office, and validity.
               </p>
-            </div>
+            </details>
           </div>
         </div>
       </aside>
@@ -289,9 +307,10 @@
           </div>
         </div>
 
-        <div class="idgen-cards">
-          <div class="idgen-card-wrap">
-            <span class="idgen-card-tag">Front</span>
+        <div class="idgen-preview-stage">
+          <div class="idgen-cards">
+            <div class="idgen-card-wrap">
+              <span class="idgen-card-tag">Front</span>
 
             <article class="idgen-card idgen-card--front" aria-label="Student trainee ID front">
               <header class="idgen-front-head">
@@ -419,6 +438,7 @@
               </div>
             </article>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -698,8 +718,8 @@ async function printCard() {
 
 .idgen-workspace {
   display: grid;
-  grid-template-columns: minmax(310px, 370px) minmax(0, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(300px, 350px) minmax(0, 1fr);
+  gap: 1.5rem;
   align-items: start;
 }
 
@@ -727,12 +747,57 @@ async function printCard() {
 }
 
 .idgen-form-heading {
-  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.15rem 0;
   color: #a85300;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+/* Hide the native disclosure triangle so the chevron is the only marker. */
+.idgen-form-heading::-webkit-details-marker {
+  display: none;
+}
+
+.idgen-form-heading::marker {
+  content: '';
+}
+
+.idgen-form-heading:hover {
+  color: #7d3d00;
+}
+
+.idgen-form-heading:focus-visible {
+  outline: 2px solid #f26522;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.idgen-section-chevron {
+  flex: 0 0 auto;
+  color: #c07a3a;
+  font-size: 0.66rem;
+  transform: rotate(0deg);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.idgen-form-section[open] > .idgen-form-heading .idgen-section-chevron {
+  transform: rotate(90deg);
+}
+
+/* Space only when the section is expanded, so closed rows stay compact. */
+.idgen-form-section[open] > .idgen-form-heading {
+  margin-bottom: 0.85rem;
 }
 
 .idgen-form .form-label {
@@ -856,19 +921,33 @@ async function printCard() {
   font-size: 0.75rem;
 }
 
+.idgen-preview-stage {
+  display: block;
+  padding: clamp(0.9rem, 2.2vw, 2rem);
+  border: 1px solid #eadccb;
+  border-radius: 1rem;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #fffdf9 0%, #f7eddf 58%, #f0e2d1 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 20px 45px -28px rgba(54, 31, 12, 0.55);
+  overflow-x: auto;
+}
+
 .idgen-cards {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
-  justify-content: center;
-  gap: 1.5rem;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  width: max-content;
+  margin: 0 auto;
 }
 
 .idgen-card-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .idgen-card-tag {
@@ -897,14 +976,17 @@ async function printCard() {
   width: 88mm;
   height: 125mm;
   overflow: hidden;
-  border: 1px solid #cfc1b3;
-  border-radius: 2mm;
+  border: 1px solid #d3c5b7;
+  border-radius: 3mm;
   background: var(--idgen-paper);
   color: var(--idgen-ink);
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   line-height: 1.25;
   page: idcard;
-  box-shadow: 0 18px 40px rgba(54, 31, 12, 0.18);
+  box-shadow:
+    0 1px 2px rgba(54, 31, 12, 0.12),
+    0 12px 24px -14px rgba(54, 31, 12, 0.4),
+    0 30px 55px -30px rgba(54, 31, 12, 0.45);
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -1073,28 +1155,32 @@ async function printCard() {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 2mm;
-  margin: 0 0 0.9mm;
-  padding-bottom: 0.6mm;
-  border-bottom: 0.15mm dashed #d8c8b8;
-  font-size: 5.3pt;
-  line-height: 1.25;
+  gap: 2.5mm;
+  margin: 0 0 1mm;
+  padding-bottom: 0.7mm;
+  border-bottom: 0.15mm dashed #ded1c3;
+  line-height: 1.2;
 }
 
 .idgen-meta:last-child {
   margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .idgen-meta span {
-  color: #7a675b;
-  font-size: 4.5pt;
-  letter-spacing: 0.04em;
+  color: #8b7768;
+  font-size: 4.2pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .idgen-meta strong {
-  text-align: right;
+  color: #211712;
+  font-size: 5.4pt;
   font-weight: 700;
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -1253,14 +1339,19 @@ async function printCard() {
 }
 
 .idgen-back-section {
-  margin: 3.4mm 0 0;
+  margin: 3mm 4mm 0;
+  overflow: hidden;
+  border: 0.2mm solid #eddccb;
+  border-radius: 1.5mm;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow: 0 0.8mm 2.2mm rgba(32, 23, 20, 0.07);
 }
 
 .idgen-back-section-title {
-  padding: 1.8mm 3mm;
+  padding: 1.6mm 3mm;
   background: var(--idgen-accent);
   color: #fff;
-  font-size: 5.2pt;
+  font-size: 5.1pt;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-align: center;
@@ -1269,15 +1360,16 @@ async function printCard() {
 
 .idgen-back-rows {
   margin: 0;
-  padding: 0 3mm;
+  padding: 0.6mm 3mm 1.4mm;
 }
 
 .idgen-back-row {
   display: grid;
-  grid-template-columns: 17mm minmax(0, 1fr);
-  gap: 2mm;
-  padding: 1.5mm 0;
-  border-bottom: 0.15mm solid #e6d9ca;
+  grid-template-columns: 14mm minmax(0, 1fr);
+  gap: 2.5mm;
+  align-items: baseline;
+  padding: 1.3mm 0;
+  border-bottom: 0.15mm dashed #e3d4c3;
 }
 
 .idgen-back-row:last-child {
@@ -1285,17 +1377,18 @@ async function printCard() {
 }
 
 .idgen-back-row dt {
-  color: #8d7766;
-  font-size: 4.4pt;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  color: #95806f;
+  font-size: 4.1pt;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .idgen-back-row dd {
   margin: 0;
-  font-size: 5.4pt;
-  font-weight: 600;
+  color: #241914;
+  font-size: 5.2pt;
+  font-weight: 700;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
@@ -1370,10 +1463,9 @@ async function printCard() {
     flex: 1 1 auto;
   }
 
-  .idgen-cards {
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
+  .idgen-preview-stage {
+    padding: 0.85rem;
+    border-radius: 0.75rem;
   }
 }
 
@@ -1440,13 +1532,18 @@ async function printCard() {
   .idgen-page,
   .idgen-workspace,
   .idgen-preview,
+  .idgen-preview-stage,
   .idgen-cards {
     display: block !important;
     width: 88mm !important;
+    min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
+    border-radius: 0 !important;
     background: #fff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
   }
 
   .idgen-toolbar,

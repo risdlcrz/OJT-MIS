@@ -7,10 +7,16 @@
       <button
         type="button"
         class="shell-mobile-toggle d-md-none"
+        :class="{ 'is-active': sidebarFullscreen }"
+        :aria-expanded="String(sidebarFullscreen)"
         aria-label="Open navigation menu"
         @click="toggleSidebar"
       >
-        <i class="fas fa-bars"></i>
+        <span class="hamburger-bars" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
       </button>
 
       <span class="navbar-greeting">Hello {{ userName }}</span>
@@ -85,12 +91,17 @@
         <button
           type="button"
           class="shell-menu-toggle"
+          :class="{ 'is-active': sidebarFullscreen || !sidebarCollapsed }"
           :aria-expanded="String(sidebarFullscreen || !sidebarCollapsed)"
           aria-label="Toggle navigation menu"
           title="Toggle sidebar"
           @click="toggleSidebar"
         >
-          <i class="fas fa-bars"></i>
+          <span class="hamburger-bars" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
         </button>
       </div>
 
@@ -122,7 +133,11 @@
               <p>{{ item.name }}</p>
             </a>
 
-            <ul v-if="item.submenu && openMenus.has(item.name)" class="nav nav-treeview">
+            <ul
+              v-if="item.submenu"
+              class="nav nav-treeview"
+              :class="{ 'is-open': openMenus.has(item.name) }"
+            >
               <li v-for="child in item.submenu" :key="child.name" class="nav-item">
                 <a
                   :href="resolveLink(child)"
@@ -738,7 +753,10 @@ body {
   border-right: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 8px 0 30px rgba(30, 15, 5, 0.18);
   overflow: hidden;
-  transition: transform 0.28s ease, width 0.28s ease, top 0.28s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-fullscreen-open .main-sidebar {
@@ -855,6 +873,50 @@ body {
   cursor: pointer;
 }
 
+/* Hamburger bars -> X when the drawer/toggle is active */
+.shell-menu-toggle,
+.shell-mobile-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger-bars {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 20px;
+  height: 14px;
+}
+
+.hamburger-bars span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: center;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease;
+}
+
+.shell-menu-toggle.is-active .hamburger-bars span:nth-child(1),
+.shell-mobile-toggle.is-active .hamburger-bars span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.shell-menu-toggle.is-active .hamburger-bars span:nth-child(2),
+.shell-mobile-toggle.is-active .hamburger-bars span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.shell-menu-toggle.is-active .hamburger-bars span:nth-child(3),
+.shell-mobile-toggle.is-active .hamburger-bars span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
 /* ---------- Sidebar navigation (photo reference) ---------- */
 .main-sidebar .sidebar {
   flex: 1 1 auto;
@@ -885,6 +947,11 @@ body {
 .main-sidebar .nav-sidebar .nav-link .right {
   font-size: 0.7rem;
   opacity: 0.8;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-sidebar .nav-sidebar .nav-item.menu-open > .nav-link .right {
+  transform: rotate(-90deg);
 }
 
 .main-sidebar .nav-sidebar .nav-link:hover {
@@ -904,6 +971,26 @@ body {
   margin: 0;
   padding-left: 0;
   background: rgba(0, 0, 0, 0.22);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.22s ease,
+    visibility 0s linear 0.3s;
+}
+
+.main-sidebar .nav-treeview.is-open {
+  max-height: 14rem;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.22s ease 0.05s,
+    visibility 0s;
 }
 
 .main-sidebar .nav-treeview > .nav-item > .nav-link {
@@ -1196,7 +1283,10 @@ body {
   .shell-content,
   .main-footer,
   .content-wrapper {
-    transition: margin-left 0.2s ease-in-out, transform 0.2s ease-in-out;
+    transition:
+      margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 

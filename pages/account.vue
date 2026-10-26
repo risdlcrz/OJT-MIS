@@ -1,34 +1,5 @@
 <template>
   <section class="content">
-    <!-- Tabs -->
-    <div class="d-flex flex-wrap gap-2 mb-3 account-tabs" role="group" aria-label="Account view switcher">
-      <button
-        type="button"
-        class="btn"
-        :class="activeTab === 'profile' ? 'btn-primary' : 'btn-outline-primary'"
-        @click="setTab('profile')"
-      >
-        <i class="far fa-user-circle me-1"></i> Profile
-      </button>
-      <button
-        type="button"
-        class="btn"
-        :class="activeTab === 'security' ? 'btn-primary' : 'btn-outline-primary'"
-        @click="setTab('security')"
-      >
-        <i class="fas fa-key me-1"></i> Security
-      </button>
-      <button
-        v-if="isAdmin"
-        type="button"
-        class="btn"
-        :class="activeTab === 'users' ? 'btn-primary' : 'btn-outline-primary'"
-        @click="setTab('users')"
-      >
-        <i class="fas fa-users-cog me-1"></i> User Management
-      </button>
-    </div>
-
     <!-- ================= PROFILE TAB ================= -->
     <div v-if="activeTab === 'profile'">
       <div v-if="isLoadingProfile" class="text-center my-5">
@@ -580,7 +551,17 @@ import {
 
 const roleOptions = ['HRAdmin', 'Supervisor', 'Intern']
 const isAdmin = ref(isHRAdmin())
-const activeTab = ref('profile')
+
+/* Which account view is showing. The left sidebar drives this through the
+   URL hash (#security / #users), so a direct link or refresh keeps the view. */
+function tabFromHash() {
+  const tab = window.location.hash.replace('#', '').toLowerCase()
+  if (tab === 'security') return 'security'
+  if (tab === 'users' && isAdmin.value) return 'users'
+  return 'profile'
+}
+
+const activeTab = ref(tabFromHash())
 
 /* ---- Toast ---- */
 const toastEl = ref(null)
@@ -668,15 +649,6 @@ const initials = computed(() => {
   return `${first}${last}`.toUpperCase() || '?'
 })
 
-function setTab(tab) {
-  if (tab === 'users' && !isAdmin.value) return
-  activeTab.value = tab
-
-  if (tab === 'users' && !usersLoaded.value) {
-    loadUsers()
-  }
-}
-
 function applyProfile(profile) {
   profileForm.firstName = profile.firstName || ''
   profileForm.lastName = profile.lastName || ''
@@ -689,6 +661,16 @@ function applyProfile(profile) {
   // Keep the navbar greeting and the stored session in sync.
   persistProfile(profile)
   window.dispatchEvent(new Event('ojt:profile-changed'))
+}
+
+/* Sidebar sub-items link to account.html#security and account.html#users.
+   Follow the hash so clicking them switches the view without a page reload. */
+function readTabFromUrl() {
+  activeTab.value = tabFromHash()
+
+  if (activeTab.value === 'users' && !usersLoaded.value) {
+    loadUsers()
+  }
 }
 
 async function loadProfile() {
@@ -1089,22 +1071,20 @@ onMounted(() => {
   toast = new Toast(document.getElementById('accountToast'), { autohide: false })
   toastEl.value = document.getElementById('accountToast')
 
+  readTabFromUrl()
+  window.addEventListener('hashchange', readTabFromUrl)
   loadProfile()
 })
 
 onBeforeUnmount(() => {
   userModal?.dispose()
   toast?.dispose()
+  window.removeEventListener('hashchange', readTabFromUrl)
   window.clearTimeout(notificationTimeout.value)
 })
 </script>
 
 <style scoped>
-.account-tabs .btn {
-  min-width: 150px;
-  font-weight: 600;
-}
-
 .account-avatar {
   display: flex;
   align-items: center;
@@ -1146,12 +1126,5 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-@media (max-width: 575.98px) {
-  .account-tabs .btn {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
 }
 </style>

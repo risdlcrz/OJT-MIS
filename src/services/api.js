@@ -36,7 +36,7 @@ apiClient.interceptors.request.use(
 
 // Modules na sinusubaybayan ng notification bell. Kapag may successful na
 // CRUD dito, agad na nagre-refresh ang bell (hindi na hihintayin ang poll).
-const NOTIFICATION_MODULES = ['/schools', '/signatories', '/applicants', '/interns', '/internrequests']
+const NOTIFICATION_MODULES = ['/schools', '/signatories', '/applicants', '/interns', '/internrequests', '/account/profile']
 
 // Normalise API failures so callers can always read a human-readable message.
 apiClient.interceptors.response.use(

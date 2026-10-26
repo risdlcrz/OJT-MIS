@@ -1,9 +1,8 @@
 {
   "ExpandedNodes": [
     "",
-    "\\OJTMISApi",
-    "\\pages",
-    "\\references"
+    "\\OJTMISApi"
   ],
+  "SelectedNode": "\\OJTMISApi\\appsettings.json",
   "PreviewInSolutionExplorer": false
 }

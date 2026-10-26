@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using OJTMISApi.Data;
 using OJTMISApi.Models;
 
 namespace OJTMISApi.Controllers
@@ -17,10 +18,12 @@ namespace OJTMISApi.Controllers
         private const int MaxAvatarLength = 700_000;
 
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _context;
 
-        public AccountController(UserManager<ApplicationUser> userManager)
+        public AccountController(UserManager<ApplicationUser> userManager, ApplicationDbContext context)
         {
             _userManager = userManager;
+            _context = context;
         }
 
         /// <summary>GET: api/account/profile</summary>
@@ -62,10 +65,13 @@ namespace OJTMISApi.Controllers
                 user.UserName = email;
             }
 
+            var newAvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
+            var avatarChanged = !string.Equals(user.AvatarUrl, newAvatarUrl, StringComparison.Ordinal);
+
             user.FirstName = request.FirstName.Trim();
             user.LastName = request.LastName.Trim();
             user.Office = string.IsNullOrWhiteSpace(request.Office) ? null : request.Office.Trim();
-            user.AvatarUrl = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
+            user.AvatarUrl = newAvatarUrl;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -75,6 +81,8 @@ namespace OJTMISApi.Controllers
                     message = string.Join(" ", result.Errors.Select(e => e.Description))
                 });
             }
+
+            await AddAccountNotificationAsync(user.Id, avatarChanged);
 
             return Ok(await BuildProfileAsync(user));
         }
@@ -103,6 +111,28 @@ namespace OJTMISApi.Controllers
             }
 
             return Ok(new { message = "Password changed successfully." });
+        }
+
+        /// <summary>
+        /// Records an "Update" notification in the Account module after a
+        /// successful profile save. Saved through the same DbContext so the
+        /// bell's normal notification query sees it immediately.
+        /// </summary>
+        private async Task AddAccountNotificationAsync(string userId, bool avatarChanged)
+        {
+            _context.Notifications.Add(new Notification
+            {
+                UserId = userId,
+                Title = "Account updated",
+                Message = avatarChanged
+                    ? "Your account profile picture was successfully updated."
+                    : "Your account profile was successfully updated.",
+                Module = "Account",
+                IsRead = false,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
         }
 
         private async Task<AccountProfile> BuildProfileAsync(ApplicationUser user)

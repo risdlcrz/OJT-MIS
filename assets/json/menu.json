@@ -32,6 +32,14 @@
         {
           "name": "Account Information",
           "link": "account.html"
+        },
+        {
+          "name": "Security",
+          "link": "account.html#security"
+        },
+        {
+          "name": "User Management",
+          "link": "account.html#users"
         }
       ]
     },
