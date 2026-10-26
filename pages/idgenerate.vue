@@ -416,14 +416,6 @@
                   </dl>
                 </div>
 
-                <div class="idgen-back-verify">
-                  <div class="idgen-qr-frame idgen-qr-frame--small">
-                    <img v-if="qrDataUrl" :src="qrDataUrl" alt="ID verification QR code" />
-                    <div v-else class="idgen-qr-empty">QR</div>
-                  </div>
-                  <span class="idgen-qr-caption">Scan to verify</span>
-                </div>
-
                 <div class="idgen-back-signatory">
                   <div class="idgen-signatory-line"></div>
                   <strong>{{ form.signatoryName || 'AUTHORIZED SIGNATORY' }}</strong>
@@ -1472,6 +1464,7 @@ async function printCard() {
   flex-direction: column;
   align-items: center;
   gap: 0.4mm;
+  margin-top: auto;
   padding: 0 9mm 6mm;
   text-align: center;
 }
