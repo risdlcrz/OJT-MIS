@@ -60,7 +60,7 @@
               "RelativeDocumentMoniker": "OJTMISApi\\appsettings.json",
               "ToolTip": "C:\\Users\\luis\\source\\repos\\OJT-MIS\\OJTMISApi\\appsettings.json",
               "RelativeToolTip": "OJTMISApi\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAiAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAABHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2026-10-26T04:43:03.165Z",
               "EditorCaption": ""
@@ -75,7 +75,8 @@
               "RelativeToolTip": "assets\\css\\navigation.css",
               "ViewState": "AgIAAIEAAAAAAAAAAAAswIYAAAAuAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2026-10-21T03:27:54.545Z"
+              "WhenOpened": "2026-10-21T03:27:54.545Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -87,7 +88,8 @@
               "RelativeToolTip": "pages\\dashboard.vue",
               "ViewState": "AgIAAHQAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
               "Icon": "cb4a8fc6-efe7-424a-b611-23adf22b568e.000035|",
-              "WhenOpened": "2026-10-20T06:59:36.927Z"
+              "WhenOpened": "2026-10-20T06:59:36.927Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -99,7 +101,8 @@
               "RelativeToolTip": "pages\\login.vue",
               "ViewState": "AgIAAKYAAAAAAAAAAAAowLUAAAAYAAAAAAAAAA==",
               "Icon": "cb4a8fc6-efe7-424a-b611-23adf22b568e.000035|",
-              "WhenOpened": "2026-10-20T05:38:03.597Z"
+              "WhenOpened": "2026-10-20T05:38:03.597Z",
+              "EditorCaption": ""
             }
           ]
         }

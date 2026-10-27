@@ -315,8 +315,7 @@
             <article class="idgen-card idgen-card--front" aria-label="Student trainee ID front">
               <header class="idgen-front-head">
                 <div class="idgen-seal" aria-hidden="true">
-                  <span class="idgen-seal-star">&#9733;</span>
-                  <strong>COA</strong>
+                  <img src="/assets/images/logo.png" alt="COA Logo" />
                 </div>
                 <div class="idgen-head-copy">
                   <span class="idgen-republic">Republic of the Philippines</span>
@@ -384,49 +383,46 @@
             <span class="idgen-card-tag">Back</span>
 
             <article class="idgen-card idgen-card--back" aria-label="Student trainee ID back">
-              <div class="idgen-watermark" aria-hidden="true">
-                <div class="idgen-watermark-seal">COA</div>
-                <span class="idgen-watermark-text">Student Trainee</span>
-              </div>
-
               <div class="idgen-back-inner">
-                <div class="idgen-bar idgen-bar--title">SCHOOL INFORMATION</div>
+                <div class="idgen-back-top">
+                  <div class="idgen-bar idgen-bar--title">SCHOOL INFORMATION</div>
 
-                <div class="idgen-back-school">
-                  <strong>{{ form.schoolName || 'SCHOOL NAME' }}</strong>
-                  <span>{{ form.schoolAddress || 'SCHOOL ADDRESS' }}</span>
+                  <div class="idgen-back-school">
+                    <strong>{{ form.schoolName || 'SCHOOL NAME' }}</strong>
+                    <span>{{ form.schoolAddress || 'SCHOOL ADDRESS' }}</span>
+                  </div>
+
+                  <div class="idgen-back-section">
+                    <div class="idgen-back-section-title">IN CASE OF EMERGENCY, PLEASE NOTIFY</div>
+
+                    <dl class="idgen-back-rows">
+                      <div class="idgen-back-row">
+                        <dt>Name</dt>
+                        <dd>{{ form.emergencyName || '—' }}</dd>
+                      </div>
+                      <div class="idgen-back-row">
+                        <dt>Address</dt>
+                        <dd>{{ form.emergencyAddress || '—' }}</dd>
+                      </div>
+                      <div class="idgen-back-row">
+                        <dt>Contact No.</dt>
+                        <dd>{{ form.emergencyNumber || '—' }}</dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
 
-                <div class="idgen-back-section">
-                  <div class="idgen-back-section-title">IN CASE OF EMERGENCY, PLEASE NOTIFY</div>
+                <div class="idgen-back-bottom">
+                  <div class="idgen-back-signatory">
+                    <strong>{{ form.signatoryName || 'AUTHORIZED SIGNATORY' }}</strong>
+                    <span>{{ form.signatoryPosition || 'POSITION' }}</span>
+                    <span>{{ form.signatoryOffice || 'OFFICE / DIVISION' }}</span>
+                  </div>
 
-                  <dl class="idgen-back-rows">
-                    <div class="idgen-back-row">
-                      <dt>Name</dt>
-                      <dd>{{ form.emergencyName || '—' }}</dd>
-                    </div>
-                    <div class="idgen-back-row">
-                      <dt>Address</dt>
-                      <dd>{{ form.emergencyAddress || '—' }}</dd>
-                    </div>
-                    <div class="idgen-back-row">
-                      <dt>Contact No.</dt>
-                      <dd>{{ form.emergencyNumber || '—' }}</dd>
-                    </div>
-                  </dl>
+                  <footer class="idgen-back-footer">
+                    If found, please return to Human Resource Database Management Information Division (HRDMID), HRMO or call 02 8951 0905
+                  </footer>
                 </div>
-
-                <div class="idgen-back-signatory">
-                  <div class="idgen-signatory-line"></div>
-                  <strong>{{ form.signatoryName || 'AUTHORIZED SIGNATORY' }}</strong>
-                  <span>{{ form.signatoryPosition || 'POSITION' }}</span>
-                  <span>{{ form.signatoryOffice || 'OFFICE / DIVISION' }}</span>
-                </div>
-
-                <footer class="idgen-back-footer">
-                  If found, please return to Human Resource Database Management Information Division (HRDMID),
-                  HRMO or call 02 8951 0905
-                </footer>
               </div>
             </article>
           </div>
@@ -1054,7 +1050,6 @@ async function printCard() {
 .idgen-seal {
   display: flex;
   flex: 0 0 auto;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 11mm;
@@ -1062,18 +1057,15 @@ async function printCard() {
   border: 0.5mm solid #fff;
   border-radius: 50%;
   background: #fff;
-  color: var(--idgen-accent);
-  line-height: 1;
+  overflow: hidden;
 }
 
-.idgen-seal-star {
-  color: var(--idgen-accent);
-  font-size: 3.2pt;
-}
-
-.idgen-seal strong {
-  font-size: 6.4pt;
-  letter-spacing: 0.04em;
+.idgen-seal img {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  border-radius: 50%;
+  display: block;
 }
 
 .idgen-head-copy {
@@ -1360,11 +1352,24 @@ async function printCard() {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
   min-height: 0;
 }
 
+.idgen-back-top {
+  display: flex;
+  flex-direction: column;
+}
+
+.idgen-back-bottom {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+}
+
 .idgen-back-school {
-  padding: 4.2mm 5mm 3.4mm;
+  padding: 4.0mm 5mm 3.2mm;
   text-align: left;
 }
 
@@ -1375,69 +1380,75 @@ async function printCard() {
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-school > span:last-child {
   display: block;
-  color: #5d4c41;
-  font-size: 5.1pt;
+  color: #000;
+  font-size: 5.0pt;
   line-height: 1.35;
   text-transform: uppercase;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-section {
-  margin: 3mm 4mm 0;
+  margin: 0;
   overflow: hidden;
-  border: 0.2mm solid #eddccb;
-  border-radius: 1.5mm;
-  background: rgba(255, 253, 249, 0.92);
-  box-shadow: 0 0.8mm 2.2mm rgba(32, 23, 20, 0.07);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .idgen-back-section-title {
   padding: 1.6mm 3mm;
   background: var(--idgen-accent);
   color: #fff;
-  font-size: 5.1pt;
+  font-size: 5.0pt;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-align: center;
   text-transform: uppercase;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-rows {
   margin: 0;
-  padding: 0.6mm 3mm 1.4mm;
+  padding: 0.8mm 5mm 1.4mm;
+  background: #fff;
 }
 
 .idgen-back-row {
   display: grid;
-  grid-template-columns: 14mm minmax(0, 1fr);
-  gap: 2.5mm;
+  grid-template-columns: 16mm minmax(0, 1fr);
+  gap: 3mm;
   align-items: baseline;
-  padding: 1.3mm 0;
-  border-bottom: 0.15mm dashed #e3d4c3;
+  padding: 1.1mm 0;
+  border-bottom: 0.15mm solid #000;
 }
 
 .idgen-back-row:last-child {
-  border-bottom: 0;
+  border-bottom: 0.15mm solid #000;
 }
 
 .idgen-back-row dt {
-  color: #95806f;
-  font-size: 4.1pt;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  color: #000;
+  font-size: 4.6pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-row dd {
   margin: 0;
-  color: #241914;
-  font-size: 5.2pt;
+  color: #000;
+  font-size: 5.0pt;
   font-weight: 700;
   line-height: 1.3;
   overflow-wrap: anywhere;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-verify {
@@ -1463,16 +1474,11 @@ async function printCard() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4mm;
+  gap: 0.2mm;
   margin-top: auto;
-  padding: 0 9mm 6mm;
+  margin-bottom: 12px;
+  padding: 0 10mm 0;
   text-align: center;
-}
-
-.idgen-signatory-line {
-  width: 100%;
-  margin-bottom: 1.2mm;
-  border-top: 0.3mm solid var(--idgen-ink);
 }
 
 .idgen-back-signatory strong {
@@ -1480,23 +1486,27 @@ async function printCard() {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-signatory span {
-  color: #5d4c41;
+  color: #000;
   font-size: 4.8pt;
   line-height: 1.3;
   text-transform: uppercase;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-footer {
-  padding: 2mm 4mm;
+  padding: 1.8mm 4mm;
   background: var(--idgen-ink);
   color: #fff;
-  font-size: 4pt;
-  line-height: 1.35;
-  letter-spacing: 0.03em;
+  font-size: 3.9pt;
+  line-height: 1.32;
+  letter-spacing: 0.02em;
   text-align: center;
+  text-transform: none;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ---------------------------- RESPONSIVE ---------------------------- */

@@ -1,8 +1,10 @@
 {
   "ExpandedNodes": [
     "",
+    "\\assets",
+    "\\assets\\images",
     "\\OJTMISApi"
   ],
-  "SelectedNode": "\\OJTMISApi\\OJTMISApi.csproj",
+  "SelectedNode": "\\assets\\images\\logo.png",
   "PreviewInSolutionExplorer": false
 }
