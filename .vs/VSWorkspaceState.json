@@ -1,10 +1,10 @@
 {
   "ExpandedNodes": [
     "",
-    "\\assets",
-    "\\assets\\images",
-    "\\OJTMISApi"
+    "\\OJTMISApi",
+    "\\pages",
+    "\\references"
   ],
-  "SelectedNode": "\\assets\\images\\logo.png",
+  "SelectedNode": "\\pages\\ModulePage.vue",
   "PreviewInSolutionExplorer": false
 }

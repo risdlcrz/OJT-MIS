@@ -144,7 +144,7 @@
                       Remove
                     </button>
                   </div>
-                  <p class="idgen-hint mb-0">JPG or PNG, up to 5 MB. Cropped to a 7:9 portrait (35 × 45 mm).</p>
+                  <p class="idgen-hint mb-0">JPG or PNG, up to 5 MB. Cropped to a square photo box.</p>
                   <p v-if="photoError" class="text-danger small mb-0 mt-1">{{ photoError }}</p>
                 </div>
               </div>
@@ -381,26 +381,12 @@
               <div class="idgen-bar idgen-bar--title">STUDENT TRAINEE</div>
 
               <div class="idgen-front-body">
-                <div class="idgen-photo-col">
-                  <div class="idgen-photo">
-                    <img v-if="photoUrl" :src="photoUrl" alt="Trainee portrait" />
-                    <div v-else class="idgen-photo-empty">
-                      <i class="far fa-user"></i>
-                      <span>PHOTO</span>
-                    </div>
-                  </div>
-
-                  <div class="idgen-signature">
-                    <div class="idgen-signature-image">
-                      <img v-if="signatureUrl" :src="signatureUrl" alt="Trainee signature" />
-                    </div>
-                    <div class="idgen-signature-rule">Trainee Signature</div>
-                  </div>
+                <div class="idgen-photo">
+                  <img v-if="photoUrl" :src="photoUrl" alt="Trainee portrait" />
                 </div>
 
                 <div class="idgen-details">
                   <h2 class="idgen-name">{{ form.fullName || 'STUDENT NAME' }}</h2>
-                  <div class="idgen-name-rule"></div>
 
                   <p class="idgen-meta">
                     <span>Date Started</span>
@@ -417,6 +403,11 @@
                 </div>
               </div>
 
+              <div class="idgen-signature">
+                <img v-if="signatureUrl" :src="signatureUrl" alt="Trainee signature" />
+                <span>Trainee Signature</span>
+              </div>
+
               <div class="idgen-bar idgen-bar--office">{{ form.office || 'OFFICE / DEPARTMENT' }}</div>
 
               <div class="idgen-qr-block">
@@ -424,7 +415,6 @@
                   <img v-if="qrDataUrl" :src="qrDataUrl" alt="ID verification QR code" />
                   <div v-else class="idgen-qr-empty">QR</div>
                 </div>
-                <span class="idgen-qr-caption">Scan to verify</span>
               </div>
 
               <footer class="idgen-card-footer">
@@ -459,7 +449,7 @@
                         <dd>{{ form.emergencyAddress || '—' }}</dd>
                       </div>
                       <div class="idgen-back-row">
-                        <dt>Contact No.</dt>
+                        <dt>Contact No</dt>
                         <dd>{{ form.emergencyNumber || '—' }}</dd>
                       </div>
                     </dl>
@@ -474,7 +464,8 @@
                   </div>
 
                   <footer class="idgen-back-footer">
-                    If found, please return to Human Resource Database Management Information Division (HRDMID), HRMO or call 02 8951 0905
+                    If found, please return to Human Resource Database Management<br />
+                    Information Division (HRDMID), HRMO or call 02 8951 0905
                   </footer>
                 </div>
               </div>
@@ -500,11 +491,11 @@ const officeOptions = [
 
 const defaultForm = {
   fullName: 'LOVELY ROSE L. ANDAYA',
-  office: 'AS - Administration Sector',
+  office: 'AS-INFORMATION TECHNOLOGY OFFICE',
   idNumber: '2026-007',
-  dateStarted: '2026-06-01',
-  validUntil: '2026-12-31',
-  dateIssued: '2026-06-01',
+  dateStarted: '2026-01-26',
+  validUntil: '2026-02-26',
+  dateIssued: '2026-01-26',
   schoolName: 'COMMONWEALTH HIGH SCHOOL',
   schoolAddress: 'ECOLS ST. BRGY COMMONWEALTH, QUEZON CITY',
   emergencyName: 'MARYROSE L. ANDAYA',
@@ -527,15 +518,13 @@ const qrError = ref('')
 
 const dialog = inject('dialog', null)
 
-const MONTHS = ['JAN.', 'FEB.', 'MAR.', 'APR.', 'MAY', 'JUN.', 'JUL.', 'AUG.', 'SEP.', 'OCT.', 'NOV.', 'DEC.']
-
 function formatDate(value) {
   if (!value) return '\u2014'
 
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value
 
-  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 const formattedDates = computed(() => ({
@@ -767,7 +756,7 @@ async function handlePhotoChange(event) {
   }
 
   try {
-    photoUrl.value = await cropImage(file, 490, 630)
+    photoUrl.value = await cropImage(file, 490, 490)
   } catch (error) {
     photoError.value = error.message || 'Could not read that image.'
   }
@@ -830,6 +819,7 @@ async function printCard() {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overflow: visible;
 }
 
 .idgen-toolbar {
@@ -862,21 +852,16 @@ async function printCard() {
   align-items: start;
 }
 
-/* Keep the editor and the badge preview in view while the page scrolls. */
 .idgen-sidebar,
 .idgen-preview {
-  position: sticky;
-  top: 5rem;
+  position: static;
   min-width: 0;
 }
 
-/* The card scrolls internally; its header stays pinned. The height accounts
-   for the fixed navbar, page padding, and the toolbar above the workspace. */
 .idgen-sidebar > .card {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 11.5rem);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .idgen-sidebar-head {
@@ -898,11 +883,7 @@ async function printCard() {
   min-height: 0;
   gap: 0.85rem;
   padding: 0.9rem 1rem 1.05rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #dcc9b6 transparent;
-  scrollbar-gutter: stable;
+  overflow: visible;
 }
 
 .idgen-form::-webkit-scrollbar {
@@ -1184,21 +1165,17 @@ async function printCard() {
   padding: clamp(0.6rem, 1.2vw, 0.9rem);
   border: 1px solid #eadccb;
   border-radius: 1rem;
-  background:
-    radial-gradient(120% 90% at 50% 0%, #fffdf9 0%, #f7eddf 58%, #f0e2d1 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 20px 45px -28px rgba(54, 31, 12, 0.55);
-  overflow-x: auto;
+  background: #f4f1ea;
+  overflow: visible;
 }
 
 .idgen-cards {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: flex-start;
+  justify-content: center;
   gap: clamp(0.6rem, 1vw, 0.9rem);
-  width: max-content;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .idgen-card-wrap {
@@ -1239,10 +1216,9 @@ async function printCard() {
 
 /* ---------------------------- ID CARD ---------------------------- */
 .idgen-card {
-  --idgen-ink: #201714;
-  --idgen-accent: #f26522;
-  --idgen-accent-dark: #c24a10;
-  --idgen-paper: #fffdf8;
+  --idgen-ink: #111;
+  --idgen-accent: #e87822;
+  --idgen-paper: #ffffff;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1250,29 +1226,26 @@ async function printCard() {
   width: 88mm;
   height: 125mm;
   overflow: hidden;
-  border: 1px solid #d3c5b7;
-  border-radius: 3mm;
-  background: var(--idgen-paper);
-  color: var(--idgen-ink);
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.25;
-  box-shadow:
-    0 1px 2px rgba(54, 31, 12, 0.12),
-    0 12px 24px -14px rgba(54, 31, 12, 0.4),
-    0 30px 55px -30px rgba(54, 31, 12, 0.45);
+  border: 1px solid #888;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.2;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
 
 .idgen-card--back {
-  background: #fffefb;
+  background: #fff;
 }
 
 .idgen-front-head {
   display: flex;
   align-items: center;
-  gap: 3mm;
-  padding: 2.6mm 4mm;
+  gap: 2.5mm;
+  padding: 2.8mm 3.5mm 2.4mm;
   background: var(--idgen-accent);
   color: #fff;
 }
@@ -1282,93 +1255,89 @@ async function printCard() {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 11mm;
-  height: 11mm;
-  border: 0.5mm solid #fff;
+  width: 13mm;
+  height: 13mm;
   border-radius: 50%;
   background: #fff;
   overflow: hidden;
 }
 
 .idgen-seal img {
-  width: 45px;
-  height: 45px;
+  width: 13mm;
+  height: 13mm;
   object-fit: contain;
-  border-radius: 50%;
   display: block;
 }
 
 .idgen-head-copy {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  align-items: center;
   min-width: 0;
+  text-align: center;
 }
 
 .idgen-republic {
-  color: #ffe9dc;
-  font-size: 4.4pt;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 7pt;
+  letter-spacing: 0.02em;
 }
 
 .idgen-agency {
-  margin: 0.5mm 0;
-  font-size: 8.6pt;
-  font-weight: 800;
-  letter-spacing: 0.045em;
-  line-height: 1.1;
+  margin: 0.3mm 0;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11.2pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
 }
 
 .idgen-agency-address {
-  color: #ffe9dc;
-  font-size: 4.4pt;
-  letter-spacing: 0.03em;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 7.5pt;
 }
 
 .idgen-bar {
-  padding: 1.6mm 3mm;
+  padding: 1.7mm 3mm;
   text-align: center;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   line-height: 1.15;
 }
 
 .idgen-bar--title {
-  background: var(--idgen-ink);
+  background: #1a1a1a;
   color: #fff;
-  font-size: 6.4pt;
-  letter-spacing: 0.16em;
+  font-size: 9pt;
+  letter-spacing: 0.18em;
 }
 
 .idgen-bar--office {
   background: var(--idgen-accent);
   color: #fff;
-  font-size: 5.8pt;
+  font-size: 7pt;
   letter-spacing: 0.08em;
 }
 
 .idgen-front-body {
   display: flex;
   align-items: flex-start;
-  gap: 3.5mm;
-  padding: 3mm 4mm 1.6mm;
-}
-
-.idgen-photo-col {
-  display: flex;
-  flex: 0 0 35mm;
-  flex-direction: column;
-  width: 35mm;
+  gap: 4mm;
+  padding: 4mm 5mm 1mm;
+  background: #fff;
 }
 
 .idgen-photo {
-  flex: 0 0 auto;
-  width: 35mm;
-  height: 45mm;
+  flex: 0 0 22mm;
+  width: 22mm;
+  height: 22mm;
   overflow: hidden;
-  border: 0.4mm solid var(--idgen-ink);
-  border-radius: 0.8mm;
-  background: #f5eee5;
+  border: 0.35mm solid #000;
+  background: #fff;
 }
 
 .idgen-photo img {
@@ -1377,123 +1346,77 @@ async function printCard() {
   object-fit: cover;
 }
 
-.idgen-photo-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  gap: 1mm;
-  color: #b5906c;
-  font-size: 3.8pt;
-  letter-spacing: 0.14em;
-}
-
-.idgen-photo-empty i {
-  font-size: 15pt;
-}
-
 .idgen-details {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  justify-content: center;
   min-width: 0;
-  height: 45mm;
 }
 
 .idgen-name {
-  margin: 0 0 1.2mm;
-  color: #1b100b;
-  font-size: 10.2pt;
+  margin: 0 0 2.4mm;
+  color: #000;
+  font-size: 11.5pt;
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.05;
+  text-align: center;
   text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-
-.idgen-name-rule {
-  width: 18mm;
-  height: 0.8mm;
-  margin-bottom: 2mm;
-  background: var(--idgen-accent);
 }
 
 .idgen-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 2.5mm;
-  margin: 0 0 1mm;
-  padding-bottom: 0.7mm;
-  border-bottom: 0.15mm dashed #ded1c3;
+  gap: 3mm;
+  margin: 0 0 1.1mm;
   line-height: 1.2;
 }
 
-.idgen-meta:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.idgen-meta span {
-  color: #8b7768;
-  font-size: 4.2pt;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.idgen-meta span,
+.idgen-meta strong {
+  color: #000;
+  font-size: 7pt;
+  font-weight: 400;
 }
 
 .idgen-meta strong {
-  color: #211712;
-  font-size: 5.4pt;
-  font-weight: 700;
   text-align: right;
   white-space: nowrap;
 }
 
 .idgen-signature {
-  margin: 1.2mm 0 0;
-  text-align: center;
-}
-
-.idgen-signature-image {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  height: 5mm;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 8mm;
+  margin: 1mm 0 3.5mm;
+  padding: 0 5mm;
+  color: #000;
+  font-size: 7.5pt;
 }
 
-.idgen-signature-image img {
-  max-width: 33mm;
-  max-height: 5mm;
+.idgen-signature img {
+  max-width: 28mm;
+  max-height: 7mm;
   object-fit: contain;
-}
-
-.idgen-signature-rule {
-  padding-top: 0.7mm;
-  border-top: 0.3mm solid var(--idgen-ink);
-  color: #5d4431;
-  font-size: 4pt;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .idgen-qr-block {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
-  margin-top: auto;
-  padding: 1mm 0 2.6mm;
+  justify-content: center;
+  padding: 3mm 0 2mm;
+  background: #fff;
 }
 
 .idgen-qr-frame {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 23mm;
-  height: 23mm;
+  width: 38mm;
+  height: 38mm;
   overflow: hidden;
   background: #fff;
 }
@@ -1510,35 +1433,21 @@ async function printCard() {
   justify-content: center;
   width: 100%;
   height: 100%;
-  border: 0.3mm dashed #cdbba8;
-  color: #b7a597;
-  font-size: 6pt;
+  border: 0.3mm solid #000;
+  font-size: 8pt;
   font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-.idgen-qr-caption {
-  margin-top: 0.8mm;
-  color: #7a675b;
-  font-size: 3.9pt;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
 
 .idgen-card-footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2mm;
   margin-top: auto;
-  padding: 1.8mm 4mm;
-  background: var(--idgen-ink);
+  padding: 2.2mm 4mm;
+  background: #111;
   color: #fff;
-  font-size: 4.6pt;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 10pt;
+  font-weight: 700;
 }
 
 /* ---------------------------- BACK SIDE ---------------------------- */
@@ -1585,6 +1494,7 @@ async function printCard() {
   justify-content: space-between;
   height: 100%;
   min-height: 0;
+  background: #fff;
 }
 
 .idgen-back-top {
@@ -1599,27 +1509,26 @@ async function printCard() {
 }
 
 .idgen-back-school {
-  padding: 4.0mm 5mm 3.2mm;
+  padding: 4mm 5mm 5mm;
   text-align: left;
+  background: #fff;
 }
 
 .idgen-back-school strong {
   display: block;
   margin: 0 0 0.8mm;
-  font-size: 8pt;
+  font-size: 9pt;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-school > span:last-child {
   display: block;
   color: #000;
-  font-size: 5.0pt;
-  line-height: 1.35;
+  font-size: 7.5pt;
+  line-height: 1.3;
   text-transform: uppercase;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-section {
@@ -1632,53 +1541,45 @@ async function printCard() {
 }
 
 .idgen-back-section-title {
-  padding: 1.6mm 3mm;
+  padding: 1.8mm 3mm;
   background: var(--idgen-accent);
   color: #fff;
-  font-size: 5.0pt;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 7pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-align: center;
   text-transform: uppercase;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-rows {
   margin: 0;
-  padding: 0.8mm 5mm 1.4mm;
+  padding: 3mm 6mm 4mm;
   background: #fff;
+  border-bottom: 0.35mm solid #000;
 }
 
 .idgen-back-row {
   display: grid;
-  grid-template-columns: 16mm minmax(0, 1fr);
+  grid-template-columns: 22mm minmax(0, 1fr);
   gap: 3mm;
   align-items: baseline;
-  padding: 1.1mm 0;
-  border-bottom: 0.15mm solid #000;
-}
-
-.idgen-back-row:last-child {
-  border-bottom: 0.15mm solid #000;
+  padding: 1.4mm 0;
 }
 
 .idgen-back-row dt {
   color: #000;
-  font-size: 4.6pt;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 400;
 }
 
 .idgen-back-row dd {
   margin: 0;
   color: #000;
-  font-size: 5.0pt;
+  font-size: 8pt;
   font-weight: 700;
   line-height: 1.3;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-verify {
@@ -1704,39 +1605,33 @@ async function printCard() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2mm;
+  gap: 0.3mm;
   margin-top: auto;
-  margin-bottom: 12px;
-  padding: 0 10mm 0;
+  padding: 0 8mm 6mm;
   text-align: center;
+  background: #fff;
 }
 
 .idgen-back-signatory strong {
-  font-size: 6pt;
+  font-size: 9pt;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-signatory span {
   color: #000;
-  font-size: 4.8pt;
+  font-size: 7.5pt;
   line-height: 1.3;
-  text-transform: uppercase;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 .idgen-back-footer {
-  padding: 1.8mm 4mm;
-  background: var(--idgen-ink);
+  padding: 2.2mm 5mm;
+  background: #111;
   color: #fff;
-  font-size: 3.9pt;
-  line-height: 1.32;
-  letter-spacing: 0.02em;
+  font-size: 6.5pt;
+  line-height: 1.3;
   text-align: center;
-  text-transform: none;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ---------------------------- RESPONSIVE ---------------------------- */
@@ -1913,9 +1808,9 @@ async function printCard() {
     width: 88mm !important;
     height: 125mm !important;
     margin: 0 !important;
-    /* Crisp cutting guide around the physical badge. */
     border: 1px solid #000 !important;
     border-radius: 0 !important;
+    background: #fff !important;
     box-shadow: none !important;
     transform: none !important;
     break-inside: avoid;
