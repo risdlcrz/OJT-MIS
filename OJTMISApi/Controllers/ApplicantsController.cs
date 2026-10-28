@@ -65,7 +65,7 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// POST: api/applicants
-        /// Gumagawa ng applicant no kung wala (A-2026-001).
+        /// Gumagawa ng applicant no kung wala (2026-001).
         /// </summary>
         [HttpPost]
         public async Task<ActionResult<Applicant>> Create([FromBody] Applicant applicant)
@@ -310,7 +310,7 @@ namespace OJTMISApi.Controllers
         private async Task<string> NextApplicantNoAsync()
         {
             var year = DateTime.Now.Year;
-            var prefix = $"A-{year}-";
+            var prefix = $"{year}-";
 
             // Gamitin ang pinakamataas na numero (hindi ang count), kaya hindi
             // na-uulit ang numero kahit may naunang mga na-delete na applicant.

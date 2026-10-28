@@ -86,6 +86,65 @@
             </div>
             <div class="modal-body">
               <div v-if="formError" class="alert alert-danger py-2">{{ formError }}</div>
+
+              <template v-if="config?.fromApplicants && !isEditing">
+                <div class="mb-3">
+                  <label for="internApplicantSelect" class="form-label fw-semibold">Select/Search Applicant</label>
+                  <div class="position-relative">
+                    <input
+                      id="internApplicantSelect"
+                      v-model="applicantQuery"
+                      type="search"
+                      class="form-control"
+                      placeholder="Search by Applicant No., Full Name, or Program"
+                      autocomplete="off"
+                      :disabled="isSaving"
+                      @focus="openApplicantSearch"
+                      @input="onApplicantInput"
+                      @keydown.esc="applicantSearchOpen = false"
+                    />
+                    <div
+                      v-if="applicantSearchOpen"
+                      class="position-absolute w-100 bg-white border rounded shadow-sm mt-1"
+                      style="z-index: 1055; max-height: 220px; overflow-y: auto;"
+                    >
+                      <div v-if="applicantsLoading" class="p-2 text-muted small">Loading applicants...</div>
+                      <div v-else-if="!filteredApplicants.length" class="p-2 text-muted small">No qualified applicants found.</div>
+                      <button
+                        v-for="app in filteredApplicants"
+                        :key="app.id"
+                        type="button"
+                        class="btn btn-light text-start w-100 border-0 rounded-0"
+                        @mousedown.prevent
+                        @click="applyApplicant(app)"
+                      >
+                        <div class="d-flex justify-content-between">
+                          <strong>{{ formatApplicantNo(app.applicantNo) }}</strong>
+                          <span class="text-muted small">{{ app.program || '-' }}</span>
+                        </div>
+                        <div class="small">{{ app.lastName }}, {{ app.firstName }}{{ app.middleName ? ' ' + app.middleName : '' }}{{ app.suffix ? ' ' + app.suffix : '' }}</div>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="form-text">Filters to applicants not yet hired.</div>
+                </div>
+
+                <div v-if="selectedApplicant" class="card bg-light border-0 mb-3">
+                  <div class="card-body py-2 px-3">
+                    <div class="fw-semibold mb-1">Applicant Summary</div>
+                    <div class="row g-1 small">
+                      <div class="col-6"><span class="text-muted">Applicant No.:</span> {{ formatApplicantNo(selectedApplicant.applicantNo) }}</div>
+                      <div class="col-6"><span class="text-muted">Full Name:</span> {{ buildFullName(selectedApplicant) }}</div>
+                      <div class="col-6"><span class="text-muted">School:</span> {{ selectedApplicant.schoolName || selectedApplicant.school || '-' }}</div>
+                      <div class="col-6"><span class="text-muted">Program/Course:</span> {{ selectedApplicant.program || '-' }}</div>
+                      <div class="col-6"><span class="text-muted">Email:</span> {{ selectedApplicant.email || '-' }}</div>
+                      <div class="col-6"><span class="text-muted">Contact No.:</span> {{ selectedApplicant.contactNumber || '-' }}</div>
+                      <div class="col-6"><span class="text-muted">Required Hours:</span> {{ selectedApplicant.requiredHours ?? selectedApplicant.hoursRequired ?? '-' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
               <div v-for="col in config.columns" :key="col.prop" class="mb-3">
                 <label :for="`m-${col.prop}`" class="form-label fw-semibold">{{ col.label }}</label>
 
@@ -109,7 +168,7 @@
                   <div v-if="isEditing" class="form-text text-muted">Status cannot be changed after hiring.</div>
                 </template>
 
-                <template v-else-if="col.prop === 'school'">
+                <template v-else-if="col.prop === 'school' && !(config?.fromApplicants && !isEditing)">
                   <select :id="`m-${col.prop}`" v-model="form.school"
                           class="form-select" :class="{ 'is-invalid': submitted && !form.school }"
                           :disabled="isSaving || schoolsLoading">
@@ -151,7 +210,7 @@
                   <div class="invalid-feedback">{{ col.label }} is required.</div>
                 </template>
 
-                <template v-else>
+                <template v-else-if="col.prop === 'fullName' && !(config?.fromApplicants && !isEditing)">
                   <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" type="text" class="form-control"
                          :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
                          :placeholder="`Input ${col.label}`" :disabled="isSaving" />
@@ -159,7 +218,34 @@
                 </template>
               </div>
 
-              <!-- Last updated field (read-only, only shown when editing) -->
+              <template v-if="config?.fromApplicants && !isEditing">
+                <div class="mb-3">
+                  <label for="internDept" class="form-label fw-semibold">Assigned Department</label>
+                  <select id="internDept" v-model="form.requestId" class="form-select" :disabled="isSaving || isEditing">
+                    <option value="">Select Department</option>
+                    <option v-for="r in availableRequests" :key="r.id" :value="r.id">
+                      #{{ r.id }} &mdash; {{ r.officeName }} ({{ r.remaining }} slot{{ r.remaining === 1 ? '' : 's' }} left)
+                    </option>
+                  </select>
+                  <div class="form-text">Select the intern request / department assignment.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="internRequiredHours" class="form-label fw-semibold">Required Hours</label>
+                  <input id="internRequiredHours" v-model.number="form.requiredHours" type="number" min="0" class="form-control" :disabled="isSaving" />
+                </div>
+
+                <div class="row g-2 mb-3">
+                  <div class="col-md-6">
+                    <label for="internStartDate" class="form-label fw-semibold">Estimated Start Date</label>
+                    <input id="internStartDate" v-model="form.startDate" type="date" class="form-control" :disabled="isSaving" />
+                  </div>
+                  <div class="col-md-6">
+                    <label for="internEndDate" class="form-label fw-semibold">Estimated End Date</label>
+                    <input id="internEndDate" v-model="form.endDate" type="date" class="form-control" :disabled="isSaving" />
+                  </div>
+                </div>
+              </template>
               <div v-if="isEditing && form.updatedAt" class="mb-3">
                 <label class="form-label fw-semibold">Last Updated</label>
                 <input type="text" class="form-control form-control-plaintext bg-light" readonly
@@ -288,12 +374,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, Toast } from 'bootstrap'
-import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI } from '@/services/api'
+import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {
   'internlist.html': {
-    title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true, needsSchools: true,
+    title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true, needsSchools: true, fromApplicants: true,
     columns: [
       { prop: 'fullName', label: 'Full Name', max: 200 },
       { prop: 'school', label: 'School', max: 200 },
@@ -359,6 +445,12 @@ const availableRequests = ref([])
 const departments = ref([])
 const schools = ref([])
 const schoolsLoading = ref(false)
+const applicantsList = ref([])
+const applicantsLoading = ref(false)
+const applicantQuery = ref('')
+const applicantSearchOpen = ref(false)
+const selectedApplicantId = ref(null)
+const selectedApplicant = ref(null)
 const isLoading = ref(false)
 const isSaving = ref(false)
 const loadError = ref('')
@@ -384,6 +476,10 @@ function blankForm() {
   form.requestId = ''
   form.updatedAt = null
   if (config.value) config.value.columns.forEach((c) => { form[c.prop] = '' })
+  applicantQuery.value = ''
+  applicantSearchOpen.value = false
+  selectedApplicantId.value = null
+  selectedApplicant.value = null
   submitted.value = false
   formError.value = ''
 }
@@ -450,6 +546,19 @@ async function load() {
         schoolsLoading.value = false
       }
     }
+
+    // Load applicants for Intern creation from applicants table.
+    if (config.value.fromApplicants) {
+      applicantsLoading.value = true
+      try {
+        const list = await applicantsAPI.getAll()
+        applicantsList.value = (list || []).filter((a) => !a.hired)
+      } catch {
+        applicantsList.value = []
+      } finally {
+        applicantsLoading.value = false
+      }
+    }
   } catch (e) {
     loadError.value = getApiErrorMessage(e, `Failed to load ${title.value}.`)
   } finally {
@@ -470,6 +579,86 @@ const schoolOptions = computed(() => {
     .filter(s => s.name && !seen.has(s.name) && seen.add(s.name))
     .map(s => s.name)
 })
+
+const filteredApplicants = computed(() => {
+  const query = applicantQuery.value.trim().toLowerCase()
+  if (!query) return applicantsList.value.slice(0, 15)
+
+  return applicantsList.value
+    .filter((app) => {
+      const fullName = `${app.lastName || ''}, ${app.firstName || ''} ${app.middleName || ''} ${app.suffix || ''}`.toLowerCase()
+      const applicantNo = (app.applicantNo || '').replace(/^A-/, '').toLowerCase()
+      const queryNo = query.replace(/^a-/, '')
+      return (
+        applicantNo.includes(queryNo) ||
+        (app.applicantNo || '').toLowerCase().includes(query) ||
+        fullName.includes(query) ||
+        (app.program || '').toLowerCase().includes(query) ||
+        (app.schoolName || '').toLowerCase().includes(query)
+      )
+    })
+    .slice(0, 15)
+})
+
+function openApplicantSearch() {
+  if (config.value?.fromApplicants && !isEditing.value) {
+    applicantSearchOpen.value = true
+  }
+}
+
+function onApplicantInput() {
+  selectedApplicantId.value = null
+  selectedApplicant.value = null
+  if (config.value?.fromApplicants && !isEditing.value) {
+    applicantSearchOpen.value = true
+  }
+}
+
+function formatApplicantNo(no) {
+  if (!no) return '-'
+  return String(no).replace(/^A-/, '')
+}
+
+function buildFullName(a) {
+  if (!a) return ''
+  const last = a.lastName || ''
+  const first = a.firstName || ''
+  const middle = a.middleName || ''
+  const suffix = a.suffix || ''
+  if (last && first) {
+    let name = `${last}, ${first}${middle ? ' ' + middle : ''}`
+    return suffix ? `${name} ${suffix}` : name
+  }
+  if (a.fullName) {
+    return suffix && !String(a.fullName).includes(suffix) ? `${a.fullName} ${suffix}` : a.fullName
+  }
+  const parts = [last, first, middle].filter(Boolean)
+  let name = parts.join(' ')
+  return suffix ? `${name} ${suffix}` : name
+}
+
+function applyApplicant(app) {
+  selectedApplicantId.value = app.id
+  selectedApplicant.value = app
+  applicantQuery.value = `${formatApplicantNo(app.applicantNo) || ''} - ${buildFullName(app)}`.replace(/^- /, '')
+  applicantSearchOpen.value = false
+
+  form.fullName = buildFullName(app)
+  form.school = app.schoolName || app.school || form.school
+  form.program = app.program || form.program
+  form.applicantNo = formatApplicantNo(app.applicantNo) || form.applicantNo
+
+  const hours = app.requiredHours ?? app.hoursRequired ?? app.totalHours ?? app.required_hours ?? app.hours_required
+  if (hours !== null && hours !== undefined && hours !== '') {
+    form.requiredHours = hours
+  } else if (selectedApplicant.value?.requiredHours !== null && selectedApplicant.value?.requiredHours !== undefined) {
+    form.requiredHours = selectedApplicant.value.requiredHours
+  } else if (selectedApplicant.value?.hoursRequired !== null && selectedApplicant.value?.hoursRequired !== undefined) {
+    form.requiredHours = selectedApplicant.value.hoursRequired
+  }
+
+  form.applicantOffice = form.requestId ? form.requestId : form.applicantOffice
+}
 
 function openCreate() {
   blankForm()
@@ -495,6 +684,11 @@ async function save() {
     return
   }
 
+  if (config.value.fromApplicants && !isEditing.value && !selectedApplicantId.value) {
+    formError.value = 'Please select an applicant from the list.'
+    return
+  }
+
   const requiredColumns = config.value.columns.filter(c => c.prop !== 'department')
   const missing = requiredColumns.some((c) => !form[c.prop])
   if (missing) { formError.value = 'Please fill in all required fields.'; return }
@@ -509,6 +703,13 @@ async function save() {
   config.value.columns.forEach((c) => { payload[c.prop] = form[c.prop] ?? '' })
   if ('requestId' in payload) payload.requestId = Number(payload.requestId) || null
   if (config.value.hiring) payload.status = 'Hired'
+  if (config.value.fromApplicants && !isEditing.value && selectedApplicantId.value) {
+    payload.applicantId = selectedApplicantId.value
+    payload.applicantNo = form.applicantNo || selectedApplicant.value?.applicantNo || ''
+  }
+  if (form.requiredHours !== undefined && form.requiredHours !== '') payload.requiredHours = Number(form.requiredHours) || 0
+  if (form.startDate) payload.startDate = form.startDate
+  if (form.endDate) payload.endDate = form.endDate
 
   try {
     if (isEditing.value) {
