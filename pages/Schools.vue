@@ -115,94 +115,68 @@
                 {{ formError }}
               </div>
 
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">College Courses (Programs)</label>
-                  <div class="input-group input-group-sm mb-2">
-                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input
-                      v-model.trim="courseSearch"
-                      type="search"
-                      class="form-control"
-                      placeholder="Search courses..."
-                      aria-label="Search college courses"
-                      :disabled="isSaving"
-                    />
-                  </div>
-                  <div class="border rounded" style="max-height: 260px; overflow-y: auto;">
-                    <div
-                      v-for="group in filteredCollegeCourseGroups"
-                      :key="group.name"
-                      class="course-group"
-                    >
-                      <div class="course-group-header">{{ group.name }}</div>
-                      <div class="px-2 pt-1 pb-1">
-                        <label
-                          v-for="course in group.courses"
-                          :key="course"
-                          class="form-check"
-                        >
-                          <input
-                            type="checkbox"
-                            class="form-check-input"
-                            :value="course"
-                            v-model="form.collegeCourses"
-                            :disabled="isSaving"
-                          />
-                          <span class="form-check-label">{{ course }}</span>
-                        </label>
-                      </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Program Type</label>
+                <div class="btn-group w-100" role="group" aria-label="Program type">
+                  <input id="progCollege" v-model="programType" type="radio" class="btn-check" value="college" :disabled="isSaving" />
+                  <label class="btn btn-outline-primary" for="progCollege">College</label>
+                  <input id="progShs" v-model="programType" type="radio" class="btn-check" value="shs" :disabled="isSaving" />
+                  <label class="btn btn-outline-primary" for="progShs">Senior High</label>
+                </div>
+              </div>
+
+              <div v-if="programType === 'college'" class="mb-3">
+                <label class="form-label fw-semibold">College Courses (Programs)</label>
+                <div class="input-group input-group-sm mb-2">
+                  <span class="input-group-text"><i class="fas fa-search"></i></span>
+                  <input
+                    v-model.trim="courseSearch"
+                    type="search"
+                    class="form-control"
+                    placeholder="Search courses..."
+                    aria-label="Search college courses"
+                    :disabled="isSaving"
+                  />
+                </div>
+                <div class="border rounded" style="max-height: 260px; overflow-y: auto;">
+                  <div v-for="group in filteredCollegeCourseGroups" :key="group.name" class="course-group">
+                    <div class="course-group-header">{{ group.name }}</div>
+                    <div class="px-2 pt-1 pb-1">
+                      <label v-for="course in group.courses" :key="course" class="form-check">
+                        <input type="checkbox" class="form-check-input" :value="course" v-model="form.collegeCourses" :disabled="isSaving" />
+                        <span class="form-check-label">{{ course }}</span>
+                      </label>
                     </div>
-                    <p
-                      v-if="!filteredCollegeCourseGroups.length"
-                      class="text-muted small mb-0 p-2"
-                    >
-                      No courses match "{{ courseSearch }}".
-                    </p>
                   </div>
-                  <div class="input-group input-group-sm mt-2">
-                    <input
-                      id="collegeCourseSpecialization"
-                      v-model.trim="specializationInput"
-                      type="text"
-                      class="form-control"
-                      maxlength="150"
-                      placeholder="Specialization / Major (Optional)"
-                      :disabled="isSaving"
-                      @keydown.enter.prevent="addSpecializationCourse"
-                    />
-                    <button
-                      type="button"
-                      class="btn btn-outline-primary"
-                      :disabled="isSaving || !specializationInput"
-                      @click="addSpecializationCourse"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <p class="form-text mb-0">
-                    Adds a custom entry, e.g. BSIT - Business Analytics.
+                  <p v-if="!filteredCollegeCourseGroups.length" class="text-muted small mb-0 p-2">
+                    No courses match "{{ courseSearch }}".
                   </p>
                 </div>
+                <div class="input-group input-group-sm mt-2">
+                  <input
+                    id="collegeCourseSpecialization"
+                    v-model.trim="specializationInput"
+                    type="text"
+                    class="form-control"
+                    maxlength="150"
+                    placeholder="Specialization / Major (Optional)"
+                    :disabled="isSaving"
+                    @keydown.enter.prevent="addSpecializationCourse"
+                  />
+                  <button type="button" class="btn btn-outline-primary" :disabled="isSaving || !specializationInput" @click="addSpecializationCourse">
+                    Add
+                  </button>
+                </div>
+                <p class="form-text mb-0">Adds a custom entry, e.g. BSIT - Business Analytics.</p>
+              </div>
 
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Senior High School Strands</label>
-                  <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                    <label
-                      v-for="strand in seniorHighSchoolStrandOptions"
-                      :key="strand"
-                      class="form-check"
-                    >
-                      <input
-                        type="checkbox"
-                        class="form-check-input"
-                        :value="strand"
-                        v-model="form.seniorHighSchoolStrands"
-                        :disabled="isSaving"
-                      />
-                      <span class="form-check-label">{{ strand }}</span>
-                    </label>
-                  </div>
+              <div v-else class="mb-3">
+                <label class="form-label fw-semibold">Senior High School Strands</label>
+                <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto;">
+                  <label v-for="strand in seniorHighSchoolStrandOptions" :key="strand" class="form-check">
+                    <input type="checkbox" class="form-check-input" :value="strand" v-model="form.seniorHighSchoolStrands" :disabled="isSaving" />
+                    <span class="form-check-label">{{ strand }}</span>
+                  </label>
                 </div>
               </div>
 
@@ -235,18 +209,67 @@
               </div>
 
               <div class="mb-3">
-                <label for="schoolAddress" class="form-label fw-semibold">Address</label>
-                <textarea
-                  id="schoolAddress"
-                  v-model.trim="form.address"
-                  class="form-control"
-                  :class="{ 'is-invalid': submitted && !form.address }"
-                  rows="3"
-                  maxlength="500"
-                  placeholder="Input Address"
-                  :disabled="isSaving"
-                ></textarea>
-                <div class="invalid-feedback">Address is required.</div>
+                <label class="form-label fw-semibold">Address</label>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <select
+                      v-model="addr.region"
+                      class="form-select"
+                      :class="{ 'is-invalid': submitted && !addr.region }"
+                      :disabled="isSaving || addrLoading.regions"
+                      @change="onRegionChange"
+                    >
+                      <option value="">{{ addrLoading.regions ? 'Loading regions...' : 'Region' }}</option>
+                      <option v-for="item in addrOptions.regions" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <select
+                      v-model="addr.province"
+                      class="form-select"
+                      :class="{ 'is-invalid': submitted && !addr.province }"
+                      :disabled="isSaving || !addr.region || addrLoading.provinces"
+                      @change="onProvinceChange"
+                    >
+                      <option value="">{{ addrLoading.provinces ? 'Loading...' : 'Province / District' }}</option>
+                      <option v-for="item in addrOptions.provinces" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <select
+                      v-model="addr.city"
+                      class="form-select"
+                      :class="{ 'is-invalid': submitted && !addr.city }"
+                      :disabled="isSaving || !addr.province || addrLoading.cities"
+                      @change="onCityChange"
+                    >
+                      <option value="">{{ addrLoading.cities ? 'Loading...' : 'City / Municipality' }}</option>
+                      <option v-for="item in addrOptions.cities" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <select
+                      v-model="addr.barangay"
+                      class="form-select"
+                      :disabled="isSaving || !addr.city || addrLoading.barangays"
+                    >
+                      <option value="">{{ addrLoading.barangays ? 'Loading...' : 'Barangay (optional)' }}</option>
+                      <option v-for="item in addrOptions.barangays" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <input
+                      v-model.trim="addr.street"
+                      type="text"
+                      class="form-control"
+                      maxlength="200"
+                      placeholder="Street / Building (optional)"
+                      :disabled="isSaving"
+                    />
+                  </div>
+                </div>
+                <div v-if="submitted && !composedAddress" class="invalid-feedback d-block">Region, province, and city are required.</div>
+                <p v-if="composedAddress" class="form-text mb-0">{{ composedAddress }}</p>
               </div>
 
               <div class="mb-3">
@@ -495,10 +518,152 @@ const form = reactive({
   moaExpiry: ''
 })
 const isEditing = computed(() => form.id > 0)
+const programType = ref('college')
 
 const customCollegeCourses = ref([])
 const courseSearch = ref('')
 const specializationInput = ref('')
+
+const PSGC = 'https://psgc.gitlab.io/api'
+const addr = reactive({ region: '', province: '', city: '', barangay: '', street: '' })
+const addrOptions = reactive({ regions: [], provinces: [], cities: [], barangays: [] })
+const addrLoading = reactive({ regions: false, provinces: false, cities: false, barangays: false })
+
+function psgcName(code, list) {
+  return list.find((item) => item.code === code)?.name || ''
+}
+
+const composedAddress = computed(() => {
+  const parts = [
+    addr.street,
+    psgcName(addr.barangay, addrOptions.barangays),
+    psgcName(addr.city, addrOptions.cities),
+    psgcName(addr.province, addrOptions.provinces),
+    psgcName(addr.region, addrOptions.regions)
+  ].filter(Boolean)
+  return parts.join(', ')
+})
+
+async function psgcGet(path) {
+  const res = await fetch(`${PSGC}${path}`)
+  if (!res.ok) return []
+  return res.json()
+}
+
+async function loadRegions() {
+  if (addrOptions.regions.length) return
+  addrLoading.regions = true
+  try {
+    addrOptions.regions = await psgcGet('/regions/')
+  } finally {
+    addrLoading.regions = false
+  }
+}
+
+async function onRegionChange() {
+  addr.province = ''
+  addr.city = ''
+  addr.barangay = ''
+  addrOptions.provinces = []
+  addrOptions.cities = []
+  addrOptions.barangays = []
+  if (!addr.region) return
+  addrLoading.provinces = true
+  try {
+    const provinces = await psgcGet(`/regions/${addr.region}/provinces/`)
+    addrOptions.provinces = provinces.length
+      ? provinces
+      : await psgcGet(`/regions/${addr.region}/districts/`)
+  } finally {
+    addrLoading.provinces = false
+  }
+}
+
+async function onProvinceChange() {
+  addr.city = ''
+  addr.barangay = ''
+  addrOptions.cities = []
+  addrOptions.barangays = []
+  if (!addr.province) return
+  addrLoading.cities = true
+  try {
+    const cities = await psgcGet(`/provinces/${addr.province}/cities-municipalities/`)
+    addrOptions.cities = cities.length
+      ? cities
+      : await psgcGet(`/districts/${addr.province}/cities-municipalities/`)
+  } finally {
+    addrLoading.cities = false
+  }
+}
+
+async function onCityChange() {
+  addr.barangay = ''
+  addrOptions.barangays = []
+  if (!addr.city) return
+  addrLoading.barangays = true
+  try {
+    addrOptions.barangays = await psgcGet(`/cities-municipalities/${addr.city}/barangays/`)
+  } finally {
+    addrLoading.barangays = false
+  }
+}
+
+function resetAddress() {
+  addr.region = ''
+  addr.province = ''
+  addr.city = ''
+  addr.barangay = ''
+  addr.street = ''
+  addrOptions.provinces = []
+  addrOptions.cities = []
+  addrOptions.barangays = []
+}
+
+function findByName(list, name) {
+  const needle = String(name || '').trim().toLowerCase()
+  if (!needle) return null
+  return list.find((item) => item.name.toLowerCase() === needle)
+    || list.find((item) => item.name.toLowerCase().includes(needle) || needle.includes(item.name.toLowerCase()))
+}
+
+async function hydrateAddress(address) {
+  resetAddress()
+  await loadRegions()
+  const parts = String(address || '').split(',').map((part) => part.trim()).filter(Boolean)
+  if (!parts.length) return
+
+  const region = findByName(addrOptions.regions, parts[parts.length - 1])
+  if (!region) {
+    addr.street = address
+    return
+  }
+
+  addr.region = region.code
+  await onRegionChange()
+  const province = findByName(addrOptions.provinces, parts[parts.length - 2])
+  if (!province) {
+    addr.street = parts.slice(0, -1).join(', ')
+    return
+  }
+
+  addr.province = province.code
+  await onProvinceChange()
+  const city = findByName(addrOptions.cities, parts[parts.length - 3])
+  if (!city) {
+    addr.street = parts.slice(0, -2).join(', ')
+    return
+  }
+
+  addr.city = city.code
+  await onCityChange()
+  const maybeBarangay = parts.length >= 4 ? findByName(addrOptions.barangays, parts[parts.length - 4]) : null
+  if (maybeBarangay) {
+    addr.barangay = maybeBarangay.code
+    addr.street = parts.slice(0, -4).join(', ')
+  } else {
+    addr.street = parts.slice(0, -3).join(', ')
+  }
+}
 
 const filteredCollegeCourseGroups = computed(() => {
   const query = courseSearch.value.trim().toLowerCase()
@@ -565,11 +730,13 @@ const emptyForm = () => {
   form.seniorHighSchoolStrands = []
   form.moaStatus = false
   form.moaExpiry = ''
+  programType.value = 'college'
   customCollegeCourses.value = []
   courseSearch.value = ''
   specializationInput.value = ''
   submitted.value = false
   formError.value = ''
+  resetAddress()
 }
 
 function showToast(message, variant = 'success') {
@@ -638,6 +805,7 @@ async function loadSchools() {
 
 function openCreateModal() {
   emptyForm()
+  loadRegions()
   formModal.show()
 }
 
@@ -688,8 +856,10 @@ function openEditModal(school) {
     (course) => !collegeCourseOptions.includes(course)
   )
   form.seniorHighSchoolStrands = toArray(school.seniorHighSchoolStrands)
+  programType.value = form.collegeCourses.length || !form.seniorHighSchoolStrands.length ? 'college' : 'shs'
   form.moaStatus = school.moaStatus || false
   form.moaExpiry = school.moaExpiry ? school.moaExpiry.slice(0, 10) : ''
+  hydrateAddress(school.address)
   formModal.show()
 }
 
@@ -703,7 +873,9 @@ async function saveSchool() {
   submitted.value = true
   formError.value = ''
 
-  if (!form.name || !form.address) {
+  form.address = composedAddress.value
+
+  if (!form.name || !form.address || !addr.region || !addr.province || !addr.city) {
     formError.value = 'Please fill in all required fields.'
     return
   }
