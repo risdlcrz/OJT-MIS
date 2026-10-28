@@ -27,6 +27,57 @@
           </div>
 
           <div class="card-body idgen-form">
+            <div class="idgen-lookup">
+              <label for="idgenInternSearch" class="form-label">Find Intern</label>
+              <div class="idgen-lookup-field" @focusout="onInternFocusOut">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <input
+                  id="idgenInternSearch"
+                  v-model="internQuery"
+                  type="search"
+                  class="form-control"
+                  placeholder="Search by name or ID number"
+                  autocomplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  :aria-expanded="internSearchOpen"
+                  aria-controls="idgenInternResults"
+                  @focus="openInternSearch"
+                  @input="onInternInput"
+                  @keydown.esc="internSearchOpen = false"
+                />
+                <ul
+                  v-if="internSearchOpen"
+                  id="idgenInternResults"
+                  class="idgen-lookup-results"
+                  role="listbox"
+                >
+                  <li v-if="internsLoading" class="idgen-lookup-state">Loading interns…</li>
+                  <li v-else-if="internError" class="idgen-lookup-state text-danger">{{ internError }}</li>
+                  <li v-else-if="!internMatches.length" class="idgen-lookup-state">No interns found.</li>
+                  <template v-else>
+                    <li v-for="intern in internMatches" :key="intern.id">
+                      <button
+                        type="button"
+                        class="idgen-lookup-option"
+                        role="option"
+                        :aria-selected="selectedInternId === intern.id"
+                        @mousedown.prevent
+                        @click="applyIntern(intern)"
+                      >
+                        <strong>{{ intern.fullName }}</strong>
+                        <span>
+                          {{ intern.applicantNo || `#${intern.id}` }}
+                          &middot; {{ intern.applicantOffice || intern.school || '—' }}
+                        </span>
+                      </button>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+              <p class="idgen-hint mb-0">Pick an intern to fill the card details automatically.</p>
+            </div>
+
             <details class="idgen-form-section" open>
               <summary class="idgen-form-heading">
                 <span>Personal</span>
@@ -47,14 +98,17 @@
 
               <div class="mb-3">
                 <label for="idgenOffice" class="form-label">Office / Department</label>
-                <input
-                  id="idgenOffice"
-                  v-model="form.office"
-                  type="text"
-                  class="form-control"
-                  maxlength="60"
-                  placeholder="AS - INFORMATION TECHNOLOGY OFFICE"
-                />
+                <select id="idgenOffice" v-model="form.office" class="form-select">
+                  <option
+                    v-if="form.office && !officeOptions.includes(form.office)"
+                    :value="form.office"
+                  >
+                    {{ form.office }}
+                  </option>
+                  <option v-for="office in officeOptions" :key="office" :value="office">
+                    {{ office }}
+                  </option>
+                </select>
               </div>
 
               <div class="mb-3">
@@ -436,10 +490,17 @@
 <script setup>
 import { computed, inject, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import QRCode from 'qrcode'
+import officesData from '../assets/json/offices.json'
+import { getApiErrorMessage, internsAPI } from '@/services/api'
+
+/* Same shared office list that feeds the Signatories module dropdown. */
+const officeOptions = [
+  ...new Set((officesData.offices || []).map((office) => office.name).filter(Boolean))
+]
 
 const defaultForm = {
   fullName: 'LOVELY ROSE L. ANDAYA',
-  office: 'AS - INFORMATION TECHNOLOGY OFFICE',
+  office: 'AS - Administration Sector',
   idNumber: '2026-007',
   dateStarted: '2026-06-01',
   validUntil: '2026-12-31',
@@ -482,6 +543,96 @@ const formattedDates = computed(() => ({
   validUntil: formatDate(form.validUntil),
   issued: formatDate(form.dateIssued)
 }))
+
+/* ---------------- Intern autocomplete ---------------- */
+const interns = ref([])
+const internsLoading = ref(false)
+const internError = ref('')
+const internQuery = ref('')
+const internSearchOpen = ref(false)
+const selectedInternId = ref(null)
+
+const internMatches = computed(() => {
+  const query = internQuery.value.trim().toLowerCase()
+
+  if (!query) return interns.value.slice(0, 8)
+
+  return interns.value
+    .filter((intern) =>
+      [intern.fullName, intern.applicantNo, intern.id]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .some((value) => String(value).toLowerCase().includes(query))
+    )
+    .slice(0, 8)
+})
+
+async function loadInterns() {
+  if (internsLoading.value || interns.value.length) return
+
+  internsLoading.value = true
+  internError.value = ''
+
+  try {
+    interns.value = await internsAPI.getAll()
+  } catch (error) {
+    internError.value = getApiErrorMessage(error, 'Could not load interns.')
+  } finally {
+    internsLoading.value = false
+  }
+}
+
+function openInternSearch() {
+  internSearchOpen.value = true
+  loadInterns()
+}
+
+function onInternInput() {
+  selectedInternId.value = null
+  internSearchOpen.value = true
+  loadInterns()
+}
+
+function onInternFocusOut(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    internSearchOpen.value = false
+  }
+}
+
+function toDateInput(value) {
+  if (!value) return ''
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+/* The interns table has no photo/signature column, so those stay manual and
+   are cleared to avoid showing the previous intern's images. */
+function applyIntern(intern) {
+  selectedInternId.value = intern.id
+  internQuery.value = intern.fullName || intern.applicantNo || `#${intern.id}`
+  internSearchOpen.value = false
+
+  Object.assign(form, defaultForm)
+  form.fullName = intern.fullName || form.fullName
+  form.office = intern.applicantOffice || intern.requestOffice || form.office
+  form.idNumber = intern.applicantNo || String(intern.id)
+  form.dateStarted = toDateInput(intern.startDate) || form.dateStarted
+  form.validUntil = toDateInput(intern.endDate) || form.validUntil
+  form.dateIssued = toDateInput(intern.hireDate) || form.dateIssued
+  form.schoolName = intern.schoolName || intern.school || form.schoolName
+  form.emergencyName = intern.guardianName || form.emergencyName
+  form.emergencyNumber = intern.guardianContact || intern.contactNumber || form.emergencyNumber
+  form.emergencyAddress = intern.houseAddress || form.emergencyAddress
+
+  photoUrl.value = ''
+  signatureUrl.value = ''
+  photoError.value = ''
+  signatureError.value = ''
+}
 
 const defaultQrValue = computed(() =>
   [
@@ -834,9 +985,16 @@ async function printCard() {
   font-weight: 600;
 }
 
-.idgen-form .form-control {
-  padding: 0.34rem 0.55rem;
+.idgen-form .form-control,
+.idgen-form .form-select {
+  padding-top: 0.34rem;
+  padding-bottom: 0.34rem;
   font-size: 0.84rem;
+}
+
+.idgen-form .form-control {
+  padding-right: 0.55rem;
+  padding-left: 0.55rem;
 }
 
 .idgen-hint {
@@ -844,6 +1002,78 @@ async function printCard() {
   color: #8a7a71;
   font-size: 0.7rem;
   line-height: 1.35;
+}
+
+/* Intern autocomplete */
+.idgen-lookup-field {
+  position: relative;
+}
+
+.idgen-lookup-field > i {
+  position: absolute;
+  top: 50%;
+  left: 0.6rem;
+  color: #b98d68;
+  font-size: 0.75rem;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.idgen-lookup-field .form-control {
+  padding-left: 1.7rem;
+}
+
+.idgen-lookup-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  left: 0;
+  max-height: 15rem;
+  margin: 0;
+  padding: 0.3rem;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid #e6d7c6;
+  border-radius: 0.6rem;
+  background: #fff;
+  box-shadow: 0 16px 32px -18px rgba(54, 31, 12, 0.55);
+}
+
+.idgen-lookup-option {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.1rem;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #3a2a22;
+  text-align: left;
+}
+
+.idgen-lookup-option:hover,
+.idgen-lookup-option:focus-visible,
+.idgen-lookup-option[aria-selected='true'] {
+  background: #fff3e4;
+  outline: none;
+}
+
+.idgen-lookup-option strong {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.idgen-lookup-option span {
+  color: #8a7a71;
+  font-size: 0.68rem;
+}
+
+.idgen-lookup-state {
+  padding: 0.5rem 0.6rem;
+  color: #8a7a71;
+  font-size: 0.75rem;
 }
 
 .idgen-media {

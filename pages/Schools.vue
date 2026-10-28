@@ -118,9 +118,20 @@
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label fw-semibold">College Courses (Programs)</label>
-                  <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                  <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input
+                      v-model.trim="courseSearch"
+                      type="search"
+                      class="form-control"
+                      placeholder="Search courses..."
+                      aria-label="Search college courses"
+                      :disabled="isSaving"
+                    />
+                  </div>
+                  <div class="border rounded p-2" style="max-height: 240px; overflow-y: auto;">
                     <label
-                      v-for="course in collegeCourseOptions"
+                      v-for="course in filteredCollegeCourseOptions"
                       :key="course"
                       class="form-check"
                     >
@@ -133,7 +144,36 @@
                       />
                       <span class="form-check-label">{{ course }}</span>
                     </label>
+                    <p
+                      v-if="!filteredCollegeCourseOptions.length"
+                      class="text-muted small mb-0 px-1"
+                    >
+                      No courses match "{{ courseSearch }}".
+                    </p>
                   </div>
+                  <div class="input-group input-group-sm mt-2">
+                    <input
+                      id="collegeCourseSpecialization"
+                      v-model.trim="specializationInput"
+                      type="text"
+                      class="form-control"
+                      maxlength="150"
+                      placeholder="Specialization / Major (Optional)"
+                      :disabled="isSaving"
+                      @keydown.enter.prevent="addSpecializationCourse"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary"
+                      :disabled="isSaving || !specializationInput"
+                      @click="addSpecializationCourse"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <p class="form-text mb-0">
+                    Adds a custom entry, e.g. BSIT - Business Analytics.
+                  </p>
                 </div>
 
                 <div class="col-md-6">
@@ -349,14 +389,36 @@ const collegeCourseOptions = [
   'BS Information Technology',
   'BS Computer Science',
   'BS Information Systems',
+  'BS Software Engineering',
+  'BS Data Science',
   'BS Accountancy',
+  'BS Accounting Information Systems',
   'BS Business Administration',
+  'BS Entrepreneurship',
+  'BS Office Administration',
   'BS Civil Engineering',
   'BS Electrical Engineering',
   'BS Mechanical Engineering',
-  'BS Education',
+  'BS Electronics Engineering',
+  'BS Industrial Engineering',
+  'BS Architecture',
+  'Bachelor of Elementary Education (BEEd)',
+  'Bachelor of Secondary Education (BSEd)',
   'BS Nursing',
-  'BS Hospitality Management'
+  'BS Pharmacy',
+  'BS Medical Technology',
+  'BS Psychology',
+  'BS Criminology',
+  'BS Hospitality Management',
+  'BS Tourism Management',
+  'BS Social Work',
+  'BS Biology',
+  'BS Chemistry',
+  'BS Mathematics',
+  'BS Environmental Science',
+  'BS Public Administration',
+  'BA Communication',
+  'BA Political Science'
 ]
 
 const seniorHighSchoolStrandOptions = [
@@ -381,6 +443,45 @@ const form = reactive({
 })
 const isEditing = computed(() => form.id > 0)
 
+const customCollegeCourses = ref([])
+const courseSearch = ref('')
+const specializationInput = ref('')
+
+const allCollegeCourseOptions = computed(() => {
+  const seen = new Set()
+  return [...collegeCourseOptions, ...customCollegeCourses.value, ...form.collegeCourses]
+    .map((course) => String(course ?? '').trim())
+    .filter((course) => {
+      if (!course || seen.has(course)) return false
+      seen.add(course)
+      return true
+    })
+})
+
+const filteredCollegeCourseOptions = computed(() => {
+  const query = courseSearch.value.trim().toLowerCase()
+  if (!query) return allCollegeCourseOptions.value
+
+  return allCollegeCourseOptions.value.filter((course) =>
+    course.toLowerCase().includes(query)
+  )
+})
+
+function addSpecializationCourse() {
+  const value = specializationInput.value.trim()
+  if (!value) return
+
+  if (!customCollegeCourses.value.includes(value)) {
+    customCollegeCourses.value.push(value)
+  }
+  if (!form.collegeCourses.includes(value)) {
+    form.collegeCourses.push(value)
+  }
+
+  courseSearch.value = ''
+  specializationInput.value = ''
+}
+
 const formModalEl = ref(null)
 const deleteModalEl = ref(null)
 const toastEl = ref(null)
@@ -400,6 +501,9 @@ const emptyForm = () => {
   form.seniorHighSchoolStrands = []
   form.moaStatus = false
   form.moaExpiry = ''
+  customCollegeCourses.value = []
+  courseSearch.value = ''
+  specializationInput.value = ''
   submitted.value = false
   formError.value = ''
 }
@@ -516,6 +620,9 @@ function openEditModal(school) {
   form.abbreviation = school.abbreviation || ''
   form.address = school.address
   form.collegeCourses = toArray(school.collegeCourses)
+  customCollegeCourses.value = form.collegeCourses.filter(
+    (course) => !collegeCourseOptions.includes(course)
+  )
   form.seniorHighSchoolStrands = toArray(school.seniorHighSchoolStrands)
   form.moaStatus = school.moaStatus || false
   form.moaExpiry = school.moaExpiry ? school.moaExpiry.slice(0, 10) : ''

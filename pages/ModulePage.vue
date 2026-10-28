@@ -109,6 +109,26 @@
                   <div v-if="isEditing" class="form-text text-muted">Status cannot be changed after hiring.</div>
                 </template>
 
+                <template v-else-if="col.prop === 'school'">
+                  <select :id="`m-${col.prop}`" v-model="form.school"
+                          class="form-select" :class="{ 'is-invalid': submitted && !form.school }"
+                          :disabled="isSaving || schoolsLoading">
+                    <option value="" disabled>
+                      {{ schoolsLoading ? 'Loading schools...' : 'Select a school' }}
+                    </option>
+                    <option v-if="form.school && !schoolOptions.includes(form.school)" :value="form.school">
+                      {{ form.school }}
+                    </option>
+                    <option v-for="name in schoolOptions" :key="name" :value="name">
+                      {{ name }}
+                    </option>
+                  </select>
+                  <div class="invalid-feedback">Please select a school.</div>
+                  <div v-if="!schoolsLoading && !schoolOptions.length" class="form-text text-danger">
+                    No schools found. Please add a school first.
+                  </div>
+                </template>
+
                 <template v-else-if="col.prop === 'department'">
                   <select :id="`m-${col.prop}`" v-model.trim="form.department"
                           class="form-select" :disabled="isSaving">
@@ -268,12 +288,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, Toast } from 'bootstrap'
-import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, signatoriesAPI } from '@/services/api'
+import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {
   'internlist.html': {
-    title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true,
+    title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true, needsSchools: true,
     columns: [
       { prop: 'fullName', label: 'Full Name', max: 200 },
       { prop: 'school', label: 'School', max: 200 },
@@ -337,6 +357,8 @@ function cell(row, col) {
 const rows = ref([])
 const availableRequests = ref([])
 const departments = ref([])
+const schools = ref([])
+const schoolsLoading = ref(false)
 const isLoading = ref(false)
 const isSaving = ref(false)
 const loadError = ref('')
@@ -416,6 +438,18 @@ async function load() {
         departments.value = []
       }
     }
+
+    // Load registered schools for the Intern modal dropdown.
+    if (config.value.needsSchools) {
+      schoolsLoading.value = true
+      try {
+        schools.value = await schoolsAPI.getAll()
+      } catch {
+        schools.value = []
+      } finally {
+        schoolsLoading.value = false
+      }
+    }
   } catch (e) {
     loadError.value = getApiErrorMessage(e, `Failed to load ${title.value}.`)
   } finally {
@@ -428,6 +462,13 @@ const departmentList = computed(() => {
   return departments.value
     .filter(d => d.name && !seen.has(d.name) && seen.add(d.name))
     .map(d => d.name)
+})
+
+const schoolOptions = computed(() => {
+  const seen = new Set()
+  return schools.value
+    .filter(s => s.name && !seen.has(s.name) && seen.add(s.name))
+    .map(s => s.name)
 })
 
 function openCreate() {

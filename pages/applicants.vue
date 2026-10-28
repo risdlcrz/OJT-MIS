@@ -579,7 +579,7 @@
             :aria-hidden="!isRequirementsModalOpen"
         >
             <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-                <div class="modal-content modern-modal">
+                <div class="modal-content modern-modal requirements-modal">
                     <div class="modal-header modern-modal-header">
                         <h5 class="modal-title font-weight-bold">
                             Applicant Requirements
@@ -595,7 +595,7 @@
                     </div>
 
                     <form @submit.prevent="saveRequirements">
-                        <div class="modal-body p-4" style="overflow-y: auto;">
+                        <div class="modal-body p-4">
                             <p class="text-muted">
                                 Applicant No.:
                                 <strong>{{ reqModalApplicantNo }}</strong>
@@ -604,16 +604,16 @@
                             <div
                                 v-for="(label, idx) in reqLabels"
                                 :key="label"
-                                class="custom-control custom-checkbox mb-3"
+                                class="form-check mb-3"
                             >
                                 <input
                                     :id="`requirement-${idx}`"
                                     v-model="reqChecks[idx]"
                                     type="checkbox"
-                                    class="custom-control-input"
+                                    class="form-check-input"
                                 />
                                 <label
-                                    class="custom-control-label"
+                                    class="form-check-label"
                                     :for="`requirement-${idx}`"
                                 >
                                     {{ label }}
@@ -621,7 +621,7 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
+                        <div class="modal-footer border-0 pt-0">
                             <button type="submit" class="btn btn-success px-4 modern-btn">
                                 <i class="fas fa-save mr-1"></i>
                                 Save Requirements
