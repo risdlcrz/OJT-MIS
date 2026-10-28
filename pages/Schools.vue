@@ -129,24 +129,33 @@
                       :disabled="isSaving"
                     />
                   </div>
-                  <div class="border rounded p-2" style="max-height: 240px; overflow-y: auto;">
-                    <label
-                      v-for="course in filteredCollegeCourseOptions"
-                      :key="course"
-                      class="form-check"
+                  <div class="border rounded" style="max-height: 260px; overflow-y: auto;">
+                    <div
+                      v-for="group in filteredCollegeCourseGroups"
+                      :key="group.name"
+                      class="course-group"
                     >
-                      <input
-                        type="checkbox"
-                        class="form-check-input"
-                        :value="course"
-                        v-model="form.collegeCourses"
-                        :disabled="isSaving"
-                      />
-                      <span class="form-check-label">{{ course }}</span>
-                    </label>
+                      <div class="course-group-header">{{ group.name }}</div>
+                      <div class="px-2 pt-1 pb-1">
+                        <label
+                          v-for="course in group.courses"
+                          :key="course"
+                          class="form-check"
+                        >
+                          <input
+                            type="checkbox"
+                            class="form-check-input"
+                            :value="course"
+                            v-model="form.collegeCourses"
+                            :disabled="isSaving"
+                          />
+                          <span class="form-check-label">{{ course }}</span>
+                        </label>
+                      </div>
+                    </div>
                     <p
-                      v-if="!filteredCollegeCourseOptions.length"
-                      class="text-muted small mb-0 px-1"
+                      v-if="!filteredCollegeCourseGroups.length"
+                      class="text-muted small mb-0 p-2"
                     >
                       No courses match "{{ courseSearch }}".
                     </p>
@@ -385,41 +394,85 @@ const submitted = ref(false)
 const notification = reactive({ message: '', variant: 'success' })
 const notificationTimeout = ref(null)
 
-const collegeCourseOptions = [
-  'BS Information Technology',
-  'BS Computer Science',
-  'BS Information Systems',
-  'BS Software Engineering',
-  'BS Data Science',
-  'BS Accountancy',
-  'BS Accounting Information Systems',
-  'BS Business Administration',
-  'BS Entrepreneurship',
-  'BS Office Administration',
-  'BS Civil Engineering',
-  'BS Electrical Engineering',
-  'BS Mechanical Engineering',
-  'BS Electronics Engineering',
-  'BS Industrial Engineering',
-  'BS Architecture',
-  'Bachelor of Elementary Education (BEEd)',
-  'Bachelor of Secondary Education (BSEd)',
-  'BS Nursing',
-  'BS Pharmacy',
-  'BS Medical Technology',
-  'BS Psychology',
-  'BS Criminology',
-  'BS Hospitality Management',
-  'BS Tourism Management',
-  'BS Social Work',
-  'BS Biology',
-  'BS Chemistry',
-  'BS Mathematics',
-  'BS Environmental Science',
-  'BS Public Administration',
-  'BA Communication',
-  'BA Political Science'
+const collegeCourseGroups = [
+  {
+    name: 'Information Technology & Computing',
+    courses: [
+      'BS Information Technology (BSIT)',
+      'BS Computer Science (BSCS)',
+      'BS Information Systems (BSIS)',
+      'BS Computer Engineering (BSCpE)',
+      'BS Entertainment and Multimedia Computing (BSEMC)',
+      'BS Data Science / Analytics'
+    ]
+  },
+  {
+    name: 'Business & Accountancy',
+    courses: [
+      'BS Accountancy (BSA)',
+      'BS Business Administration (BSBA) - Financial Management',
+      'BS Business Administration (BSBA) - Marketing Management',
+      'BS Business Administration (BSBA) - Human Resource Management',
+      'BS Business Administration (BSBA) - Operations Management',
+      'BS Entrepreneurship (BSEntrep)',
+      'BS Real Estate Management (BSREM)',
+      'BS Office Administration (BSOA)',
+      'BS Hospitality Management (BSHM)',
+      'BS Tourism Management (BSTM)'
+    ]
+  },
+  {
+    name: 'Engineering & Architecture',
+    courses: [
+      'BS Civil Engineering (BSCE)',
+      'BS Mechanical Engineering (BSME)',
+      'BS Electrical Engineering (BSEE)',
+      'BS Electronics Engineering (BSEC)',
+      'BS Industrial Engineering (BSIE)',
+      'BS Chemical Engineering (BSChE)',
+      'BS Geodetic Engineering (BSGE)',
+      'BS Architecture (BSArchi)'
+    ]
+  },
+  {
+    name: 'Health & Allied Sciences',
+    courses: [
+      'BS Nursing (BSN)',
+      'BS Medical Technology / Medical Laboratory Science (BSMT)',
+      'BS Pharmacy (BSPharma)',
+      'BS Physical Therapy (BSPT)',
+      'BS Radiologic Technology (BSRT)',
+      'BS Nutrition and Dietetics (BSND)'
+    ]
+  },
+  {
+    name: 'Teacher Education',
+    courses: [
+      'Bachelor of Elementary Education (BEEd)',
+      'Bachelor of Secondary Education (BSEd) - Major in English',
+      'Bachelor of Secondary Education (BSEd) - Major in Mathematics',
+      'Bachelor of Secondary Education (BSEd) - Major in Science',
+      'Bachelor of Secondary Education (BSEd) - Major in Filipino',
+      'Bachelor of Secondary Education (BSEd) - Major in Social Studies',
+      'Bachelor of Special Needs Education (BSNEd)',
+      'Bachelor of Physical Education (BPEd)'
+    ]
+  },
+  {
+    name: 'Arts, Sciences & Social Sciences',
+    courses: [
+      'BA / BS Psychology',
+      'BA Communication / Mass Communication',
+      'BA Political Science / Public Administration',
+      'BS Criminology (BSCrim)',
+      'BS Biology',
+      'BS Chemistry',
+      'BS Custom Administration (BSCA)'
+    ]
+  }
 ]
+
+const collegeCourseOptions = collegeCourseGroups.flatMap((group) => group.courses)
 
 const seniorHighSchoolStrandOptions = [
   'STEM',
@@ -447,24 +500,35 @@ const customCollegeCourses = ref([])
 const courseSearch = ref('')
 const specializationInput = ref('')
 
-const allCollegeCourseOptions = computed(() => {
-  const seen = new Set()
-  return [...collegeCourseOptions, ...customCollegeCourses.value, ...form.collegeCourses]
-    .map((course) => String(course ?? '').trim())
-    .filter((course) => {
-      if (!course || seen.has(course)) return false
-      seen.add(course)
-      return true
-    })
-})
-
-const filteredCollegeCourseOptions = computed(() => {
+const filteredCollegeCourseGroups = computed(() => {
   const query = courseSearch.value.trim().toLowerCase()
-  if (!query) return allCollegeCourseOptions.value
 
-  return allCollegeCourseOptions.value.filter((course) =>
-    course.toLowerCase().includes(query)
-  )
+  const groups = collegeCourseGroups.map((group) => {
+    const categoryMatches = group.name.toLowerCase().includes(query)
+
+    return {
+      name: group.name,
+      courses: !query || categoryMatches
+        ? group.courses
+        : group.courses.filter((course) => course.toLowerCase().includes(query))
+    }
+  })
+
+  const customCourses = [...customCollegeCourses.value, ...form.collegeCourses]
+    .map((course) => String(course ?? '').trim())
+    .filter((course, index, list) =>
+      course && list.indexOf(course) === index && !collegeCourseOptions.includes(course)
+    )
+    .filter((course) => !query || course.toLowerCase().includes(query))
+
+  if (customCourses.length) {
+    groups.push({
+      name: 'Specializations / Additional Courses',
+      courses: customCourses
+    })
+  }
+
+  return groups.filter((group) => group.courses.length)
 })
 
 function addSpecializationCourse() {
@@ -729,3 +793,23 @@ onBeforeUnmount(() => {
   window.clearTimeout(notificationTimeout.value)
 })
 </script>
+
+<style scoped>
+.course-group + .course-group {
+  border-top: 1px solid #dee2e6;
+}
+
+.course-group-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #dee2e6;
+  background: #f8f9fa;
+  color: #495057;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+</style>
