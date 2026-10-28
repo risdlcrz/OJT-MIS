@@ -1332,11 +1332,11 @@ async function printCard() {
 }
 
 .idgen-photo {
-  flex: 0 0 22mm;
-  width: 22mm;
-  height: 22mm;
+  flex: 0 0 30mm;
+  width: 30mm;
+  height: 30mm;
   overflow: hidden;
-  border: 0.35mm solid #000;
+  border: 0.25mm solid #000;
   background: #fff;
 }
 
@@ -1415,8 +1415,8 @@ async function printCard() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38mm;
-  height: 38mm;
+  width: 30mm;
+  height: 30mm;
   overflow: hidden;
   background: #fff;
 }
