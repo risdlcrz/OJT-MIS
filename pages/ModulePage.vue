@@ -4,7 +4,7 @@
     <div v-if="config" class="card shadow-sm">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h3 class="card-title mb-0">{{ config.title }}</h3>
-        <button type="button" class="btn btn-primary btn-sm" :disabled="isLoading || (config.hiring && availableRequests.length === 0)" :title="config.hiring && availableRequests.length === 0 ? 'No available intern request' : ''" @click="openCreate">
+        <button v-if="!config.hiring" type="button" class="btn btn-primary btn-sm" :disabled="isLoading" @click="openCreate">
           <i class="fas fa-plus me-1"></i> Add {{ config.singular }}
         </button>
       </div>

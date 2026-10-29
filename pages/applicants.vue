@@ -203,7 +203,7 @@
                                     <th>LAST NAME</th>
                                     <th>FIRST NAME</th>
                                     <th>SCHEDULE</th>
-                                    <th>OFFICE</th>
+                                    <th>REQUEST</th>
                                     <th>ACTION</th>
                                 </tr>
                             </thead>
@@ -217,7 +217,7 @@
                                     <td class="text-dark">{{ applicant.lastName }}</td>
                                     <td class="text-dark">{{ applicant.firstName }}</td>
                                     <td class="text-dark">{{ scheduleLabel(applicant) }}</td>
-                                    <td class="text-dark">{{ (applicant.orientation && applicant.orientation.office) || '-' }}</td>
+                                    <td class="text-dark">{{ applicant.requestNoLabel || (applicant.orientation && applicant.orientation.office) || '-' }}</td>
                                     <td>
                                         <div class="d-flex justify-content-center" style="gap: 6px">
                                             <button
@@ -766,27 +766,18 @@
                                 <strong>{{ hireApplicantNo }}</strong>
                             </p>
 
-                            <div v-if="availableRequests.length === 0" class="alert alert-warning">
-                                Walang available intern request. Kailangan munang
-                                mag-request ng bakante bago mag-hire.
+                            <div v-if="!hireRequestNo" class="alert alert-warning">
+                                No applicant request assigned. Assign one in Schedule Orientation first.
                             </div>
 
-                            <div class="form-group">
-                                <label for="hireRequestNo">
-                                    Request <span class="text-danger">*</span>
-                                </label>
-                                <select
-                                    id="hireRequestNo"
-                                    v-model="hireRequestNo"
+                            <div v-else class="form-group">
+                                <label>Applicant Request</label>
+                                <input
+                                    type="text"
                                     class="form-control"
-                                    :disabled="availableRequests.length === 0 || isHiring"
-                                    required
-                                >
-                                    <option value="">Select an intern request</option>
-                                    <option v-for="r in availableRequests" :key="r.id" :value="r.id">
-                                        #{{ r.id }} &mdash; {{ r.officeName }} ({{ r.remaining }} slot{{ r.remaining === 1 ? '' : 's' }} left)
-                                    </option>
-                                </select>
+                                    :value="hireRequestLabel"
+                                    readonly
+                                />
                             </div>
 
                             <div class="form-group">
@@ -1015,7 +1006,7 @@
                                 {{ viewApplicantData.orientation.time || '-' }}
                             </p>
                             <p>
-                                <strong>Orientation Office:</strong>
+                                <strong>Orientation Request:</strong>
                                 {{ viewApplicantData.orientation.office || '-' }}
                             </p>
                             <p>
@@ -1135,22 +1126,22 @@
                                     />
                                 </div>
                                 <div class="form-group col-md-4">
-                                    <label for="orientationOffice">Office</label>
+                                    <label for="orientationRequest">Applicant Request</label>
                                     <select
-                                        id="orientationOffice"
-                                        v-model="orientationOffice"
+                                        id="orientationRequest"
+                                        v-model="orientationRequestNo"
                                         class="form-control"
                                         required
                                     >
                                         <option value="" disabled>
-                                            {{ officesLoading ? 'Loading offices...' : (scheduleOffices.length ? 'Select office' : 'No offices found') }}
+                                            {{ requestsLoading ? 'Loading requests...' : (availableRequests.length ? 'Select request' : 'No available requests') }}
                                         </option>
                                         <option
-                                            v-for="office in scheduleOffices"
-                                            :key="office"
-                                            :value="office"
+                                            v-for="request in availableRequests"
+                                            :key="request.id"
+                                            :value="request.id"
                                         >
-                                            {{ office }}
+                                            #{{ request.id }} — {{ request.officeName }} ({{ request.remaining }} slot{{ request.remaining === 1 ? '' : 's' }} left)
                                         </option>
                                     </select>
                                 </div>
@@ -1202,8 +1193,6 @@ import '../assets/css/Applicants.css'
 
 const dialog = inject('dialog')
 const { showAlert, showConfirm } = dialog || {}
-
-const OFFICES_JSON = '/assets/json/offices.json'
 
 /* Schools loaded from API for the school dropdown */
 const schools = ref([])
@@ -1362,8 +1351,17 @@ const isHireModalOpen = ref(false)
 
 const hireApplicantNo = ref(null)
 
-/** Id ng piniling intern request (dropdown, walang "Full" na request). */
+/** Id ng request na na-assign sa Schedule Orientation. */
 const hireRequestNo = ref('')
+
+const hireRequestLabel = computed(() => {
+    const request = availableRequests.value.find(
+        r => Number(r.id) === Number(hireRequestNo.value)
+    )
+    return request
+        ? `#${request.id} — ${request.officeName}`
+        : (hireRequestNo.value ? `#${hireRequestNo.value}` : '')
+})
 
 const hireDate = ref('')
 
@@ -1402,11 +1400,9 @@ const orientationDate = ref('')
 
 const orientationTime = ref('')
 
-const orientationOffice = ref('')
+const orientationRequestNo = ref('')
 
-const scheduleOffices = ref([])
-
-const officesLoading = ref(true)
+const requestsLoading = ref(false)
 
 
 /* Applicants who are accepted but not yet confirmed for orientation */
@@ -1803,7 +1799,7 @@ async function openHire(applicant, presetData = {}) {
     closeActionPanels()
 
     hireApplicantNo.value = applicant.applicantNo
-    hireRequestNo.value = presetData.requestNo || applicant.requestNo || ''
+    hireRequestNo.value = applicant.requestNo || ''
     hireDate.value = presetData.date || ''
     // Use requiredHours directly (in hours), default to 480 hours (60 days * 8 hours)
     hireDuration.value = applicant.requiredHours > 0 ? applicant.requiredHours : 480
@@ -1880,12 +1876,7 @@ async function submitHire() {
     hireError.value = ''
 
     if (!hireRequestNo.value) {
-        hireError.value = 'Please select an intern request.'
-        return
-    }
-
-    if (availableRequests.value.length === 0) {
-        hireError.value = 'Walang available intern request. Mag-request muna ng bakante.'
+        hireError.value = 'No applicant request assigned. Please assign one in Schedule Orientation first.'
         return
     }
 
@@ -1979,32 +1970,16 @@ function deleteApplicant(applicant) {
 
 /* ---- Schedule Orientation functions ---- */
 
-async function loadScheduleOffices() {
-    officesLoading.value = true
+async function loadAvailableRequests() {
+    requestsLoading.value = true
 
     try {
-        const res = await fetch(OFFICES_JSON)
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-        const data = await res.json()
-        const raw = Array.isArray(data) ? data : (data.offices || [])
-
-        const list = raw
-            .map(o =>
-                typeof o === 'string'
-                    ? o
-                    : (o.name || o.office || o.officeName || '')
-            )
-            .filter(Boolean)
-
-        scheduleOffices.value = list.length ? list : [...FALLBACK_OFFICES]
+        availableRequests.value = await internRequestsAPI.available()
     } catch (error) {
-        console.error('Failed to load offices.json:', error)
-
-        scheduleOffices.value = [...FALLBACK_OFFICES]
+        console.error('Failed to load intern requests:', error)
+        availableRequests.value = []
     } finally {
-        officesLoading.value = false
+        requestsLoading.value = false
     }
 }
 
@@ -2018,7 +1993,7 @@ function scheduleLabel(applicant) {
 }
 
 
-function openScheduleModal(applicant) {
+async function openScheduleModal(applicant) {
     if (!applicant) return
 
     closeActionPanels()
@@ -2026,12 +2001,11 @@ function openScheduleModal(applicant) {
     schedApplicantNo.value = applicant.applicantNo
     orientationDate.value = applicant.orientation?.date || ''
     orientationTime.value = applicant.orientation?.time || ''
-    orientationOffice.value =
-        applicant.orientation?.office ||
-        applicant.applicantOffice ||
-        ''
+    orientationRequestNo.value = applicant.requestNo || ''
 
     isScheduleModalOpen.value = true
+
+    await loadAvailableRequests()
 }
 
 
@@ -2041,13 +2015,17 @@ function closeScheduleModal() {
     schedApplicantNo.value = null
     orientationDate.value = ''
     orientationTime.value = ''
-    orientationOffice.value = ''
+    orientationRequestNo.value = ''
 }
 
 
 async function saveSchedule() {
-    if (!orientationDate.value || !orientationOffice.value) {
-        await showAlert('Please select a date and an office.', 'Validation Error')
+    const request = availableRequests.value.find(
+        r => Number(r.id) === Number(orientationRequestNo.value)
+    )
+
+    if (!orientationDate.value || !request) {
+        await showAlert('Please select a date and an applicant request.', 'Validation Error')
         return
     }
 
@@ -2060,10 +2038,12 @@ async function saveSchedule() {
         return
     }
 
+    applicant.requestNo = request.id
+    applicant.requestNoLabel = `#${request.id} - ${request.officeName}`
     applicant.orientation = {
         date: orientationDate.value,
         time: orientationTime.value,
-        office: orientationOffice.value,
+        office: request.officeName,
         confirmed: applicant.orientation?.confirmed || false
     }
 
@@ -2093,7 +2073,6 @@ onMounted(async () => {
     readTabFromUrl()
     await loadApplicants()
     await loadSchools()
-    loadScheduleOffices()
 
     document.addEventListener('click', handleOutsideClick)
     window.addEventListener('hashchange', readTabFromUrl)
