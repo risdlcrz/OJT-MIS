@@ -968,6 +968,8 @@ body {
 }
 
 .main-sidebar .nav-treeview {
+  display: block;
+  width: 100%;
   margin: 0;
   padding-left: 0;
   background: rgba(0, 0, 0, 0.22);
