@@ -19,6 +19,12 @@ namespace OJTMISApi.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
+        /// <summary>
+        /// Random na password na ibinigay ng HR para sa bagong intern account.
+        /// Binubura kapag nagpalit na ng password ang user.
+        /// </summary>
+        public string? TemporaryPassword { get; set; }
+
         /// <summary>Pangalan na ipinapakita sa navbar (First + Last).</summary>
         public string FullName => $"{FirstName} {LastName}".Trim();
     }

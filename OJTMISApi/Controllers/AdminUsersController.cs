@@ -180,6 +180,9 @@ namespace OJTMISApi.Controllers
                         message = string.Join(" ", passwordResult.Errors.Select(e => e.Description))
                     });
                 }
+
+                user.TemporaryPassword = null;
+                await _userManager.UpdateAsync(user);
             }
 
             var currentRoles = await _userManager.GetRolesAsync(user);
@@ -221,6 +224,8 @@ namespace OJTMISApi.Controllers
                 FullName = user.FullName,
                 Office = user.Office,
                 AvatarUrl = user.AvatarUrl,
+                TemporaryPassword = user.TemporaryPassword,
+                EmailConfirmed = user.EmailConfirmed,
                 Roles = roles.ToArray(),
                 CreatedAt = user.CreatedAt
             };
@@ -249,6 +254,8 @@ namespace OJTMISApi.Controllers
         public string FullName { get; set; } = string.Empty;
         public string? Office { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? TemporaryPassword { get; set; }
+        public bool EmailConfirmed { get; set; }
         public string[] Roles { get; set; } = Array.Empty<string>();
         public DateTime CreatedAt { get; set; }
     }

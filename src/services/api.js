@@ -198,4 +198,12 @@ export const adminUsersAPI = {
   update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data
 }
 
+/** HR Admin only: audit trail ng mga aksyon ng bawat user. */
+export const logsAPI = {
+  getAll: async ({ category = 'all', search = '', take = 500 } = {}) =>
+    (await apiClient.get('/logs', {
+      params: { category, search, take }
+    })).data
+}
+
 export default apiClient

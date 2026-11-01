@@ -20,6 +20,7 @@ namespace OJTMISApi.Data
         public DbSet<InternRequest> InternRequests { get; set; } = null!;
         public DbSet<Applicant> Applicants { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; } = null!;
+        public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -133,6 +134,19 @@ namespace OJTMISApi.Data
                 // keeps the intent explicit in the model).
                 entity.Property(u => u.AvatarUrl)
                       .HasColumnType("nvarchar(max)");
+            });
+
+            modelBuilder.Entity<ActivityLog>(entity =>
+            {
+                entity.HasKey(l => l.Id);
+                entity.Property(l => l.UserName).IsRequired().HasMaxLength(200);
+                entity.Property(l => l.Category).IsRequired().HasMaxLength(20);
+                entity.Property(l => l.Method).IsRequired().HasMaxLength(10);
+                entity.Property(l => l.Path).IsRequired().HasMaxLength(300);
+                entity.Property(l => l.Action).IsRequired().HasMaxLength(200);
+                entity.Property(l => l.CreatedAt).ValueGeneratedNever();
+
+                entity.HasIndex(l => new { l.Category, l.CreatedAt });
             });
 
             modelBuilder.Entity<Notification>(entity =>

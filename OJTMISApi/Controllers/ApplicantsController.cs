@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
 using OJTMISApi.Services;
+using System.Security.Cryptography;
 
 namespace OJTMISApi.Controllers
 {
@@ -34,11 +36,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ApplicantsController> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ApplicantsController(ApplicationDbContext context, ILogger<ApplicantsController> logger)
+        public ApplicantsController(
+            ApplicationDbContext context,
+            ILogger<ApplicantsController> logger,
+            UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _logger = logger;
+            _userManager = userManager;
         }
 
         /// <summary>GET: api/applicants</summary>
@@ -287,16 +294,107 @@ namespace OJTMISApi.Controllers
             _context.Interns.Add(intern);
             await _context.SaveChangesAsync();
 
+            // Bigyan ng user account ang bagong intern gamit ang email na
+            // inilagay sa application at isang random na temporary password.
+            var account = await EnsureInternAccountAsync(applicant);
+
             return Ok(new
             {
                 message = $"Intern profile created for {fullName}.",
                 intern,
                 startDate = start.ToString("yyyy-MM-dd"),
-                endDate = end.ToString("yyyy-MM-dd")
+                endDate = end.ToString("yyyy-MM-dd"),
+                account
             });
         }
 
         /* ---------------- Helpers ---------------- */
+
+        private sealed record InternAccountResult(
+            bool Created,
+            string? Email,
+            string? TemporaryPassword,
+            string? Warning);
+
+        /// <summary>
+        /// Gumagawa ng Intern user account kapag na-hire ang applicant.
+        /// Kung may existing account na ang email, sinisiguro lang na may
+        /// Intern role ito.
+        /// </summary>
+        private async Task<InternAccountResult> EnsureInternAccountAsync(Applicant applicant)
+        {
+            var email = applicant.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            {
+                return new(false, null, null,
+                    "The applicant has no valid email, so no user account was created.");
+            }
+
+            var existing = await _userManager.FindByEmailAsync(email);
+            if (existing is not null)
+            {
+                if (!await _userManager.IsInRoleAsync(existing, UserRoles.Intern))
+                {
+                    await _userManager.AddToRoleAsync(existing, UserRoles.Intern);
+                }
+
+                return new(false, email, null,
+                    "An account with this email already exists; Intern access was ensured.");
+            }
+
+            var password = GenerateTemporaryPassword();
+            var user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FirstName = applicant.FirstName,
+                LastName = applicant.LastName,
+                Office = applicant.ApplicantOffice,
+                EmailConfirmed = true,
+                TemporaryPassword = password
+            };
+
+            var createResult = await _userManager.CreateAsync(user, password);
+            if (!createResult.Succeeded)
+            {
+                _logger.LogWarning("Could not create intern account for {Email}: {Errors}",
+                    email, string.Join(" ", createResult.Errors.Select(e => e.Description)));
+
+                return new(false, email, null,
+                    "The intern was hired, but the user account could not be created.");
+            }
+
+            await _userManager.AddToRoleAsync(user, UserRoles.Intern);
+
+            return new(true, email, password, null);
+        }
+
+        private static string GenerateTemporaryPassword()
+        {
+            const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            const string lower = "abcdefghijkmnopqrstuvwxyz";
+            const string digits = "23456789";
+            const string all = upper + lower + digits + "!@#$%";
+            var chars = new char[12];
+
+            chars[0] = upper[RandomNumberGenerator.GetInt32(upper.Length)];
+            chars[1] = lower[RandomNumberGenerator.GetInt32(lower.Length)];
+            chars[2] = digits[RandomNumberGenerator.GetInt32(digits.Length)];
+
+            for (var i = 3; i < chars.Length; i++)
+            {
+                chars[i] = all[RandomNumberGenerator.GetInt32(all.Length)];
+            }
+
+            // Shuffle para hindi laging nasa unahan ang required characters.
+            for (var i = chars.Length - 1; i > 0; i--)
+            {
+                var j = RandomNumberGenerator.GetInt32(i + 1);
+                (chars[i], chars[j]) = (chars[j], chars[i]);
+            }
+
+            return new string(chars);
+        }
 
         private static string BuildFullName(Applicant a)
         {

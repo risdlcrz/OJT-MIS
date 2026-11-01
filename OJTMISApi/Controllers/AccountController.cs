@@ -110,6 +110,14 @@ namespace OJTMISApi.Controllers
                 });
             }
 
+            // Hindi na kailangang ipakita ang temporary password pagkatapos
+            // magpalit ng sariling password ang user.
+            if (!string.IsNullOrEmpty(user.TemporaryPassword))
+            {
+                user.TemporaryPassword = null;
+                await _userManager.UpdateAsync(user);
+            }
+
             return Ok(new { message = "Password changed successfully." });
         }
 

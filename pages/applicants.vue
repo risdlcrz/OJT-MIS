@@ -1910,10 +1910,15 @@ async function submitHire() {
             remarks: pendingAction?.remarks || applicant.remarks || ''
         })
 
+        const accountLines = result.account?.temporaryPassword
+            ? `\n\nUser Account\nEmail: ${result.account.email}\nTemporary Password: ${result.account.temporaryPassword}\nThe intern can change this in Account > Security.`
+            : (result.account?.warning ? `\n\nUser Account: ${result.account.warning}` : '')
+
         await showAlert(
             `${result.message}\n\n` +
             `Start Date: ${result.startDate}\n` +
-            `End Date: ${result.endDate}`,
+            `End Date: ${result.endDate}` +
+            accountLines,
             'Hire Successful'
         )
 

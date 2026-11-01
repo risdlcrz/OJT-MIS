@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using OJTMISApi.Data;
 using OJTMISApi.Models;
 
 namespace OJTMISApi.Controllers
@@ -21,17 +22,20 @@ namespace OJTMISApi.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly JwtSettings _jwt;
+        private readonly ApplicationDbContext _context;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             RoleManager<IdentityRole> roleManager,
-            IOptions<JwtSettings> jwt)
+            IOptions<JwtSettings> jwt,
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _roleManager = roleManager;
             _jwt = jwt.Value;
+            _context = context;
         }
 
         // POST: api/auth/register
@@ -90,6 +94,20 @@ namespace OJTMISApi.Controllers
                 return Unauthorized(new { message = "Invalid email or password." });
             }
 
+            // Ang intern access ay nag-expire kapag lumipas na ang EndDate
+            // na nakasaad sa intern record.
+            var loginRoles = await _userManager.GetRolesAsync(user);
+            if (loginRoles.Contains(UserRoles.Intern))
+            {
+                var endDate = await GetInternEndDateAsync(user);
+                if (endDate is not null && endDate.Value.Date < DateTime.Now.Date)
+                {
+                    return Unauthorized(new { message = "Your internship access has expired." });
+                }
+            }
+
+            await LogLoginAsync(user);
+
             return await IssueTokenAsync(user);
         }
 
@@ -104,6 +122,37 @@ namespace OJTMISApi.Controllers
             return Ok(await BuildProfileAsync(user));
         }
 
+        private async Task LogLoginAsync(ApplicationUser user)
+        {
+            try
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                var category = roles.Contains(UserRoles.HRAdmin) ? "HR"
+                    : roles.Contains(UserRoles.Supervisor) ? "Supervisor"
+                    : "Intern";
+
+                _context.ActivityLogs.Add(new ActivityLog
+                {
+                    UserId = user.Id,
+                    UserName = user.FullName,
+                    Email = user.Email ?? string.Empty,
+                    Category = category,
+                    Method = "POST",
+                    Path = "/api/auth/login",
+                    Action = "Logged in",
+                    Details = "Signed in successfully",
+                    IsVerified = true,
+                    CreatedAt = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // Huwag harangan ang login kung bigong maisulat ang audit log.
+            }
+        }
+
         private async Task<AuthResponse> IssueTokenAsync(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
@@ -116,20 +165,48 @@ namespace OJTMISApi.Controllers
             };
             claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
+            // Default token lifetime, pero para sa interns ay hindi lalampas
+            // sa EndDate ng kanilang internship.
+            var expiresAt = DateTime.UtcNow.AddHours(_jwt.ExpiryHours);
+            if (roles.Contains(UserRoles.Intern))
+            {
+                var endDate = await GetInternEndDateAsync(user);
+                if (endDate is not null)
+                {
+                    var internshipEnd = endDate.Value.Date.AddDays(1).ToUniversalTime();
+                    if (internshipEnd < expiresAt) expiresAt = internshipEnd;
+                }
+            }
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.SigningKey));
             var token = new JwtSecurityToken(
                 issuer: _jwt.Issuer,
                 audience: _jwt.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(_jwt.ExpiryHours),
+                expires: expiresAt,
                 signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
 
             return new AuthResponse
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
-                ExpiresAt = DateTime.UtcNow.AddHours(_jwt.ExpiryHours),
+                ExpiresAt = expiresAt,
                 Profile = await BuildProfileAsync(user)
             };
+        }
+
+        private async Task<DateTime?> GetInternEndDateAsync(ApplicationUser user)
+        {
+            if (string.IsNullOrWhiteSpace(user.Email)) return null;
+
+            var email = user.Email.Trim().ToLower();
+            return await _context.Interns
+                .AsNoTracking()
+                .Where(i => i.Email != null &&
+                            i.Email.ToLower() == email &&
+                            i.EndDate != null)
+                .OrderByDescending(i => i.EndDate)
+                .Select(i => i.EndDate)
+                .FirstOrDefaultAsync();
         }
 
         private async Task<UserProfile> BuildProfileAsync(ApplicationUser user)

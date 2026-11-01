@@ -82,6 +82,10 @@
         {
           "name": "Daily Time Record",
           "link": "dtr.html"
+        },
+        {
+          "name": "Logs",
+          "link": "logs.html"
         }
       ]
     },

@@ -319,6 +319,8 @@
                   <th scope="col" class="text-center" style="width: 60px;">#</th>
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
+                  <th scope="col">Temporary Password</th>
+                  <th scope="col">Status</th>
                   <th scope="col">Role</th>
                   <th scope="col">Office</th>
                   <th scope="col" style="width: 130px;">Created</th>
@@ -338,6 +340,15 @@
                     </div>
                   </td>
                   <td class="text-dark">{{ user.email }}</td>
+                  <td>
+                    <code v-if="user.temporaryPassword">{{ user.temporaryPassword }}</code>
+                    <span v-else class="text-muted small">Changed</span>
+                  </td>
+                  <td>
+                    <span class="badge" :class="user.emailConfirmed ? 'text-bg-success' : 'text-bg-danger'">
+                      {{ user.emailConfirmed ? 'Verified' : 'Unverified' }}
+                    </span>
+                  </td>
                   <td>
                     <span
                       v-for="role in user.roles"
@@ -364,7 +375,7 @@
                   </td>
                 </tr>
                 <tr v-if="filteredUsers.length === 0">
-                  <td colspan="7" class="text-center text-muted py-4">
+                  <td colspan="9" class="text-center text-muted py-4">
                     No users match your filters.
                   </td>
                 </tr>
