@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -14,11 +16,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<InternsController> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public InternsController(ApplicationDbContext context, ILogger<InternsController> logger)
+        public InternsController(
+            ApplicationDbContext context,
+            ILogger<InternsController> logger,
+            UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _logger = logger;
+            _userManager = userManager;
         }
 
         /// <summary>GET: api/interns</summary>
@@ -186,6 +193,7 @@ namespace OJTMISApi.Controllers
             {
                 FullName = f1,
                 School = school?.Name ?? f2,
+                Email = item.Email?.Trim() ?? string.Empty,
                 Status = status,
                 RequestId = null,
                 CreatedAt = now,
@@ -220,6 +228,10 @@ namespace OJTMISApi.Controllers
 
                 _context.Interns.Add(entity);
                 await _context.SaveChangesAsync();
+
+                // Awtomatikong ilista sa User Management bilang unverified.
+                await ProvisionAccountAsync(entity);
+
                 return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
             }
             catch (Exception ex)
@@ -262,14 +274,53 @@ namespace OJTMISApi.Controllers
 
                 existing.FullName = f1;
                 existing.School = school?.Name ?? f2;
+                existing.Email = item.Email?.Trim() ?? existing.Email;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
+
+                await ProvisionAccountAsync(existing);
                 return Ok(existing);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating Intern {Id}.", id);
                 return Problem(title: "Internal Server Error", detail: "An unexpected error occurred while updating the record.", statusCode: 500);
+            }
+        }
+
+        /// <summary>
+        /// Gumagawa ng unverified na Intern account kung wala pa, para
+        /// agad na lumabas sa User Management.
+        /// </summary>
+        private async Task ProvisionAccountAsync(Intern intern)
+        {
+            var email = intern.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) return;
+
+            try
+            {
+                if (await _userManager.FindByEmailAsync(email) is not null) return;
+
+                var user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    FirstName = string.IsNullOrWhiteSpace(intern.FirstName) ? intern.FullName : intern.FirstName,
+                    LastName = intern.LastName ?? string.Empty,
+                    Office = intern.ApplicantOffice,
+                    EmailConfirmed = false,
+                    TemporaryPassword = TemporaryPasswordGenerator.Generate()
+                };
+
+                var result = await _userManager.CreateAsync(user, user.TemporaryPassword);
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, UserRoles.Intern);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not auto-create user account for intern {Name}.", intern.FullName);
             }
         }
 

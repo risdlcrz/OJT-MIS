@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OJTMISApi.Data;
 using OJTMISApi.Models;
 
 namespace OJTMISApi.Controllers
@@ -15,10 +16,12 @@ namespace OJTMISApi.Controllers
     public class AdminUsersController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _context;
 
-        public AdminUsersController(UserManager<ApplicationUser> userManager)
+        public AdminUsersController(UserManager<ApplicationUser> userManager, ApplicationDbContext context)
         {
             _userManager = userManager;
+            _context = context;
         }
 
         /// <summary>GET: api/admin/users?role=Intern</summary>
@@ -56,6 +59,54 @@ namespace OJTMISApi.Controllers
             }
 
             return Ok(result);
+        }
+
+        /// <summary>GET: api/admin/users/available-people</summary>
+        [HttpGet("available-people")]
+        public async Task<ActionResult<IEnumerable<object>>> GetAvailablePeople()
+        {
+            var existingEmails = await _userManager.Users
+                .Where(u => u.Email != null)
+                .Select(u => u.Email!.ToLower())
+                .ToListAsync();
+
+            var emailSet = existingEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var interns = await _context.Interns.AsNoTracking()
+                .Where(i => i.Email != null && i.Email != "")
+                .OrderBy(i => i.FullName)
+                .ToListAsync();
+
+            var internPeople = interns
+                .Where(i => !emailSet.Contains(i.Email.ToLower()))
+                .Select(i => new
+                {
+                    source = "Intern",
+                    id = i.Id,
+                    fullName = i.FullName,
+                    email = i.Email,
+                    office = i.ApplicantOffice,
+                    role = UserRoles.Intern
+                });
+
+            var signatories = await _context.Signatories.AsNoTracking()
+                .Where(s => s.Email != null && s.Email != "")
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+
+            var signatoryPeople = signatories
+                .Where(s => !emailSet.Contains(s.Email.ToLower()))
+                .Select(s => new
+                {
+                    source = "Signatory",
+                    id = s.Id,
+                    fullName = s.Name,
+                    email = s.Email,
+                    office = s.Department,
+                    role = UserRoles.Supervisor
+                });
+
+            return Ok(internPeople.Concat(signatoryPeople).OrderBy(p => p.fullName).ToList());
         }
 
         /// <summary>POST: api/admin/users</summary>
@@ -182,6 +233,7 @@ namespace OJTMISApi.Controllers
                 }
 
                 user.TemporaryPassword = null;
+                user.EmailConfirmed = true;
                 await _userManager.UpdateAsync(user);
             }
 

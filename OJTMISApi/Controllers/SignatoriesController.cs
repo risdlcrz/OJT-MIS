@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -14,11 +16,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignatoriesController> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public SignatoriesController(ApplicationDbContext context, ILogger<SignatoriesController> logger)
+        public SignatoriesController(
+            ApplicationDbContext context,
+            ILogger<SignatoriesController> logger,
+            UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _logger = logger;
+            _userManager = userManager;
         }
 
         /// <summary>GET: api/signatories</summary>
@@ -66,6 +73,7 @@ namespace OJTMISApi.Controllers
             var f1 = item.Name?.Trim() ?? string.Empty;
             var f2 = item.Position?.Trim() ?? string.Empty;
             var f3 = item.Department?.Trim() ?? string.Empty;
+            var email = item.Email?.Trim() ?? string.Empty;
 
             if (await _context.Signatories.AnyAsync(x => x.Name != null && x.Name.ToLower() == f1.ToLower()))
             {
@@ -73,12 +81,17 @@ namespace OJTMISApi.Controllers
             }
 
             var now = DateTime.Now;
-            var entity = new Signatory { Name = f1, Position = f2, Department = f3, CreatedAt = now, UpdatedAt = now };
+            var entity = new Signatory { Name = f1, Position = f2, Department = f3, Email = email, CreatedAt = now, UpdatedAt = now };
 
             try
             {
                 _context.Signatories.Add(entity);
                 await _context.SaveChangesAsync();
+
+                // Awtomatikong gumawa ng unverified account para makita agad
+                // sa User Management at mabigyan ng access ng HR.
+                await ProvisionAccountAsync(entity);
+
                 return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
             }
             catch (Exception ex)
@@ -98,6 +111,7 @@ namespace OJTMISApi.Controllers
             var f1 = item.Name?.Trim() ?? string.Empty;
             var f2 = item.Position?.Trim() ?? string.Empty;
             var f3 = item.Department?.Trim() ?? string.Empty;
+            var email = item.Email?.Trim() ?? string.Empty;
 
             try
             {
@@ -112,14 +126,61 @@ namespace OJTMISApi.Controllers
                 existing.Name = f1;
                 existing.Position = f2;
                 existing.Department = f3;
+                existing.Email = email;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
+
+                await ProvisionAccountAsync(existing);
                 return Ok(existing);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating Signatory {Id}.", id);
                 return Problem(title: "Internal Server Error", detail: "An unexpected error occurred while updating the record.", statusCode: 500);
+            }
+        }
+
+        /// <summary>
+        /// Gumagawa ng unverified user account para sa signatory kung wala pa.
+        /// Ang HR ang magbibigay ng access/password sa User Management.
+        /// </summary>
+        private async Task ProvisionAccountAsync(Signatory signatory)
+        {
+            var email = signatory.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) return;
+
+            try
+            {
+                if (await _userManager.FindByEmailAsync(email) is not null) return;
+
+                var nameParts = signatory.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var firstName = nameParts.Length > 1 ? string.Join(' ', nameParts[..^1]) : signatory.Name.Trim();
+                var lastName = nameParts.Length > 1 ? nameParts[^1] : string.Empty;
+
+                var isHr = signatory.Department.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+                           signatory.Position.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+                           signatory.Department.Contains("Human Resource", StringComparison.OrdinalIgnoreCase);
+
+                var user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    Office = string.IsNullOrWhiteSpace(signatory.Department) ? null : signatory.Department,
+                    EmailConfirmed = false,
+                    TemporaryPassword = TemporaryPasswordGenerator.Generate()
+                };
+
+                var result = await _userManager.CreateAsync(user, user.TemporaryPassword);
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, isHr ? UserRoles.HRAdmin : UserRoles.Supervisor);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not auto-create user account for signatory {Name}.", signatory.Name);
             }
         }
 

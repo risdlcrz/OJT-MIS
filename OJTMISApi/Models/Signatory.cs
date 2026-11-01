@@ -19,6 +19,9 @@ namespace OJTMISApi.Models
         [StringLength(200, ErrorMessage = "Department cannot exceed 200 characters.")]
         public string Department { get; set; } = string.Empty;
 
+        [StringLength(200, ErrorMessage = "Email cannot exceed 200 characters.")]
+        public string Email { get; set; } = string.Empty;
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public DateTime UpdatedAt { get; set; } = DateTime.Now;

@@ -414,6 +414,23 @@
             <div class="modal-body">
               <div v-if="userFormError" class="alert alert-danger py-2">{{ userFormError }}</div>
 
+              <div v-if="!isEditingUser" class="mb-3">
+                <label for="userLinkPerson" class="form-label fw-semibold">Link Existing Intern or Signatory</label>
+                <select
+                  id="userLinkPerson"
+                  v-model="selectedPerson"
+                  class="form-select"
+                  :disabled="isSavingUser"
+                  @change="applySelectedPerson"
+                >
+                  <option value="">— Select an existing record (optional) —</option>
+                  <option v-for="person in availablePeople" :key="`${person.source}-${person.id}`" :value="`${person.source}-${person.id}`">
+                    [{{ person.source }}] {{ person.fullName }} — {{ person.email }}
+                  </option>
+                </select>
+                <div class="form-text">Records without a user account yet are listed here.</div>
+              </div>
+
               <div class="row g-3">
                 <div class="col-md-6">
                   <label for="userFirstName" class="form-label fw-semibold">First Name</label>
@@ -939,6 +956,8 @@ let userModal = null
 const isSavingUser = ref(false)
 const userSubmitted = ref(false)
 const userFormError = ref('')
+const availablePeople = ref([])
+const selectedPerson = ref('')
 
 const userForm = reactive({
   id: '',
@@ -966,11 +985,45 @@ function resetUserForm() {
 
 function openCreateUser() {
   resetUserForm()
+  selectedPerson.value = ''
+  loadAvailablePeople()
   userModal.show()
+}
+
+async function loadAvailablePeople() {
+  try {
+    availablePeople.value = await adminUsersAPI.availablePeople()
+  } catch {
+    availablePeople.value = []
+  }
+}
+
+function applySelectedPerson() {
+  const person = availablePeople.value.find(
+    (item) => `${item.source}-${item.id}` === selectedPerson.value
+  )
+  if (!person) return
+
+  const name = (person.fullName || '').trim()
+  if (name.includes(',')) {
+    const [last, ...rest] = name.split(',')
+    userForm.lastName = last.trim()
+    userForm.firstName = rest.join(',').trim()
+  } else {
+    const parts = name.split(/\s+/)
+    userForm.firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : name
+    userForm.lastName = parts.length > 1 ? parts[parts.length - 1] : ''
+  }
+
+  userForm.email = person.email || ''
+  userForm.office = person.office || ''
+  userForm.role = person.role || 'Intern'
+  userForm.password = ''
 }
 
 function openEditUser(user) {
   resetUserForm()
+  selectedPerson.value = ''
   userForm.id = user.id
   userForm.firstName = user.firstName || ''
   userForm.lastName = user.lastName || ''

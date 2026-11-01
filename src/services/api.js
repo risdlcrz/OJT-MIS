@@ -195,7 +195,8 @@ export const adminUsersAPI = {
   getAll: async (role = '') =>
     (await apiClient.get('/admin/users', { params: role ? { role } : {} })).data,
   create: async (payload) => (await apiClient.post('/admin/users', payload)).data,
-  update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data
+  update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data,
+  availablePeople: async () => (await apiClient.get('/admin/users/available-people')).data
 }
 
 /** HR Admin only: audit trail ng mga aksyon ng bawat user. */

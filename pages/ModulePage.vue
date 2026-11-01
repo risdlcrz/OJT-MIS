@@ -383,6 +383,7 @@ const MODULES = {
     columns: [
       { prop: 'fullName', label: 'Full Name', max: 200 },
       { prop: 'school', label: 'School', max: 200 },
+      { prop: 'email', label: 'Email', type: 'email', max: 200 },
       { prop: 'requestId', label: 'Request ID', type: 'text' },
       { prop: 'status', label: 'Status', max: 20 }
     ],
@@ -405,7 +406,8 @@ const MODULES = {
     columns: [
       { prop: 'name', label: 'Name', max: 200 },
       { prop: 'position', label: 'Position', max: 150 },
-      { prop: 'department', label: 'Department', max: 200 }
+      { prop: 'department', label: 'Department', max: 200 },
+      { prop: 'email', label: 'Email', type: 'email', max: 200 }
     ]
   },
   'forms.html': { title: 'Issuance of COC' },
