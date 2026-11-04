@@ -120,6 +120,12 @@ namespace OJTMISApi.Services
                     Label(intern.ApplicantNo, intern.FullName),
                     action),
 
+                DocumentRequest document => (
+                    "Documents",
+                    "Document Request",
+                    Label(document.DocumentType, document.InternName),
+                    action),
+
                 _ => null
             };
         }

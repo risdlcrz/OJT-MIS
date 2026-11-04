@@ -160,6 +160,12 @@ export function isHRAdmin() {
   return (currentUser()?.roles || []).includes('HRAdmin')
 }
 
+/** True kapag Intern ang role at hindi HR Admin. */
+export function isIntern() {
+  const roles = currentUser()?.roles || []
+  return roles.includes('Intern') && !roles.includes('HRAdmin')
+}
+
 export const schoolsAPI = crud('schools')
 export const internsAPI = crud('interns')
 export const applicantsAPI = {
@@ -177,6 +183,12 @@ export const internRequestsAPI = {
 export const programsAPI = crud('programs')
 export const signatoriesAPI = crud('signatories')
 export const dtrAPI = crud('dtr')
+export const internPortalAPI = {
+  getPortal: async () => (await apiClient.get('/intern/portal')).data,
+  scanDtr: async (payload) => (await apiClient.post('/intern/dtr/scan', { payload })).data,
+  requestDocument: async (documentType, notes = '') =>
+    (await apiClient.post('/intern/documents', { documentType, notes })).data
+}
 export const notificationsAPI = {
   getAll: async (take = 20) => (await apiClient.get('/notifications', { params: { take } })).data,
   markRead: async (id) => (await apiClient.patch(`/notifications/${id}/read`)).data,

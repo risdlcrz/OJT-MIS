@@ -93,6 +93,8 @@ namespace OJTMISApi.Services
             if (resource == "applicants" && last == "hire") return "Hired an applicant";
             if (resource == "account" && last == "change-password") return "Changed account password";
             if (resource == "account" && last == "profile") return "Updated own profile";
+            if (resource == "intern" && last == "scan") return "Scanned intern ID for DTR";
+            if (resource == "intern" && last == "documents") return "Requested intern document";
             if (resource == "admin" && parts.Length > 2) resource = parts[2].ToLowerInvariant();
 
             var label = resource switch
@@ -101,6 +103,7 @@ namespace OJTMISApi.Services
                 "signatories" => "signatory",
                 "applicants" => "applicant",
                 "interns" => "intern",
+                "intern" => "intern portal",
                 "internrequests" => "intern request",
                 "programs" => "program",
                 "users" => "user",

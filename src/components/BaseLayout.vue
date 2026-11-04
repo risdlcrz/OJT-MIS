@@ -269,7 +269,8 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import '../../assets/css/navigation.css'
 import '../../assets/css/Dashboard.css'
 import menuConfig from '../../assets/json/menu.json'
-import { currentUser, notificationsAPI } from '../services/api'
+import internMenuConfig from '../../assets/json/intern-menu.json'
+import { currentUser, isIntern, notificationsAPI } from '../services/api'
 
 const props = defineProps({
   currentPage: {
@@ -296,7 +297,10 @@ const ALLOWED_PAGES = [
   'utility.html',
   'signatories.html',
   'account.html',
-  'contact.html'
+  'contact.html',
+  'intern-dtr.html',
+  'intern-attendance.html',
+  'intern-documents.html'
 ]
 
 /* ---- Global Dialog state ---- */
@@ -377,7 +381,10 @@ const pageMeta = computed(() => {
     'idgenerate.html': { title: 'ID Generation', section: 'Forms', sectionIcon: 'fas fa-file' },
     'utility.html': { title: 'Utility' },
     'signatories.html': { title: 'Signatories', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
-    'account.html': { title: 'Account Information', section: 'Account', sectionIcon: 'far fa-user-circle' }
+    'account.html': { title: 'Account Information', section: 'Account', sectionIcon: 'far fa-user-circle' },
+    'intern-dtr.html': { title: 'Daily Time Record', section: 'Intern', sectionIcon: 'fas fa-id-card' },
+    'intern-attendance.html': { title: 'Attendance', section: 'Intern', sectionIcon: 'fas fa-calendar-check' },
+    'intern-documents.html': { title: 'Document Requests', section: 'Intern', sectionIcon: 'far fa-folder' }
   }[props.currentPage] || { title: 'OJTMIS' })
 })
 
@@ -589,7 +596,7 @@ onMounted(() => {
   loadNotifications()
   notificationPoll = window.setInterval(loadNotifications, 30000)
 
-  menu.value = menuConfig.menu || []
+  menu.value = isIntern() ? (internMenuConfig.menu || []) : (menuConfig.menu || [])
 
   openMenus.value = new Set(menu.value.filter(hasActiveChild).map((item) => item.name))
 

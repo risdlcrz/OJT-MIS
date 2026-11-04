@@ -9,6 +9,14 @@ namespace OJTMISApi.Models
         [Key]
         public int Id { get; set; }
 
+        public int? InternId { get; set; }
+
+        [StringLength(200)]
+        public string? InternName { get; set; }
+
+        [StringLength(200)]
+        public string? InternEmail { get; set; }
+
         [Required(ErrorMessage = "Date is required.")]
         public DateTime Date { get; set; }
 

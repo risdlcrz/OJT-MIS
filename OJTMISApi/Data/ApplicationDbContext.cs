@@ -22,6 +22,7 @@ namespace OJTMISApi.Data
         public DbSet<Notification> Notifications { get; set; } = null!;
         public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
         public DbSet<DailyTimeRecord> DailyTimeRecords { get; set; } = null!;
+        public DbSet<DocumentRequest> DocumentRequests { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

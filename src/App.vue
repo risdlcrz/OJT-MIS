@@ -12,7 +12,11 @@ import LogsPage from '../pages/logs.vue'
 import ModulePage from '../pages/ModulePage.vue'
 import AttendancePage from '../pages/attendance.vue'
 import ForbiddenPage from '../pages/forbidden.vue'
-import { clearSession, currentUser, isHRAdmin } from './services/api'
+import InternDashboardPage from '../pages/intern-dashboard.vue'
+import InternDtrPage from '../pages/intern-dtr.vue'
+import InternAttendancePage from '../pages/intern-attendance.vue'
+import InternDocumentsPage from '../pages/intern-documents.vue'
+import { clearSession, isHRAdmin, isIntern } from './services/api'
 
 /* Lahat ng page na kayang buksan ng app. Kailangan ding nakasaad
    sa assets/json/menu.json at ALLOWED_PAGES (BaseLayout.vue). */
@@ -30,7 +34,10 @@ const APP_PAGES = [
   'utility.html',
   'signatories.html',
   'account.html',
-  'contact.html'
+  'contact.html',
+  'intern-dtr.html',
+  'intern-attendance.html',
+  'intern-documents.html'
 ]
 
 const pageComponents = {
@@ -49,8 +56,19 @@ const pageComponents = {
   'utility.html': ModulePage,
   'signatories.html': ModulePage,
   'contact.html': ModulePage,
+  'intern-dtr.html': InternDtrPage,
+  'intern-attendance.html': InternAttendancePage,
+  'intern-documents.html': InternDocumentsPage,
   'forbidden.html': ForbiddenPage
 }
+
+const INTERN_PAGES = [
+  'dashboard.html',
+  'account.html',
+  'intern-dtr.html',
+  'intern-attendance.html',
+  'intern-documents.html'
+]
 
 function isLoggedIn() {
   return Boolean(localStorage.getItem('authToken'))
@@ -69,7 +87,10 @@ function resolvePage() {
     return 'login.html'
   }
 
-  // May session pero hindi HR Admin: walang access sa mga view na ito.
+  if (isIntern()) {
+    return INTERN_PAGES.includes(page) ? page : 'forbidden.html'
+  }
+
   if (!isHRAdmin()) {
     return 'forbidden.html'
   }
@@ -78,7 +99,6 @@ function resolvePage() {
     return page
   }
 
-  // Naka-login pero hindi kilalang page: huwag nang mag-login ulit.
   return 'dashboard.html'
 }
 
@@ -103,6 +123,9 @@ onMounted(() => {
 <template>
   <component v-if="currentPage === 'login.html'" :is="pageComponents[currentPage]" />
   <BaseLayout v-else :current-page="currentPage" @navigate="changePage">
-    <component :is="pageComponents[currentPage]" :module-page="currentPage" />
+    <component
+      :is="currentPage === 'dashboard.html' && isIntern() ? InternDashboardPage : pageComponents[currentPage]"
+      :module-page="currentPage"
+    />
   </BaseLayout>
 </template>

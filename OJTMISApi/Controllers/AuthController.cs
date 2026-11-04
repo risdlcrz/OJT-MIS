@@ -50,6 +50,11 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = "That email is already registered." });
             }
 
+            if (!await InternRecordExistsAsync(request.Email))
+            {
+                return BadRequest(new { message = "This email is not listed as a hired intern. Ask HR to create your account." });
+            }
+
             var user = new ApplicationUser
             {
                 UserName = request.Email,
@@ -97,8 +102,13 @@ namespace OJTMISApi.Controllers
             // Ang intern access ay nag-expire kapag lumipas na ang EndDate
             // na nakasaad sa intern record.
             var loginRoles = await _userManager.GetRolesAsync(user);
-            if (loginRoles.Contains(UserRoles.Intern))
+            if (loginRoles.Contains(UserRoles.Intern) && !loginRoles.Contains(UserRoles.HRAdmin))
             {
+                if (!await InternRecordExistsAsync(user.Email))
+                {
+                    return Unauthorized(new { message = "This email is not linked to a hired intern record." });
+                }
+
                 var endDate = await GetInternEndDateAsync(user);
                 if (endDate is not null && endDate.Value.Date < DateTime.Now.Date)
                 {
@@ -192,6 +202,14 @@ namespace OJTMISApi.Controllers
                 ExpiresAt = expiresAt,
                 Profile = await BuildProfileAsync(user)
             };
+        }
+
+        private async Task<bool> InternRecordExistsAsync(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            var key = email.Trim().ToLower();
+            return await _context.Interns.AsNoTracking()
+                .AnyAsync(i => i.Email != null && i.Email.ToLower() == key && i.Status == "Hired");
         }
 
         private async Task<DateTime?> GetInternEndDateAsync(ApplicationUser user)

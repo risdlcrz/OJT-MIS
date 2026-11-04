@@ -6,7 +6,7 @@
           <i class="fas fa-lock fa-3x text-danger mb-3"></i>
           <h5 class="mb-2">Access denied</h5>
           <p class="text-muted mb-3">
-            Ang mga view na ito ay para sa <strong>HR Admin</strong> lamang.
+            You do not have access to this page with the current account.
           </p>
           <p v-if="user" class="text-muted small mb-4">
             Naka-login ka bilang <strong>{{ user.fullName }}</strong>
