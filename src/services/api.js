@@ -176,6 +176,7 @@ export const internRequestsAPI = {
 }
 export const programsAPI = crud('programs')
 export const signatoriesAPI = crud('signatories')
+export const dtrAPI = crud('dtr')
 export const notificationsAPI = {
   getAll: async (take = 20) => (await apiClient.get('/notifications', { params: { take } })).data,
   markRead: async (id) => (await apiClient.patch(`/notifications/${id}/read`)).data,

@@ -10,6 +10,7 @@ import AccountPage from '../pages/account.vue'
 import IdGeneratePage from '../pages/idgenerate.vue'
 import LogsPage from '../pages/logs.vue'
 import ModulePage from '../pages/ModulePage.vue'
+import AttendancePage from '../pages/attendance.vue'
 import ForbiddenPage from '../pages/forbidden.vue'
 import { clearSession, currentUser, isHRAdmin } from './services/api'
 
@@ -23,6 +24,7 @@ const APP_PAGES = [
   'internlist.html',
   'forms.html',
   'dtr.html',
+  'attendance.html',
   'logs.html',
   'idgenerate.html',
   'utility.html',
@@ -41,6 +43,7 @@ const pageComponents = {
   'internlist.html': ModulePage,
   'forms.html': ModulePage,
   'dtr.html': ModulePage,
+  'attendance.html': AttendancePage,
   'logs.html': LogsPage,
   'idgenerate.html': IdGeneratePage,
   'utility.html': ModulePage,

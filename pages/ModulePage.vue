@@ -374,7 +374,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, Toast } from 'bootstrap'
-import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI } from '@/services/api'
+import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI, dtrAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {
@@ -411,7 +411,15 @@ const MODULES = {
     ]
   },
   'forms.html': { title: 'Issuance of COC' },
-  'dtr.html': { title: 'Daily Time Records' },
+  'dtr.html': {
+    title: 'Daily Time Records', singular: 'Record', api: dtrAPI,
+    columns: [
+      { prop: 'date', label: 'Date', type: 'date' },
+      { prop: 'timeIn', label: 'Time In', type: 'time' },
+      { prop: 'timeOut', label: 'Time Out', type: 'time' },
+      { prop: 'status', label: 'Status', max: 50 }
+    ]
+  },
   'utility.html': { title: 'Utility' },
   'contact.html': { title: 'Contact Us' }
 }
