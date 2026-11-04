@@ -94,6 +94,7 @@ namespace OJTMISApi.Services
             if (resource == "account" && last == "change-password") return "Changed account password";
             if (resource == "account" && last == "profile") return "Updated own profile";
             if (resource == "intern" && last == "scan") return "Scanned intern ID for DTR";
+            if (resource == "attendance" && last == "logtime") return "Logged intern DTR time";
             if (resource == "intern" && last == "documents") return "Requested intern document";
             if (resource == "admin" && parts.Length > 2) resource = parts[2].ToLowerInvariant();
 

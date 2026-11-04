@@ -16,6 +16,9 @@
               <div class="text-muted small">Hours rendered</div>
               <div class="fs-3 fw-semibold">{{ hoursRendered }} / {{ intern.requiredHours || 0 }}</div>
               <div class="text-muted small">{{ remainingHours }} hours remaining</div>
+              <div class="progress mt-2" style="height: 8px;">
+                <div class="progress-bar" role="progressbar" :style="{ width: progress + '%' }"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -23,7 +26,8 @@
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <div class="text-muted small">Today</div>
-              <div class="fw-semibold">{{ todayLabel }}</div>
+              <div class="fw-semibold">{{ clockedIn ? 'Timed in' : todayLabel }}</div>
+              <div v-if="clockedIn" class="text-muted small">{{ todayLabel }}</div>
               <div class="text-muted small">{{ intern.applicantOffice || intern.program || '—' }}</div>
             </div>
           </div>
@@ -39,7 +43,7 @@
         </div>
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-primary" @click="go('intern-dtr.html')">Scan ID for DTR</button>
+        <button type="button" class="btn btn-primary" @click="go('intern-dtr.html')">Scan QR for DTR</button>
         <button type="button" class="btn btn-outline-secondary" @click="go('intern-attendance.html')">View attendance</button>
         <button type="button" class="btn btn-outline-secondary" @click="go('intern-documents.html')">Request documents</button>
       </div>
@@ -48,21 +52,31 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getApiErrorMessage, internPortalAPI } from '@/services/api'
 
 const intern = ref({})
 const hoursRendered = ref(0)
 const remainingHours = ref(0)
 const today = ref(null)
+const clockedIn = ref(false)
 const isLoading = ref(true)
 const error = ref('')
 
+const progress = computed(() => {
+  const required = Number(intern.value.requiredHours) || 0
+  if (required <= 0) return 0
+  return Math.min(100, Math.round((Number(hoursRendered.value) / required) * 100))
+})
+
+function shiftSpan(shift) {
+  if (!shift?.timeIn) return '—'
+  return `${formatTime(shift.timeIn)}–${shift.timeOut ? formatTime(shift.timeOut) : 'in'}`
+}
+
 const todayLabel = computed(() => {
   if (!today.value) return 'No time in yet'
-  const inn = formatTime(today.value.timeIn)
-  const out = today.value.timeOut ? formatTime(today.value.timeOut) : 'still in'
-  return `${inn} – ${out}`
+  return `AM ${shiftSpan(today.value.morning)} · PM ${shiftSpan(today.value.afternoon)}`
 })
 
 function go(page) {
@@ -93,6 +107,7 @@ async function load() {
     hoursRendered.value = data.hoursRendered || 0
     remainingHours.value = data.remainingHours || 0
     today.value = data.today
+    clockedIn.value = Boolean(data.clockedIn)
   } catch (e) {
     error.value = getApiErrorMessage(e, 'Unable to load intern dashboard.')
   } finally {
@@ -100,5 +115,20 @@ async function load() {
   }
 }
 
-onMounted(load)
+function onDtrUpdated(event) {
+  const detail = event.detail || {}
+  if (detail.today) today.value = detail.today
+  if (detail.hoursRendered != null) hoursRendered.value = detail.hoursRendered
+  if (detail.remainingHours != null) remainingHours.value = detail.remainingHours
+  clockedIn.value = Boolean(detail.clockedIn)
+}
+
+onMounted(() => {
+  load()
+  window.addEventListener('ojt:dtr-updated', onDtrUpdated)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('ojt:dtr-updated', onDtrUpdated)
+})
 </script>

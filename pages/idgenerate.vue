@@ -329,7 +329,7 @@
                   type="checkbox"
                   role="switch"
                 />
-                <label for="idgenAutoQr" class="form-check-label">Generate QR from ID details</label>
+                <label for="idgenAutoQr" class="form-check-label">Generate signed attendance QR</label>
               </div>
 
               <label for="idgenQrValue" class="form-label">QR Content</label>
@@ -343,7 +343,7 @@
               ></textarea>
               <p v-if="qrError" class="text-danger small mb-0 mt-1">{{ qrError }}</p>
               <p v-else class="idgen-hint mb-0 mt-1">
-                Scans to a verification summary of the ID number, name, office, and validity.
+                Select a hired intern. The QR stores a signed intern token used by the attendance scanner.
               </p>
             </details>
           </div>
@@ -512,6 +512,7 @@ const signatureUrl = ref('')
 const photoError = ref('')
 const signatureError = ref('')
 const autoQr = ref(true)
+const attendanceToken = ref('')
 const qrValue = ref('')
 const qrDataUrl = ref('')
 const qrError = ref('')
@@ -600,10 +601,17 @@ function toDateInput(value) {
 
 /* The interns table has no photo/signature column, so those stay manual and
    are cleared to avoid showing the previous intern's images. */
-function applyIntern(intern) {
+async function applyIntern(intern) {
   selectedInternId.value = intern.id
   internQuery.value = intern.fullName || intern.applicantNo || `#${intern.id}`
   internSearchOpen.value = false
+  attendanceToken.value = ''
+  try {
+    const qr = await internsAPI.attendanceQr(intern.id)
+    attendanceToken.value = qr.payload || ''
+  } catch (error) {
+    qrError.value = getApiErrorMessage(error, 'Could not create the attendance QR.')
+  }
 
   Object.assign(form, defaultForm)
   form.fullName = intern.fullName || form.fullName
@@ -623,15 +631,7 @@ function applyIntern(intern) {
   signatureError.value = ''
 }
 
-const defaultQrValue = computed(() =>
-  [
-    'OJT-MIS STUDENT TRAINEE ID',
-    `ID No.: ${form.idNumber || 'N/A'}`,
-    `Name: ${form.fullName || 'N/A'}`,
-    `Office: ${form.office || 'N/A'}`,
-    `Valid Until: ${formattedDates.value.validUntil}`
-  ].join('\n')
-)
+const defaultQrValue = computed(() => (autoQr.value ? attendanceToken.value : ''))
 
 const qrPayload = computed(() => (autoQr.value ? defaultQrValue.value : qrValue.value.trim()))
 

@@ -167,7 +167,10 @@ export function isIntern() {
 }
 
 export const schoolsAPI = crud('schools')
-export const internsAPI = crud('interns')
+export const internsAPI = {
+  ...crud('interns'),
+  attendanceQr: async (id) => (await apiClient.get(`/interns/${id}/attendance-qr`)).data
+}
 export const applicantsAPI = {
   ...crud('applicants'),
   /* Preview ng start/end date bago i-save. */
@@ -185,7 +188,8 @@ export const signatoriesAPI = crud('signatories')
 export const dtrAPI = crud('dtr')
 export const internPortalAPI = {
   getPortal: async () => (await apiClient.get('/intern/portal')).data,
-  scanDtr: async (payload) => (await apiClient.post('/intern/dtr/scan', { payload })).data,
+  logTime: async (payload) => (await apiClient.post('/Attendance/LogTime', { payload })).data,
+  scanDtr: async (payload) => (await apiClient.post('/Attendance/LogTime', { payload })).data,
   requestDocument: async (documentType, notes = '') =>
     (await apiClient.post('/intern/documents', { documentType, notes })).data
 }

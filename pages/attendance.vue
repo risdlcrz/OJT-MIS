@@ -50,11 +50,8 @@
               @change="currentPage = 1"
             >
               <option value="">All Status</option>
-              <option value="Present">Present</option>
-              <option value="Absent">Absent</option>
-              <option value="Leave">Leave</option>
+              <option value="On Time">On Time</option>
               <option value="Late">Late</option>
-              <option value="Early Exit">Early Exit</option>
             </select>
           </div>
 
@@ -128,78 +125,33 @@
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th scope="col" style="width: 40px;">SI</th>
-              <th scope="col">ID</th>
-              <th scope="col" style="width: 200px;">Employee/Trainee Name</th>
-              <th scope="col">Employment Type</th>
-              <th scope="col">Shift</th>
-              <th scope="col">Workplace</th>
-              <th scope="col" colspan="3" class="text-center">Date Log</th>
-              <th scope="col" class="text-center">Present</th>
-              <th scope="col" class="text-center">Absent</th>
-              <th scope="col" class="text-center">Leave</th>
-              <th scope="col" class="text-center">Late</th>
-              <th scope="col" class="text-center">Early Exit</th>
-              <th scope="col" class="text-center">Expected Hours</th>
-              <th scope="col" class="text-center">Actual Hours</th>
-              <th scope="col" class="text-center">Diff Hours</th>
-              <th scope="col" class="text-center">Avg Hours</th>
-            </tr>
-            <tr class="table-light" style="border-top: none;">
-              <th colspan="6"></th>
-              <th scope="col" class="text-center small">Entry</th>
-              <th scope="col" class="text-center small">Exit</th>
-              <th scope="col" class="text-center small">Hour</th>
-              <th colspan="10"></th>
+              <th>Intern</th>
+              <th>Date</th>
+              <th class="text-center">AM Time In</th>
+              <th class="text-center">AM Time Out</th>
+              <th class="text-center">PM Time In</th>
+              <th class="text-center">PM Time Out</th>
+              <th class="text-center">Total Hours</th>
+              <th class="text-center">Status</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, index) in paginatedData" :key="row.id">
-              <td class="text-center text-muted small">{{ (currentPage - 1) * rowsPerPage + index + 1 }}</td>
-              <td class="text-dark fw-semibold">{{ row.id }}</td>
-              <td>
-                <div class="d-flex align-items-center gap-2">
-                  <img
-                    v-if="row.avatar"
-                    :src="row.avatar"
-                    :alt="row.name"
-                    class="rounded-circle"
-                    style="width: 32px; height: 32px; object-fit: cover"
-                  />
-                  <div v-else class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                    <i class="fas fa-user text-muted small"></i>
-                  </div>
-                  <span class="text-dark">{{ row.name }}</span>
-                </div>
-              </td>
-              <td class="text-dark">{{ row.employmentType || '—' }}</td>
-              <td class="text-dark">{{ row.shift || '—' }}</td>
-              <td class="text-dark">{{ row.workplace || '—' }}</td>
-              <td class="text-center">{{ formatTime(row.dateLogEntry) }}</td>
-              <td class="text-center">{{ formatTime(row.dateLogExit) }}</td>
-              <td class="text-center">{{ formatDuration(row.dateLogHour) }}</td>
+            <tr v-for="row in paginatedData" :key="row.id">
+              <td class="text-dark">{{ row.name }}</td>
+              <td>{{ formatDate(row.date) }}</td>
+              <td class="text-center">{{ formatTime(row.morning?.timeIn) }}</td>
+              <td class="text-center">{{ formatTime(row.morning?.timeOut) }}</td>
+              <td class="text-center">{{ formatTime(row.afternoon?.timeIn) }}</td>
+              <td class="text-center">{{ formatTime(row.afternoon?.timeOut) }}</td>
+              <td class="text-center">{{ formatHours(row.hours) }}</td>
               <td class="text-center">
-                <span class="badge bg-success">{{ row.present || 0 }}</span>
+                <span class="badge" :class="row.status === 'Late' ? 'bg-warning text-dark' : 'bg-success'">
+                  {{ row.status }}
+                </span>
               </td>
-              <td class="text-center">
-                <span class="badge bg-danger">{{ row.absent || 0 }}</span>
-              </td>
-              <td class="text-center">
-                <span class="badge bg-warning text-dark">{{ row.leave || 0 }}</span>
-              </td>
-              <td class="text-center">
-                <span class="badge bg-warning text-dark">{{ row.late || 0 }}</span>
-              </td>
-              <td class="text-center">
-                <span class="badge bg-orange">{{ row.earlyExit || 0 }}</span>
-              </td>
-              <td class="text-center">{{ formatHours(row.expectedHours) }}</td>
-              <td class="text-center">{{ formatHours(row.actualHours) }}</td>
-              <td class="text-center">{{ formatHoursDiff(row.diffHours) }}</td>
-              <td class="text-center">{{ formatHours(row.avgHours) }}</td>
             </tr>
             <tr v-if="paginatedData.length === 0">
-              <td :colspan="19" class="text-center text-muted py-4">
+              <td colspan="8" class="text-center text-muted py-4">
                 No attendance records found.
               </td>
             </tr>
@@ -266,6 +218,7 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
+import { dtrAPI, getApiErrorMessage } from '@/services/api'
 
 // ================= State =================
 const isLoading = ref(false)
@@ -301,18 +254,10 @@ const filteredData = computed(() => {
 
   // Date range filter
   if (filters.dateFrom) {
-    data = data.filter(row => {
-      const rowDate = row.date ? new Date(row.date).toDateString() : null
-      const fromDate = new Date(filters.dateFrom).toDateString()
-      return rowDate >= fromDate
-    })
+    data = data.filter(row => dateKey(row.date) >= filters.dateFrom)
   }
   if (filters.dateTo) {
-    data = data.filter(row => {
-      const rowDate = row.date ? new Date(row.date).toDateString() : null
-      const toDate = new Date(filters.dateTo).toDateString()
-      return rowDate <= toDate
-    })
+    data = data.filter(row => dateKey(row.date) <= filters.dateTo)
   }
 
   // Status filter
@@ -330,7 +275,7 @@ const filteredData = computed(() => {
       case 'status':
         return (a.status || '').localeCompare(b.status || '')
       case 'hours':
-        return (b.actualHours || 0) - (a.actualHours || 0)
+        return (b.hours || 0) - (a.hours || 0)
       default:
         return 0
     }
@@ -375,6 +320,22 @@ const visiblePages = computed(() => {
 })
 
 // ================= Methods =================
+function dateKey(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function formatDate(value) {
+  const date = value ? new Date(value) : null
+  return date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—'
+}
+
 function formatTime(time) {
   if (!time) return '—'
   const date = new Date(time)
@@ -384,110 +345,59 @@ function formatTime(time) {
   return '—'
 }
 
-function formatDuration(duration) {
-  if (!duration || duration === 0) return '—'
-  const hours = Math.floor(duration / 60)
-  const minutes = duration % 60
-  return `${hours}h ${minutes}m`
-}
-
 function formatHours(hours) {
-  if (!hours || hours === 0) return '—'
-  const wholeHours = Math.floor(hours)
-  const minutes = Math.round((hours % 1) * 60)
-  return minutes > 0 ? `${wholeHours}h ${minutes}m` : `${wholeHours}h`
+  const value = Number(hours)
+  return Number.isFinite(value) && value > 0 ? value.toFixed(2) : '—'
 }
 
-function formatHoursDiff(diff) {
-  if (diff === null || diff === undefined || diff === 0) return '0h'
-  const isNegative = diff < 0
-  const absDiff = Math.abs(diff)
-  const wholeHours = Math.floor(absDiff)
-  const minutes = Math.round((absDiff % 1) * 60)
-  const formatted = minutes > 0 ? `${wholeHours}h ${minutes}m` : `${wholeHours}h`
-  return isNegative ? `-${formatted}` : `+${formatted}`
+function isAfterEight(value) {
+  const date = value ? new Date(value) : null
+  if (!date || Number.isNaN(date.getTime())) return false
+  return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds() > 8 * 3600
+}
+
+function shiftHours(record) {
+  if (!record?.timeIn || !record?.timeOut) return 0
+  const diff = (new Date(record.timeOut) - new Date(record.timeIn)) / 36e5
+  return Number.isFinite(diff) ? Math.max(0, diff) : 0
+}
+
+function groupByDay(records) {
+  const rows = new Map()
+  for (const record of records) {
+    const key = `${record.internId ?? record.internName ?? 'unknown'}|${dateKey(record.date)}`
+    if (!rows.has(key)) {
+      rows.set(key, {
+        id: key,
+        name: record.internName || '—',
+        date: record.date,
+        morning: null,
+        afternoon: null
+      })
+    }
+    const row = rows.get(key)
+    const started = record.timeIn ? new Date(record.timeIn) : null
+    const slot = String(record.shiftType || '').toLowerCase() === 'afternoon' ? 'afternoon' : 'morning'
+    const current = row[slot]
+    if (!current || (started && new Date(current.timeIn) < started)) row[slot] = record
+    if (record.internName) row.name = record.internName
+  }
+
+  return [...rows.values()].map((row) => {
+    const hours = shiftHours(row.morning) + shiftHours(row.afternoon)
+    const late = isAfterEight(row.morning?.timeIn)
+    return { ...row, hours: Math.round(hours * 100) / 100, status: late ? 'Late' : 'On Time' }
+  })
 }
 
 async function loadAttendanceData() {
   isLoading.value = true
   loadError.value = ''
   try {
-    // TODO: Replace with actual API call
-    // const response = await fetch('/api/attendance')
-    // attendanceData.value = await response.json()
-
-    // Sample data for demonstration
-    attendanceData.value = [
-      {
-        id: 'E001',
-        name: 'John Doe',
-        avatar: null,
-        employmentType: 'Intern',
-        shift: '8AM - 5PM',
-        workplace: 'Sales Dept',
-        date: '2024-01-15',
-        status: 'Present',
-        dateLogEntry: '2024-01-15T08:05:00',
-        dateLogExit: '2024-01-15T17:00:00',
-        dateLogHour: 480,
-        present: 18,
-        absent: 2,
-        leave: 1,
-        late: 1,
-        earlyExit: 0,
-        expectedHours: 160,
-        actualHours: 155.5,
-        diffHours: -4.5,
-        avgHours: 8.6
-      },
-      {
-        id: 'E002',
-        name: 'Jane Smith',
-        avatar: null,
-        employmentType: 'Trainee',
-        shift: '8AM - 5PM',
-        workplace: 'HR Dept',
-        date: '2024-01-15',
-        status: 'Absent',
-        dateLogEntry: null,
-        dateLogExit: null,
-        dateLogHour: 0,
-        present: 16,
-        absent: 4,
-        leave: 0,
-        late: 0,
-        earlyExit: 0,
-        expectedHours: 160,
-        actualHours: 128,
-        diffHours: -32,
-        avgHours: 8.0
-      },
-      {
-        id: 'E003',
-        name: 'Michael Johnson',
-        avatar: null,
-        employmentType: 'Intern',
-        shift: '8AM - 5PM',
-        workplace: 'IT Dept',
-        date: '2024-01-15',
-        status: 'Late',
-        dateLogEntry: '2024-01-15T08:35:00',
-        dateLogExit: '2024-01-15T17:15:00',
-        dateLogHour: 480,
-        present: 19,
-        absent: 0,
-        leave: 0,
-        late: 2,
-        earlyExit: 1,
-        expectedHours: 160,
-        actualHours: 160,
-        diffHours: 0,
-        avgHours: 8.42
-      }
-    ]
+    attendanceData.value = groupByDay(await dtrAPI.getAll())
   } catch (error) {
-    loadError.value = 'Failed to load attendance data. Please try again.'
-    console.error('Attendance data load error:', error)
+    attendanceData.value = []
+    loadError.value = getApiErrorMessage(error, 'Failed to load attendance data. Please try again.')
   } finally {
     isLoading.value = false
   }
@@ -517,10 +427,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.bg-orange {
-  background-color: #ff6b00;
-}
-
 .table {
   font-size: 0.875rem;
 }

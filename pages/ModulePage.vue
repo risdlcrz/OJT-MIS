@@ -415,6 +415,7 @@ const MODULES = {
     title: 'Daily Time Records', singular: 'Record', api: dtrAPI,
     columns: [
       { prop: 'date', label: 'Date', type: 'date' },
+      { prop: 'shiftType', label: 'Shift', max: 20 },
       { prop: 'timeIn', label: 'Time In', type: 'time' },
       { prop: 'timeOut', label: 'Time Out', type: 'time' },
       { prop: 'status', label: 'Status', max: 50 }

@@ -1,10 +1,10 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -16,17 +16,22 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AttendanceLogService _attendance;
 
-        public InternPortalController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public InternPortalController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            AttendanceLogService attendance)
         {
             _context = context;
             _userManager = userManager;
+            _attendance = attendance;
         }
 
         [HttpGet("portal")]
         public async Task<ActionResult<object>> GetPortal()
         {
-            var intern = await ResolveInternAsync();
+            var intern = await _attendance.ResolveInternAsync(User);
             if (intern is null) return ForbidIntern();
 
             var records = await _context.DailyTimeRecords
@@ -42,14 +47,20 @@ namespace OJTMISApi.Controllers
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
-            var rendered = records
-                .Where(x => x.TimeOut is not null)
-                .Sum(x => Math.Max(0, (x.TimeOut!.Value - x.TimeIn).TotalHours));
+            var rendered = records.Sum(x => AttendanceShift.Hours(x));
 
-            var today = records.FirstOrDefault(x => x.Date.Date == DateTime.Now.Date);
+            var days = records
+                .GroupBy(x => x.Date.Date)
+                .OrderByDescending(g => g.Key)
+                .Select(g => AttendanceShift.ShapeDay(g.Key, g.ToList()))
+                .Where(day => day is not null)
+                .ToList();
+
+            var todayRecords = records.Where(x => x.Date.Date == DateTime.Now.Date).ToList();
 
             return Ok(new
             {
+                clockedIn = todayRecords.Any(x => x.TimeOut is null),
                 intern = new
                 {
                     intern.Id,
@@ -65,8 +76,8 @@ namespace OJTMISApi.Controllers
                 },
                 hoursRendered = Math.Round(rendered, 2),
                 remainingHours = Math.Round(Math.Max(0, intern.RequiredHours - rendered), 2),
-                today,
-                attendance = records,
+                today = AttendanceShift.ShapeDay(DateTime.Now.Date, todayRecords),
+                attendance = days,
                 documents
             });
         }
@@ -74,61 +85,14 @@ namespace OJTMISApi.Controllers
         [HttpPost("dtr/scan")]
         public async Task<ActionResult<object>> Scan([FromBody] ScanRequest request)
         {
-            var intern = await ResolveInternAsync();
-            if (intern is null) return ForbidIntern();
-
-            var payload = (request.Payload ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(payload))
-            {
-                return BadRequest(new { message = "No ID was scanned." });
-            }
-
-            if (!MatchesInternId(intern, payload))
-            {
-                return BadRequest(new { message = "This ID does not match your intern record." });
-            }
-
-            var now = DateTime.Now;
-            var today = now.Date;
-            var tomorrow = today.AddDays(1);
-            var existing = await _context.DailyTimeRecords
-                .Where(x => x.InternId == intern.Id && x.Date >= today && x.Date < tomorrow)
-                .OrderByDescending(x => x.TimeIn)
-                .FirstOrDefaultAsync();
-
-            if (existing is null)
-            {
-                var record = new DailyTimeRecord
-                {
-                    InternId = intern.Id,
-                    InternName = intern.FullName,
-                    InternEmail = intern.Email,
-                    Date = today,
-                    TimeIn = now,
-                    Status = now.TimeOfDay > new TimeSpan(8, 30, 0) ? "Late" : "Present",
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                _context.DailyTimeRecords.Add(record);
-                await _context.SaveChangesAsync();
-                return Ok(new { action = "in", record });
-            }
-
-            if (existing.TimeOut is null)
-            {
-                existing.TimeOut = now;
-                existing.UpdatedAt = now;
-                await _context.SaveChangesAsync();
-                return Ok(new { action = "out", record = existing });
-            }
-
-            return Conflict(new { message = "You already completed time in and time out for today." });
+            var result = await _attendance.LogAsync(User, request.Payload);
+            return StatusCode(result.Status, result.Body);
         }
 
         [HttpPost("documents")]
         public async Task<ActionResult<DocumentRequest>> RequestDocument([FromBody] DocumentRequestInput request)
         {
-            var intern = await ResolveInternAsync();
+            var intern = await _attendance.ResolveInternAsync(User);
             if (intern is null) return ForbidIntern();
 
             var type = NormalizeType(request.DocumentType);
@@ -179,38 +143,11 @@ namespace OJTMISApi.Controllers
             return Ok(entity);
         }
 
-        private async Task<Intern?> ResolveInternAsync()
-        {
-            var email = User.FindFirstValue(ClaimTypes.Email)
-                ?? (await _userManager.GetUserAsync(User))?.Email;
-            if (string.IsNullOrWhiteSpace(email)) return null;
-
-            var key = email.Trim().ToLower();
-            return await _context.Interns
-                .Where(i => i.Email != null && i.Email.ToLower() == key && i.Status == "Hired")
-                .OrderByDescending(i => i.EndDate)
-                .FirstOrDefaultAsync();
-        }
-
         private ObjectResult ForbidIntern() =>
             StatusCode(StatusCodes.Status403Forbidden, new
             {
                 message = "This account is not linked to a hired intern record."
             });
-
-        private static bool MatchesInternId(Intern intern, string payload)
-        {
-            var text = payload.Replace('\r', '\n');
-            var needles = new[]
-            {
-                intern.ApplicantNo,
-                intern.Id.ToString(),
-                intern.Email,
-                intern.FullName
-            }.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim());
-
-            return needles.Any(n => text.Contains(n, StringComparison.OrdinalIgnoreCase));
-        }
 
         private static string? NormalizeType(string? value)
         {

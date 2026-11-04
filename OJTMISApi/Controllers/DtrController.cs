@@ -67,9 +67,16 @@ namespace OJTMISApi.Controllers
             var entity = new DailyTimeRecord
             {
                 Date = item.Date,
+                ShiftType = string.IsNullOrWhiteSpace(item.ShiftType)
+                    ? AttendanceShift.Morning
+                    : item.ShiftType.Trim(),
                 TimeIn = item.TimeIn,
                 TimeOut = item.TimeOut,
-                Status = item.Status ?? "Present",
+                Status = string.IsNullOrWhiteSpace(item.Status)
+                    ? AttendanceShift.TimeInStatus(
+                        string.IsNullOrWhiteSpace(item.ShiftType) ? AttendanceShift.Morning : item.ShiftType,
+                        item.TimeIn)
+                    : item.Status,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -100,9 +107,14 @@ namespace OJTMISApi.Controllers
                 if (existing is null) return NotFound(new { message = $"Daily Time Record with id {id} was not found." });
 
                 existing.Date = item.Date;
+                existing.ShiftType = string.IsNullOrWhiteSpace(item.ShiftType)
+                    ? AttendanceShift.Morning
+                    : item.ShiftType.Trim();
                 existing.TimeIn = item.TimeIn;
                 existing.TimeOut = item.TimeOut;
-                existing.Status = item.Status ?? "Present";
+                existing.Status = string.IsNullOrWhiteSpace(item.Status)
+                    ? AttendanceShift.TimeInStatus(existing.ShiftType, item.TimeIn)
+                    : item.Status;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
                 return Ok(existing);

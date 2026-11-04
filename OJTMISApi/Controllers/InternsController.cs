@@ -324,6 +324,20 @@ namespace OJTMISApi.Controllers
             }
         }
 
+        /// <summary>GET: api/interns/{id}/attendance-qr</summary>
+        [HttpGet("{id:int}/attendance-qr")]
+        public async Task<ActionResult<object>> AttendanceQr(int id, [FromServices] AttendanceQrService qr)
+        {
+            var hired = await _context.Interns.AsNoTracking()
+                .AnyAsync(i => i.Id == id && i.Status == "Hired");
+            if (!hired)
+            {
+                return NotFound(new { message = "Hired intern was not found." });
+            }
+
+            return Ok(new { internId = id, payload = qr.Create(id) });
+        }
+
         /// <summary>DELETE: api/interns/{id}</summary>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)

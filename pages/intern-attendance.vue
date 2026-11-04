@@ -16,22 +16,30 @@
           <thead class="table-light">
             <tr>
               <th>Date</th>
-              <th>Time In</th>
-              <th>Time Out</th>
-              <th>Hours</th>
+              <th>AM Time In</th>
+              <th>AM Time Out</th>
+              <th>PM Time In</th>
+              <th>PM Time Out</th>
+              <th>Total Hours</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="rows.length === 0">
-              <td colspan="5" class="text-center text-muted py-4">No attendance records yet.</td>
+              <td colspan="7" class="text-center text-muted py-4">No attendance records yet.</td>
             </tr>
-            <tr v-for="row in rows" :key="row.id">
+            <tr v-for="row in rows" :key="row.date">
               <td>{{ formatDate(row.date) }}</td>
-              <td>{{ formatTime(row.timeIn) }}</td>
-              <td>{{ row.timeOut ? formatTime(row.timeOut) : '—' }}</td>
-              <td>{{ hours(row) }}</td>
-              <td>{{ row.status || '—' }}</td>
+              <td>{{ formatTime(row.morning?.timeIn) }}</td>
+              <td>{{ formatTime(row.morning?.timeOut) }}</td>
+              <td>{{ formatTime(row.afternoon?.timeIn) }}</td>
+              <td>{{ formatTime(row.afternoon?.timeOut) }}</td>
+              <td>{{ formatHours(row.hours) }}</td>
+              <td>
+                <span class="badge" :class="row.status === 'Late' ? 'bg-warning text-dark' : 'bg-success'">
+                  {{ row.status || '—' }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -62,10 +70,8 @@ function formatTime(v) {
     : '—'
 }
 
-function hours(row) {
-  if (!row.timeOut) return '—'
-  const diff = (new Date(row.timeOut) - new Date(row.timeIn)) / 36e5
-  return Number.isFinite(diff) ? diff.toFixed(2) : '—'
+function formatHours(hours) {
+  return Number.isFinite(Number(hours)) && Number(hours) > 0 ? Number(hours).toFixed(2) : '—'
 }
 
 async function load() {

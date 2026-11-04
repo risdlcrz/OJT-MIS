@@ -60,6 +60,8 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<AttendanceQrService>();
+builder.Services.AddScoped<AttendanceLogService>();
 
 // ---------------------------------------------------------------------
 // Services
