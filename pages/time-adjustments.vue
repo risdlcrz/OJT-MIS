@@ -142,6 +142,8 @@ async function rejectRequest(id) {
 }
 
 function shiftLabel(req) {
+  if (req.targetShift === 'AM_In') return 'AM In'
+  if (req.targetShift === 'PM_In') return 'PM In'
   if (req.targetShift === 'AM_Out') return 'AM Out'
   if (req.targetShift === 'PM_Out') return 'PM Out'
   return req.shiftType || '—'

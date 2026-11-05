@@ -182,9 +182,11 @@ function buildShiftOptions(row) {
 
   const options = []
   if (row.morning?.id && !pendingLogIds.value.has(Number(row.morning.id))) {
+    options.push({ id: Number(row.morning.id), label: 'AM Time In', targetShift: 'AM_In' })
     options.push({ id: Number(row.morning.id), label: 'AM Time Out', targetShift: 'AM_Out' })
   }
   if (row.afternoon?.id && !pendingLogIds.value.has(Number(row.afternoon.id))) {
+    options.push({ id: Number(row.afternoon.id), label: 'PM Time In', targetShift: 'PM_In' })
     options.push({ id: Number(row.afternoon.id), label: 'PM Time Out', targetShift: 'PM_Out' })
   }
   return options

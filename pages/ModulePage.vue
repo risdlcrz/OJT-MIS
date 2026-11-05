@@ -37,14 +37,19 @@
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
                 <td class="text-center text-nowrap">
-                  <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit"
-                          :disabled="isLoading || isSaving" @click="openEdit(row)">
-                    <i class="fas fa-pen"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
-                          :disabled="isLoading || isSaving" @click="confirmDelete(row)">
-                    <i class="fas fa-trash"></i>
-                  </button>
+                  <!-- Render action buttons from config -->
+                  <template v-for="action in (config.value.actions || [])" :key="action.name">
+                    <button
+                      v-if="action.condition ? action.condition(row) : true"
+                      type="button"
+                      :class="action.class"
+                      :title="action.label"
+                      :disabled="isLoading || isSaving"
+                      @click="handleAction(action.name, row)"
+                    >
+                      <i :class="action.icon"></i>
+                    </button>
+                  </template>
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
@@ -395,6 +400,19 @@ const MODULES = {
       { prop: 'requestOffice', label: 'Department' },
       { prop: 'startDate', label: 'Estimated Start', format: (_v, row) => row.startDate ? new Date(row.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
       { prop: 'endDate', label: 'Estimated End', format: (_v, row) => row.endDate ? new Date(row.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }
+    ],
+
+    /* Action buttons sa table - Generate COC para sa mga intern na Completed */
+    actions: [
+      { name: 'edit', label: 'Edit', icon: 'fas fa-pen', class: 'btn btn-outline-primary me-1', condition: () => true },
+      { name: 'delete', label: 'Delete', icon: 'fas fa-trash', class: 'btn btn-outline-danger', condition: () => true },
+      {
+        name: 'generate-coc',
+        label: 'Generate COC',
+        icon: 'fas fa-certificate',
+        class: 'btn btn-info',
+        condition: (row) => row.status === 'Completed'
+      }
     ]
   },
   'programs.html': {
@@ -434,7 +452,7 @@ const props = defineProps({
 })
 
 const entry = computed(() => MODULES[props.modulePage] || {})
-const config = computed(() => (entry.value.api ? entry.value : null))
+const config = computed(() => entry.value || { actions: [] })
 const title = computed(() => entry.value.title || 'Module')
 
 /* Mga column na ipinapakita sa table. Default: lahat ng config.columns.
@@ -521,10 +539,14 @@ function removeModalBackdrops() {
 }
 
 async function load() {
-  if (!config.value) return
   isLoading.value = true
   loadError.value = ''
   try {
+    if (!config.value) {
+      // No config for this module; render empty state and hide loader
+      rows.value = []
+      return
+    }
     rows.value = await config.value.api.getAll()
     if (config.value.hiring || config.value.needsDepartment) {
       availableRequests.value = await internRequestsAPI.available()
@@ -810,6 +832,22 @@ async function doDelete() {
     notify(getApiErrorMessage(e, 'Failed to delete.'), 'danger')
   } finally {
     isSaving.value = false
+  }
+}
+
+function handleAction(actionName, row) {
+  if (actionName === 'edit') {
+    openEdit(row)
+  } else if (actionName === 'delete') {
+    confirmDelete(row)
+  } else if (actionName === 'generate-coc') {
+    /* Navigate to COC generation page with the intern pre-selected */
+    if (row.status === 'Completed') {
+      window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    } else {
+      alert('Only interns with Completed status can generate a Certificate of Completion.')
+    }
   }
 }
 
