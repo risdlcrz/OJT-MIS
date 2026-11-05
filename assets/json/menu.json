@@ -40,6 +40,10 @@
         {
           "name": "User Management",
           "link": "account.html#users"
+        },
+        {
+          "name": "Time Adjustment Requests",
+          "link": "account.html#attendance-requests"
         }
       ]
     },

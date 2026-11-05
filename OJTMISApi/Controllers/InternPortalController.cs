@@ -47,6 +47,23 @@ namespace OJTMISApi.Controllers
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
+            var adjustments = await _context.AttendanceAdjustmentRequests
+                .AsNoTracking()
+                .Where(x => x.InternId == intern.Id)
+                .OrderByDescending(x => x.RequestedAt)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.AttendanceLogId,
+                    x.RequestedTimeOut,
+                    x.TargetShift,
+                    x.Reason,
+                    x.Status,
+                    x.RequestedAt,
+                    x.ReviewedAt
+                })
+                .ToListAsync();
+
             var rendered = records.Sum(x => AttendanceShift.Hours(x));
 
             var days = records
@@ -78,7 +95,8 @@ namespace OJTMISApi.Controllers
                 remainingHours = Math.Round(Math.Max(0, intern.RequiredHours - rendered), 2),
                 today = AttendanceShift.ShapeDay(DateTime.Now.Date, todayRecords),
                 attendance = days,
-                documents
+                documents,
+                adjustments
             });
         }
 

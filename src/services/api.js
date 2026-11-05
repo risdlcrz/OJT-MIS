@@ -191,7 +191,14 @@ export const internPortalAPI = {
   logTime: async (payload) => (await apiClient.post('/Attendance/LogTime', { payload })).data,
   scanDtr: async (payload) => (await apiClient.post('/Attendance/LogTime', { payload })).data,
   requestDocument: async (documentType, notes = '') =>
-    (await apiClient.post('/intern/documents', { documentType, notes })).data
+    (await apiClient.post('/intern/documents', { documentType, notes })).data,
+  requestAdjustment: async ({ attendanceLogId, requestedTimeOut, targetShift, reason }) =>
+    (await apiClient.post('/Attendance/RequestAdjustment', {
+      attendanceLogId,
+      requestedTimeOut,
+      targetShift,
+      reason
+    })).data
 }
 export const notificationsAPI = {
   getAll: async (take = 20) => (await apiClient.get('/notifications', { params: { take } })).data,
@@ -214,6 +221,13 @@ export const adminUsersAPI = {
   create: async (payload) => (await apiClient.post('/admin/users', payload)).data,
   update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data,
   availablePeople: async () => (await apiClient.get('/admin/users/available-people')).data
+}
+
+/** HR Admin only: review ng attendance time adjustment requests. */
+export const hrAttendanceAPI = {
+  getPending: async () => (await apiClient.get('/HR/AttendanceRequests/Pending')).data,
+  approve: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Approve/${id}`)).data,
+  reject: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Reject/${id}`)).data
 }
 
 /** HR Admin only: audit trail ng mga aksyon ng bawat user. */

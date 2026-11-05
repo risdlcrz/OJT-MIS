@@ -463,6 +463,65 @@ namespace OJTMISApi.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("OJTMISApi.Models.AttendanceAdjustmentRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttendanceLogId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InternId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("RequestedTimeOut")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<string>("TargetShift")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("AM_Out");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttendanceLogId");
+
+                    b.HasIndex("ReviewedBy");
+
+                    b.HasIndex("InternId", "RequestedAt");
+
+                    b.HasIndex("Status", "RequestedAt");
+
+                    b.ToTable("AttendanceAdjustmentRequests");
+                });
+
             modelBuilder.Entity("OJTMISApi.Models.DailyTimeRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -972,6 +1031,32 @@ namespace OJTMISApi.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("OJTMISApi.Models.AttendanceAdjustmentRequest", b =>
+                {
+                    b.HasOne("OJTMISApi.Models.DailyTimeRecord", "AttendanceLog")
+                        .WithMany()
+                        .HasForeignKey("AttendanceLogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OJTMISApi.Models.Intern", "Intern")
+                        .WithMany()
+                        .HasForeignKey("InternId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OJTMISApi.Models.ApplicationUser", "Reviewer")
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AttendanceLog");
+
+                    b.Navigation("Intern");
+
+                    b.Navigation("Reviewer");
                 });
 
             modelBuilder.Entity("OJTMISApi.Models.Intern", b =>

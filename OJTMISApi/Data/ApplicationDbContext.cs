@@ -23,6 +23,7 @@ namespace OJTMISApi.Data
         public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
         public DbSet<DailyTimeRecord> DailyTimeRecords { get; set; } = null!;
         public DbSet<DocumentRequest> DocumentRequests { get; set; } = null!;
+        public DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -167,6 +168,41 @@ namespace OJTMISApi.Data
                       .WithMany()
                       .HasForeignKey(n => n.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AttendanceAdjustmentRequest>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+
+                entity.Property(r => r.TargetShift)
+                      .IsRequired()
+                      .HasMaxLength(20)
+                      .HasDefaultValue(AttendanceAdjustmentShift.MorningOut);
+
+                entity.Property(r => r.Reason).IsRequired().HasMaxLength(500);
+                entity.Property(r => r.Status).IsRequired().HasMaxLength(20).HasDefaultValue(AttendanceAdjustmentStatus.Pending);
+                entity.Property(r => r.ReviewedBy).HasMaxLength(450);
+                entity.Property(r => r.RequestedAt).ValueGeneratedNever();
+
+                entity.HasIndex(r => new { r.InternId, r.RequestedAt });
+                entity.HasIndex(r => new { r.Status, r.RequestedAt });
+
+                // The attendance table in this project is DailyTimeRecords, so
+                // AttendanceLogId points there while keeping the requested name.
+                entity.HasOne(r => r.AttendanceLog)
+                      .WithMany()
+                      .HasForeignKey(r => r.AttendanceLogId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(r => r.Intern)
+                      .WithMany()
+                      .HasForeignKey(r => r.InternId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(r => r.Reviewer)
+                      .WithMany()
+                      .HasForeignKey(r => r.ReviewedBy)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }
