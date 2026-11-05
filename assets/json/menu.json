@@ -40,10 +40,6 @@
         {
           "name": "User Management",
           "link": "account.html#users"
-        },
-        {
-          "name": "Time Adjustment Requests",
-          "link": "account.html#attendance-requests"
         }
       ]
     },
@@ -55,6 +51,18 @@
         {
           "name": "Applicant Requests",
           "link": "requests.html"
+        },
+        {
+          "name": "Time Adjustment Requests",
+          "link": "time-adjustments.html"
+        },
+        {
+          "name": "ID Generation",
+          "link": "idgenerate.html"
+        },
+        {
+          "name": "Certificate of Completion",
+          "link": "forms.html"
         },
         {
           "name": "Signatories",
@@ -90,21 +98,6 @@
         {
           "name": "Logs",
           "link": "logs.html"
-        }
-      ]
-    },
-
-    {
-      "name": "Forms & Documents",
-      "icon": "far fa-folder",
-      "submenu": [
-        {
-          "name": "ID Generation",
-          "link": "idgenerate.html"
-        },
-        {
-          "name": "Certificate of Completion",
-          "link": "forms.html"
         }
       ]
     },

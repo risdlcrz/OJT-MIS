@@ -286,6 +286,7 @@ const ALLOWED_PAGES = [
   'login.html',
   'dashboard.html',
   'requests.html',
+  'time-adjustments.html',
   'applicants.html',
   'schools.html',
   'internlist.html',
@@ -371,6 +372,7 @@ const pageMeta = computed(() => {
   return ({
     'dashboard.html': { title: 'Dashboard' },
     'requests.html': { title: 'List of Requests', section: 'Request', sectionIcon: 'fas fa-table' },
+    'time-adjustments.html': { title: 'Time Adjustment Requests', section: 'Request', sectionIcon: 'fas fa-table' },
     'applicants.html': { title: 'List of Applicants', section: 'Applicants', sectionIcon: 'far fa-file' },
     'schools.html': { title: 'List of Schools', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
     'internlist.html': { title: 'Intern List' },

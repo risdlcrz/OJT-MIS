@@ -4,6 +4,7 @@ import BaseLayout from './components/BaseLayout.vue'
 import LoginPage from '../pages/login.vue'
 import DashboardPage from '../pages/dashboard.vue'
 import RequestsPage from '../pages/requests.vue'
+import TimeAdjustmentsPage from '../pages/time-adjustments.vue'
 import ApplicantsPage from '../pages/applicants.vue'
 import SchoolsPage from '../pages/Schools.vue'
 import AccountPage from '../pages/account.vue'
@@ -22,6 +23,7 @@ import { clearSession, isHRAdmin, isIntern } from './services/api'
    sa assets/json/menu.json at ALLOWED_PAGES (BaseLayout.vue). */
 const APP_PAGES = [
   'requests.html',
+  'time-adjustments.html',
   'applicants.html',
   'dashboard.html',
   'schools.html',
@@ -44,6 +46,7 @@ const pageComponents = {
   'login.html': LoginPage,
   'dashboard.html': DashboardPage,
   'requests.html': RequestsPage,
+  'time-adjustments.html': TimeAdjustmentsPage,
   'applicants.html': ApplicantsPage,
   'schools.html': SchoolsPage,
   'account.html': AccountPage,

@@ -12,15 +12,30 @@
           <div>PM Time In / Out: {{ shiftLabel(today.afternoon) }}</div>
           <div class="text-muted small">{{ today.hours || 0 }} hours · {{ today.status || 'On Time' }}</div>
         </div>
-        <div id="intern-qr-reader" class="intern-qr-reader rounded mb-3"></div>
+        <qrcode-drop-zone class="intern-qr-drop d-block mb-3" @detect="onDetect" @error="onDropError">
+          <div class="intern-qr-reader rounded">
+            <qrcode-stream
+              v-if="scanning"
+              :paused="busy"
+              :constraints="cameraConstraints"
+              @detect="onDetect"
+              @error="onCameraError"
+            />
+            <p v-else class="intern-qr-placeholder mb-0">
+              Camera is off. Open the camera or drop a QR image here.
+            </p>
+          </div>
+        </qrcode-drop-zone>
         <div class="d-flex flex-wrap gap-2">
-          <button type="button" class="btn btn-primary" :disabled="busy" @click="startCamera">
+          <button type="button" class="btn btn-primary" :disabled="busy || scanning" @click="startCamera">
             {{ scanning ? 'Scanning…' : 'Open camera' }}
           </button>
-          <button type="button" class="btn btn-outline-secondary" :disabled="busy" @click="stopCamera">Stop</button>
+          <button type="button" class="btn btn-outline-secondary" :disabled="busy || !scanning" @click="stopCamera">
+            Stop
+          </button>
           <label class="btn btn-outline-secondary mb-0">
             Scan QR image
-            <input type="file" accept="image/*" class="d-none" @change="fromFile" />
+            <qrcode-capture class="visually-hidden" @detect="onDetect" />
           </label>
         </div>
         <p v-if="cameraHint" class="text-muted small mt-2 mb-0">{{ cameraHint }}</p>
@@ -30,18 +45,17 @@
 </template>
 
 <script setup>
-import { Html5Qrcode } from 'html5-qrcode'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { QrcodeCapture, QrcodeDropZone, QrcodeStream } from 'vue-qrcode-reader'
 import { getApiErrorMessage, internPortalAPI } from '@/services/api'
 
-const readerId = 'intern-qr-reader'
 const message = ref('')
 const ok = ref(false)
 const busy = ref(false)
 const scanning = ref(false)
 const cameraHint = ref('')
 const today = ref(null)
-let scanner = null
+const cameraConstraints = { facingMode: 'environment' }
 let lastPayload = ''
 
 function formatTime(v) {
@@ -65,6 +79,11 @@ async function loadToday() {
   }
 }
 
+function payloadFromDetect(detectedCodes) {
+  const first = Array.isArray(detectedCodes) ? detectedCodes[0] : detectedCodes
+  return first?.rawValue || first?.raw || (typeof first === 'string' ? first : '')
+}
+
 async function submit(payload) {
   if (!payload || payload === lastPayload || busy.value) return
   lastPayload = payload
@@ -75,7 +94,7 @@ async function submit(payload) {
     message.value = `${result.punch || result.shift || 'Punch'} recorded.`
     today.value = result.today || today.value
     window.dispatchEvent(new CustomEvent('ojt:dtr-updated', { detail: result }))
-    await stopCamera()
+    stopCamera()
   } catch (e) {
     ok.value = false
     message.value = getApiErrorMessage(e, 'Could not record DTR.')
@@ -85,58 +104,29 @@ async function submit(payload) {
   }
 }
 
-function ensureScanner() {
-  if (!scanner) scanner = new Html5Qrcode(readerId, { verbose: false })
-  return scanner
+function onDetect(detectedCodes) {
+  const payload = payloadFromDetect(detectedCodes)
+  if (payload) submit(payload)
 }
 
-async function startCamera() {
+function onCameraError() {
+  scanning.value = false
+  cameraHint.value = 'Camera permission was denied or no camera is available. You can scan a QR image instead.'
+}
+
+function onDropError() {
+  ok.value = false
+  message.value = 'No QR code found on that image.'
+}
+
+function startCamera() {
   message.value = ''
   cameraHint.value = ''
-  const qr = ensureScanner()
-  if (qr.isScanning) return
-  try {
-    await qr.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 240, height: 240 } },
-      (decoded) => { submit(decoded) },
-      () => {}
-    )
-    scanning.value = true
-  } catch {
-    scanning.value = false
-    cameraHint.value = 'Camera permission was denied or no camera is available. You can scan a QR image instead.'
-  }
+  scanning.value = true
 }
 
-async function stopCamera() {
+function stopCamera() {
   scanning.value = false
-  if (!scanner) return
-  try {
-    if (scanner.isScanning) await scanner.stop()
-    scanner.clear()
-  } catch {
-    /* already stopped */
-  }
-  scanner = null
-}
-
-async function fromFile(event) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  if (!file) return
-  await stopCamera()
-  const qr = ensureScanner()
-  try {
-    const text = await qr.scanFile(file, false)
-    await submit(text)
-  } catch {
-    ok.value = false
-    message.value = 'No QR code found on that image.'
-  } finally {
-    try { qr.clear() } catch { /* ignore */ }
-    scanner = null
-  }
 }
 
 onMounted(loadToday)
@@ -149,5 +139,16 @@ onBeforeUnmount(stopCamera)
   max-width: 420px;
   min-height: 240px;
   background: #111;
+  overflow: hidden;
+}
+
+.intern-qr-placeholder {
+  color: #bbb;
+  padding: 5rem 1rem;
+  text-align: center;
+}
+
+.intern-qr-drop :deep(input) {
+  display: none;
 }
 </style>
