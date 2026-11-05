@@ -55,6 +55,15 @@
                 >
                   <i class="fas fa-clock me-1"></i> Request Early Out / Time Adjustment
                 </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-info ms-2"
+                  :disabled="!canRequestAdjustment(row)"
+                  :title="canRequestAdjustment(row) ? 'Request AM/PM Time In/Out adjustment' : 'No attendance log available'"
+                  @click="openAdjustmentShift(row)"
+                >
+                  <i class="fas fa-exchange-alt me-1"></i> Shift Adjustment
+                </button>
               </td>
             </tr>
           </tbody>
@@ -243,6 +252,27 @@ function openAdjustment(row) {
 function closeAdjustment() {
   if (isSubmitting.value) return
   isAdjustmentOpen.value = false
+}
+
+function openAdjustmentShift(row) {
+  selectedRow.value = row
+  formError.value = ''
+  form.reason = ''
+
+  const options = buildShiftOptions(row)
+  if (options.length === 0) {
+    formError.value = 'Every attendance log for this day already has a pending request.'
+    return
+  }
+  // Select the first available option (could be AM In, AM Out, PM In, or PM Out)
+  form.attendanceLogId = options[0]?.id ?? null
+  // For shift adjustment, we need to set the requested time based on the shift type
+  const record = shiftRecord(form.attendanceLogId)
+  if (record) {
+    form.requestedTimeOut = timeInputValue(record.timeIn)
+  }
+
+  isAdjustmentOpen.value = true
 }
 
 async function submitAdjustment() {

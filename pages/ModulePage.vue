@@ -38,7 +38,7 @@
                 </td>
                 <td class="text-center text-nowrap">
                   <!-- Render action buttons from config -->
-                  <template v-for="action in (config.value.actions || [])" :key="action.name">
+                  <template v-for="action in (config.value?.actions || [])" :key="action.name">
                     <button
                       v-if="action.condition ? action.condition(row) : true"
                       type="button"
@@ -54,7 +54,7 @@
               </tr>
               <tr v-if="rows.length === 0">
                 <td :colspan="displayColumns.length + 1" class="text-center text-muted py-4">
-                  No {{ config.title.toLowerCase() }} yet.
+                  No {{ (config.title || 'module').toLowerCase() }} yet.
                 </td>
               </tr>
             </tbody>
