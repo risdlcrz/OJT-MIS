@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
@@ -16,11 +18,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly AttendanceLogService _logs;
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public AttendanceController(AttendanceLogService logs, ApplicationDbContext context)
+        public AttendanceController(
+            AttendanceLogService logs,
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager)
         {
             _logs = logs;
             _context = context;
+            _userManager = userManager;
         }
 
         /// <summary>POST: api/Attendance/LogTime</summary>
@@ -33,7 +40,7 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// POST: api/Attendance/RequestAdjustment
-        /// Submits a pending time-out correction for one of the intern's logs.
+        /// Submits a pending punch correction for one of the intern's logs.
         /// </summary>
         [HttpPost("RequestAdjustment")]
         public async Task<ActionResult<object>> RequestAdjustment([FromBody] AttendanceAdjustmentInput request)
@@ -47,10 +54,11 @@ namespace OJTMISApi.Controllers
                 });
             }
 
-            var targetShift = NormalizeTargetShift(request.TargetShift);
-            if (targetShift is null)
+            var targetField = AttendanceAdjustmentField.Normalize(request.TargetField ?? request.TargetShift);
+            var fieldLabel = targetField is null ? null : AttendanceAdjustmentField.Label(targetField);
+            if (targetField is null || fieldLabel is null)
             {
-                return BadRequest(new { message = "Choose AM Time Out or PM Time Out." });
+                return BadRequest(new { message = "Choose AM Time In, AM Time Out, PM Time In, or PM Time Out." });
             }
 
             var reason = (request.Reason ?? string.Empty).Trim();
@@ -70,73 +78,96 @@ namespace OJTMISApi.Controllers
                 return NotFound(new { message = "Attendance log not found for this intern." });
             }
 
-            var logShift = string.Equals(log.ShiftType, AttendanceShift.Afternoon, StringComparison.OrdinalIgnoreCase)
-                ? AttendanceAdjustmentShift.AfternoonOut
-                : AttendanceAdjustmentShift.MorningOut;
-            if (!string.Equals(logShift, targetShift, StringComparison.Ordinal))
+            var logIsMorning = !string.Equals(log.ShiftType, AttendanceShift.Afternoon, StringComparison.OrdinalIgnoreCase);
+            if (AttendanceAdjustmentField.IsMorning(targetField) != logIsMorning)
             {
-                return BadRequest(new { message = "The selected shift does not match this attendance log." });
+                return BadRequest(new { message = $"The selected {fieldLabel} does not match this attendance log." });
             }
 
-            if (!TryParseRequestedTimeOut(request.RequestedTimeOut, log.Date, out var requestedTimeOut))
+            var requestedRaw = request.RequestedTime ?? request.RequestedTimeOut;
+            if (!TryParseRequestedTime(requestedRaw, log.Date, out var requestedTime))
             {
-                return BadRequest(new { message = "Enter a valid time-out (HH:mm)." });
+                return BadRequest(new { message = $"Enter a valid {fieldLabel} (HH:mm)." });
             }
 
             var hasPending = await _context.AttendanceAdjustmentRequests.AnyAsync(x =>
                 x.AttendanceLogId == log.Id &&
+                x.TargetField == targetField &&
                 x.Status == AttendanceAdjustmentStatus.Pending);
             if (hasPending)
             {
-                return Conflict(new { message = "A pending adjustment request already exists for this attendance log." });
+                return Conflict(new { message = $"A pending {fieldLabel} request already exists for this attendance log." });
             }
 
+            var now = DateTime.Now;
             var entity = new AttendanceAdjustmentRequest
             {
                 AttendanceLogId = log.Id,
                 InternId = intern.Id,
-                RequestedTimeOut = requestedTimeOut,
-                TargetShift = targetShift,
+                RequestedTime = requestedTime,
+                TargetField = targetField,
                 Reason = reason,
                 Status = AttendanceAdjustmentStatus.Pending,
-                RequestedAt = DateTime.Now
+                RequestedAt = now
             };
 
             _context.AttendanceAdjustmentRequests.Add(entity);
+
+            var internUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrWhiteSpace(internUserId))
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = internUserId,
+                    Title = "Time adjustment submitted",
+                    Message = $"Your {fieldLabel} adjustment for {log.Date:MMM d, yyyy} is pending approval.",
+                    Module = "Attendance",
+                    IsRead = false,
+                    CreatedAt = now
+                });
+            }
+
+            var hrUsers = await _userManager.GetUsersInRoleAsync(UserRoles.HRAdmin);
+            foreach (var hr in hrUsers)
+            {
+                if (hr.Id == internUserId) continue;
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = hr.Id,
+                    Title = "Time adjustment pending review",
+                    Message = $"{intern.FullName} requested a {fieldLabel} adjustment for {log.Date:MMM d, yyyy}.",
+                    Module = "Attendance",
+                    IsRead = false,
+                    CreatedAt = now
+                });
+            }
+
             await _context.SaveChangesAsync();
 
             return StatusCode(StatusCodes.Status201Created, new
             {
                 message = "Adjustment request submitted for approval.",
-                request = entity
+                request = new
+                {
+                    entity.Id,
+                    entity.AttendanceLogId,
+                    entity.InternId,
+                    entity.RequestedTime,
+                    entity.TargetField,
+                    entity.Reason,
+                    entity.Status,
+                    entity.RequestedAt
+                }
             });
         }
 
-        private static string? NormalizeTargetShift(string? value)
-        {
-            var text = (value ?? string.Empty).Trim();
-            if (text.Equals(AttendanceAdjustmentShift.MorningOut, StringComparison.OrdinalIgnoreCase) ||
-                text.Equals("AM Time Out", StringComparison.OrdinalIgnoreCase))
-            {
-                return AttendanceAdjustmentShift.MorningOut;
-            }
-            if (text.Equals(AttendanceAdjustmentShift.AfternoonOut, StringComparison.OrdinalIgnoreCase) ||
-                text.Equals("PM Time Out", StringComparison.OrdinalIgnoreCase))
-            {
-                return AttendanceAdjustmentShift.AfternoonOut;
-            }
-            return null;
-        }
-
-        private static bool TryParseRequestedTimeOut(string? value, DateTime logDate, out DateTime result)
+        private static bool TryParseRequestedTime(string? value, DateTime logDate, out DateTime result)
         {
             result = default;
             if (string.IsNullOrWhiteSpace(value)) return false;
 
             var text = value.Trim();
 
-            // Accept a full date/time or just a time (e.g. "14:30" or "2:30 PM").
-            // Only the time-of-day is used; the date always follows the log.
             if (DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var dateTime))
             {
                 result = logDate.Date.Add(dateTime.TimeOfDay);
@@ -158,10 +189,16 @@ namespace OJTMISApi.Controllers
         public int AttendanceLogId { get; set; }
 
         /// <summary>"HH:mm" or a full ISO date/time. The log's date is used.</summary>
-        public string RequestedTimeOut { get; set; } = string.Empty;
+        public string? RequestedTime { get; set; }
 
-        /// <summary>AM_Out / PM_Out (also accepts "AM Time Out" / "PM Time Out").</summary>
-        public string TargetShift { get; set; } = string.Empty;
+        /// <summary>Accepted so older clients keep working.</summary>
+        public string? RequestedTimeOut { get; set; }
+
+        /// <summary>AM_In, AM_Out, PM_In, or PM_Out.</summary>
+        public string? TargetField { get; set; }
+
+        /// <summary>Accepted so older clients keep working.</summary>
+        public string? TargetShift { get; set; }
 
         public string Reason { get; set; } = string.Empty;
     }

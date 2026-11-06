@@ -192,11 +192,11 @@ export const internPortalAPI = {
   scanDtr: async (payload) => (await apiClient.post('/Attendance/LogTime', { payload })).data,
   requestDocument: async (documentType, notes = '') =>
     (await apiClient.post('/intern/documents', { documentType, notes })).data,
-  requestAdjustment: async ({ attendanceLogId, requestedTimeOut, targetShift, reason }) =>
+  requestAdjustment: async ({ attendanceLogId, requestedTime, targetField, reason }) =>
     (await apiClient.post('/Attendance/RequestAdjustment', {
       attendanceLogId,
-      requestedTimeOut,
-      targetShift,
+      requestedTime,
+      targetField,
       reason
     })).data
 }

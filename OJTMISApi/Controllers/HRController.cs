@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
@@ -14,17 +15,19 @@ namespace OJTMISApi.Controllers
     public class HRController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public HRController(ApplicationDbContext context)
+        public HRController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         /// <summary>GET: api/HR/AttendanceRequests/Pending</summary>
         [HttpGet("AttendanceRequests/Pending")]
         public async Task<ActionResult<IEnumerable<object>>> GetPendingAttendanceRequests()
         {
-            var items = await _context.AttendanceAdjustmentRequests
+            var rows = await _context.AttendanceAdjustmentRequests
                 .AsNoTracking()
                 .Where(r => r.Status == AttendanceAdjustmentStatus.Pending)
                 .OrderBy(r => r.RequestedAt)
@@ -39,17 +42,36 @@ namespace OJTMISApi.Controllers
                     InternEmail = r.Intern != null
                         ? r.Intern.Email
                         : r.AttendanceLog != null ? r.AttendanceLog.InternEmail : null,
-                    Date = r.AttendanceLog != null ? r.AttendanceLog.Date : (DateTime?)null,
+                    Date = r.AttendanceLog != null ? (DateTime?)r.AttendanceLog.Date : null,
                     ShiftType = r.AttendanceLog != null ? r.AttendanceLog.ShiftType : null,
-                    TimeIn = r.AttendanceLog != null ? r.AttendanceLog.TimeIn : (DateTime?)null,
-                    CurrentTimeOut = r.AttendanceLog != null ? r.AttendanceLog.TimeOut : null,
-                    r.RequestedTimeOut,
-                    r.TargetShift,
+                    TimeIn = r.AttendanceLog != null ? (DateTime?)r.AttendanceLog.TimeIn : null,
+                    TimeOut = r.AttendanceLog != null ? r.AttendanceLog.TimeOut : null,
+                    r.RequestedTime,
+                    r.TargetField,
                     r.Reason,
                     r.Status,
                     r.RequestedAt
                 })
                 .ToListAsync();
+
+            var items = rows.Select(r => new
+            {
+                r.Id,
+                r.AttendanceLogId,
+                r.InternId,
+                r.InternName,
+                r.InternEmail,
+                r.Date,
+                r.ShiftType,
+                r.TimeIn,
+                r.TimeOut,
+                CurrentTime = AttendanceAdjustmentField.IsTimeIn(r.TargetField) ? r.TimeIn : r.TimeOut,
+                r.RequestedTime,
+                r.TargetField,
+                r.Reason,
+                r.Status,
+                r.RequestedAt
+            });
 
             return Ok(items);
         }
@@ -60,6 +82,7 @@ namespace OJTMISApi.Controllers
         {
             var request = await _context.AttendanceAdjustmentRequests
                 .Include(r => r.AttendanceLog)
+                .Include(r => r.Intern)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request is null)
@@ -78,30 +101,52 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = "The linked attendance log no longer exists." });
             }
 
-            var expectedShift = string.Equals(log.ShiftType, AttendanceShift.Afternoon, StringComparison.OrdinalIgnoreCase)
-                ? AttendanceAdjustmentShift.AfternoonOut
-                : AttendanceAdjustmentShift.MorningOut;
-            if (!string.Equals(request.TargetShift, expectedShift, StringComparison.OrdinalIgnoreCase))
+            var field = AttendanceAdjustmentField.Normalize(request.TargetField);
+            if (field is null)
             {
-                return BadRequest(new { message = "The request's target shift no longer matches the attendance log." });
+                return BadRequest(new { message = "The request target field is not valid." });
             }
 
-            var approvedTimeOut = log.Date.Date.Add(request.RequestedTimeOut.TimeOfDay);
-            if (approvedTimeOut <= log.TimeIn)
+            var logIsMorning = !string.Equals(log.ShiftType, AttendanceShift.Afternoon, StringComparison.OrdinalIgnoreCase);
+            if (AttendanceAdjustmentField.IsMorning(field) != logIsMorning)
             {
-                return BadRequest(new { message = "The requested time-out must be after the attendance time-in." });
+                return BadRequest(new { message = "The request's target field no longer matches the attendance log." });
             }
 
+            var label = AttendanceAdjustmentField.Label(field);
+            var approvedTime = log.Date.Date.Add(request.RequestedTime.TimeOfDay);
             var now = DateTime.Now;
 
-            // DailyTimeRecord stores one row per shift, so the target field is
-            // this log's TimeOut (the AM or PM time-out column in the UI).
-            log.TimeOut = approvedTimeOut;
-            log.UpdatedAt = now;
+            if (AttendanceAdjustmentField.IsTimeIn(field))
+            {
+                if (log.TimeOut is not null && approvedTime >= log.TimeOut.Value)
+                {
+                    return BadRequest(new { message = $"The requested {label} must be before the time out." });
+                }
 
+                log.TimeIn = approvedTime;
+                log.Status = AttendanceShift.TimeInStatus(log.ShiftType, approvedTime);
+            }
+            else
+            {
+                if (approvedTime <= log.TimeIn)
+                {
+                    return BadRequest(new { message = $"The requested {label} must be after the time in." });
+                }
+
+                log.TimeOut = approvedTime;
+            }
+
+            log.UpdatedAt = now;
             request.Status = AttendanceAdjustmentStatus.Approved;
             request.ReviewedBy = User.FindFirstValue(ClaimTypes.NameIdentifier);
             request.ReviewedAt = now;
+
+            await NotifyInternAsync(
+                request.Intern,
+                "Time adjustment approved",
+                $"Your {label} adjustment for {log.Date:MMM d, yyyy} was approved.",
+                now);
 
             await _context.SaveChangesAsync();
 
@@ -114,7 +159,8 @@ namespace OJTMISApi.Controllers
                 {
                     request.Id,
                     request.Status,
-                    request.ReviewedAt
+                    request.ReviewedAt,
+                    request.TargetField
                 },
                 attendanceLog = new
                 {
@@ -122,7 +168,8 @@ namespace OJTMISApi.Controllers
                     log.Date,
                     log.ShiftType,
                     log.TimeIn,
-                    log.TimeOut
+                    log.TimeOut,
+                    log.Status
                 },
                 dailyHours
             });
@@ -133,6 +180,8 @@ namespace OJTMISApi.Controllers
         public async Task<ActionResult<object>> RejectAttendanceRequest(int id)
         {
             var request = await _context.AttendanceAdjustmentRequests
+                .Include(r => r.AttendanceLog)
+                .Include(r => r.Intern)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request is null)
@@ -145,9 +194,18 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = $"This request has already been {request.Status.ToLowerInvariant()}." });
             }
 
+            var now = DateTime.Now;
             request.Status = AttendanceAdjustmentStatus.Rejected;
             request.ReviewedBy = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            request.ReviewedAt = DateTime.Now;
+            request.ReviewedAt = now;
+
+            var label = AttendanceAdjustmentField.Label(request.TargetField);
+            var when = request.AttendanceLog?.Date.ToString("MMM d, yyyy") ?? "the selected day";
+            await NotifyInternAsync(
+                request.Intern,
+                "Time adjustment rejected",
+                $"Your {label} adjustment for {when} was rejected.",
+                now);
 
             await _context.SaveChangesAsync();
 
@@ -160,6 +218,24 @@ namespace OJTMISApi.Controllers
                     request.Status,
                     request.ReviewedAt
                 }
+            });
+        }
+
+        private async Task NotifyInternAsync(Intern? intern, string title, string message, DateTime now)
+        {
+            if (string.IsNullOrWhiteSpace(intern?.Email)) return;
+
+            var user = await _userManager.FindByEmailAsync(intern.Email);
+            if (user is null) return;
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = user.Id,
+                Title = title,
+                Message = message,
+                Module = "Attendance",
+                IsRead = false,
+                CreatedAt = now
             });
         }
 

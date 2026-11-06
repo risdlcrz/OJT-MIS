@@ -485,7 +485,7 @@ namespace OJTMISApi.Data.Migrations
                     b.Property<DateTime>("RequestedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("RequestedTimeOut")
+                    b.Property<DateTime>("RequestedTime")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ReviewedAt")
@@ -502,7 +502,7 @@ namespace OJTMISApi.Data.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("Pending");
 
-                    b.Property<string>("TargetShift")
+                    b.Property<string>("TargetField")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)

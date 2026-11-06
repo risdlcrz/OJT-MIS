@@ -174,10 +174,10 @@ namespace OJTMISApi.Data
             {
                 entity.HasKey(r => r.Id);
 
-                entity.Property(r => r.TargetShift)
+                entity.Property(r => r.TargetField)
                       .IsRequired()
                       .HasMaxLength(20)
-                      .HasDefaultValue(AttendanceAdjustmentShift.MorningOut);
+                      .HasDefaultValue(AttendanceAdjustmentField.MorningOut);
 
                 entity.Property(r => r.Reason).IsRequired().HasMaxLength(500);
                 entity.Property(r => r.Status).IsRequired().HasMaxLength(20).HasDefaultValue(AttendanceAdjustmentStatus.Pending);

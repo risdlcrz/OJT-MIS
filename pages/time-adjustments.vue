@@ -4,7 +4,7 @@
       <div class="card-header modern-card-header">
         <div>
           <h3 class="card-title mb-1">Time Adjustment Requests</h3>
-          <p class="text-muted small mb-0">Review and act on attendance time-out correction requests from interns.</p>
+          <p class="text-muted small mb-0">Review and act on attendance time adjustment requests from interns.</p>
         </div>
         <div class="card-tools">
           <button type="button" class="btn btn-outline-primary btn-sm" :disabled="isLoading" @click="loadAdjustmentRequests">
@@ -27,9 +27,9 @@
                 <th>#</th>
                 <th>Intern</th>
                 <th>Date</th>
-                <th>Shift</th>
-                <th>Current Time Out</th>
-                <th>Requested Time Out</th>
+                <th>Target Field</th>
+                <th>Current Time</th>
+                <th>Requested Time</th>
                 <th>Reason</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -50,8 +50,8 @@
                 </td>
                 <td>{{ formatDate(req.date) }}</td>
                 <td>{{ shiftLabel(req) }}</td>
-                <td>{{ formatTime(req.currentTimeOut) }}</td>
-                <td>{{ formatTime(req.requestedTimeOut) }}</td>
+                <td>{{ formatTime(req.currentTime) }}</td>
+                <td>{{ formatTime(req.requestedTime) }}</td>
                 <td class="text-start">{{ req.reason || '—' }}</td>
                 <td>
                   <span v-if="req.status === 'Approved'" class="badge bg-success">Approved</span>
@@ -116,7 +116,7 @@ async function loadAdjustmentRequests() {
 }
 
 async function approveRequest(id) {
-  const ok = await showConfirm('Approve this attendance adjustment request? The attendance log time-out will be updated.', 'Confirm Approval')
+  const ok = await showConfirm('Approve this attendance adjustment request? The selected punch and daily hours will be updated.', 'Confirm Approval')
   if (!ok) return
   try {
     const result = await hrAttendanceAPI.approve(id)
@@ -142,10 +142,11 @@ async function rejectRequest(id) {
 }
 
 function shiftLabel(req) {
-  if (req.targetShift === 'AM_In') return 'AM In'
-  if (req.targetShift === 'PM_In') return 'PM In'
-  if (req.targetShift === 'AM_Out') return 'AM Out'
-  if (req.targetShift === 'PM_Out') return 'PM Out'
+  const field = req.targetField || req.targetShift
+  if (field === 'AM_In') return 'AM Time In'
+  if (field === 'AM_Out') return 'AM Time Out'
+  if (field === 'PM_In') return 'PM Time In'
+  if (field === 'PM_Out') return 'PM Time Out'
   return req.shiftType || '—'
 }
 

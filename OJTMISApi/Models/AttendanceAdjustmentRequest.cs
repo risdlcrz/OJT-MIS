@@ -4,15 +4,46 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace OJTMISApi.Models
 {
     /// <summary>
-    /// Allowable targets for an attendance adjustment. Mirrors the
-    /// AM/PM time-out shifts used by <see cref="AttendanceShift"/>.
+    /// Punch column an adjustment may change.
     /// </summary>
-    public static class AttendanceAdjustmentShift
+    public static class AttendanceAdjustmentField
     {
+        public const string MorningIn = "AM_In";
         public const string MorningOut = "AM_Out";
+        public const string AfternoonIn = "PM_In";
         public const string AfternoonOut = "PM_Out";
 
-        public static readonly string[] All = { MorningOut, AfternoonOut };
+        public static readonly string[] All = { MorningIn, MorningOut, AfternoonIn, AfternoonOut };
+
+        public static bool IsTimeIn(string field) =>
+            field is MorningIn or AfternoonIn;
+
+        public static bool IsMorning(string field) =>
+            field is MorningIn or MorningOut;
+
+        public static string Label(string field) => field switch
+        {
+            MorningIn => "AM Time In",
+            MorningOut => "AM Time Out",
+            AfternoonIn => "PM Time In",
+            AfternoonOut => "PM Time Out",
+            _ => field
+        };
+
+        public static string? Normalize(string? value)
+        {
+            var text = (value ?? string.Empty).Trim();
+            foreach (var field in All)
+            {
+                if (text.Equals(field, StringComparison.OrdinalIgnoreCase) ||
+                    text.Equals(Label(field), StringComparison.OrdinalIgnoreCase))
+                {
+                    return field;
+                }
+            }
+
+            return null;
+        }
     }
 
     /// <summary>
@@ -28,55 +59,46 @@ namespace OJTMISApi.Models
     }
 
     /// <summary>
-    /// Request submitted by an intern to correct a missing or incorrect
-    /// time-out on one of their attendance records. HR/Supervisor reviews
-    /// the request and either approves or rejects it.
+    /// Intern request to correct one punch (AM/PM time in or time out).
+    /// HR reviews the request and either approves or rejects it.
     /// </summary>
     public class AttendanceAdjustmentRequest
     {
         [Key]
         public int Id { get; set; }
 
-        /// <summary>
-        /// Attendance log (Daily Time Record) being corrected.
-        /// </summary>
         public int AttendanceLogId { get; set; }
 
         [ForeignKey(nameof(AttendanceLogId))]
         public DailyTimeRecord? AttendanceLog { get; set; }
 
-        /// <summary>Intern who filed the request.</summary>
         public int InternId { get; set; }
 
         [ForeignKey(nameof(InternId))]
         public Intern? Intern { get; set; }
 
-        /// <summary>Corrected time-out the intern is requesting.</summary>
-        [Required(ErrorMessage = "Requested time-out is required.")]
-        public DateTime RequestedTimeOut { get; set; }
+        /// <summary>Corrected punch time the intern is requesting.</summary>
+        [Required(ErrorMessage = "Requested time is required.")]
+        public DateTime RequestedTime { get; set; }
 
         /// <summary>
-        /// Shift the request targets: <see cref="AttendanceAdjustmentShift.MorningOut"/>
-        /// or <see cref="AttendanceAdjustmentShift.AfternoonOut"/>.
+        /// <see cref="AttendanceAdjustmentField.MorningIn"/>,
+        /// <see cref="AttendanceAdjustmentField.MorningOut"/>,
+        /// <see cref="AttendanceAdjustmentField.AfternoonIn"/>, or
+        /// <see cref="AttendanceAdjustmentField.AfternoonOut"/>.
         /// </summary>
         [Required, StringLength(20)]
-        public string TargetShift { get; set; } = AttendanceAdjustmentShift.MorningOut;
+        public string TargetField { get; set; } = AttendanceAdjustmentField.MorningOut;
 
         [Required(ErrorMessage = "Reason is required.")]
         [StringLength(500, ErrorMessage = "Reason cannot exceed 500 characters.")]
         public string Reason { get; set; } = string.Empty;
 
-        /// <summary>
-        /// <see cref="AttendanceAdjustmentStatus.Pending"/>,
-        /// <see cref="AttendanceAdjustmentStatus.Approved"/>, or
-        /// <see cref="AttendanceAdjustmentStatus.Rejected"/>.
-        /// </summary>
         [Required, StringLength(20)]
         public string Status { get; set; } = AttendanceAdjustmentStatus.Pending;
 
         public DateTime RequestedAt { get; set; } = DateTime.Now;
 
-        /// <summary>Identity user id of the reviewer; null while pending.</summary>
         [StringLength(450)]
         public string? ReviewedBy { get; set; }
 

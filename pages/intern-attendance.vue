@@ -50,19 +50,10 @@
                   type="button"
                   class="btn btn-sm btn-outline-primary"
                   :disabled="!canRequestAdjustment(row)"
-                  :title="canRequestAdjustment(row) ? 'Request an early out or time-out correction' : 'No attendance log available for adjustment'"
+                  :title="canRequestAdjustment(row) ? 'Request a time adjustment' : 'No attendance log available for adjustment'"
                   @click="openAdjustment(row)"
                 >
-                  <i class="fas fa-clock me-1"></i> Request Early Out / Time Adjustment
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-info ms-2"
-                  :disabled="!canRequestAdjustment(row)"
-                  :title="canRequestAdjustment(row) ? 'Request AM/PM Time In/Out adjustment' : 'No attendance log available'"
-                  @click="openAdjustmentShift(row)"
-                >
-                  <i class="fas fa-exchange-alt me-1"></i> Shift Adjustment
+                  <i class="fas fa-clock me-1"></i> Request Time Adjustment
                 </button>
               </td>
             </tr>
@@ -85,7 +76,7 @@
             <div class="modal-content">
               <form @submit.prevent="submitAdjustment">
                 <div class="modal-header">
-                  <h5 id="adjustmentModalLabel" class="modal-title">Request Early Out / Time Adjustment</h5>
+                  <h5 id="adjustmentModalLabel" class="modal-title">Request Time Adjustment</h5>
                   <button type="button" class="btn-close" aria-label="Close" @click="closeAdjustment"></button>
                 </div>
                 <div class="modal-body">
@@ -97,31 +88,32 @@
                   </div>
 
                   <div class="mb-3">
-                    <label for="adjustmentShift" class="form-label">Shift</label>
+                    <label for="adjustmentField" class="form-label">Target field</label>
                     <select
-                      id="adjustmentShift"
-                      v-model="form.attendanceLogId"
+                      id="adjustmentField"
+                      v-model="form.targetField"
                       class="form-select"
                       required
                       @change="syncRequestedTime"
                     >
-                      <option v-for="option in shiftOptions" :key="option.id" :value="option.id">
+                      <option v-for="option in fieldOptions" :key="option.targetField" :value="option.targetField">
                         {{ option.label }}
                       </option>
                     </select>
-                    <div v-if="shiftOptions.length === 0" class="form-text text-danger">
-                      Every attendance log for this day already has a pending request.
+                    <div v-if="fieldOptions.length === 0" class="form-text text-danger">
+                      Every punch for this day already has a pending request.
                     </div>
                   </div>
 
                   <div class="mb-3">
-                    <label for="adjustmentTimeOut" class="form-label">Requested Time Out</label>
+                    <label for="adjustmentTime" class="form-label">{{ selectedField.label }}</label>
                     <input
-                      id="adjustmentTimeOut"
-                      v-model="form.requestedTimeOut"
+                      id="adjustmentTime"
+                      v-model="form.requestedTime"
                       type="time"
                       class="form-control"
                       required
+                      :placeholder="selectedField.label"
                     />
                   </div>
 
@@ -134,7 +126,7 @@
                       rows="3"
                       maxlength="500"
                       required
-                      placeholder="Explain why this time-out needs to be adjusted"
+                      :placeholder="`Explain why this ${selectedField.label} needs to be adjusted`"
                     ></textarea>
                     <div class="form-text text-end">{{ form.reason.length }}/500</div>
                   </div>
@@ -143,7 +135,7 @@
                   <button type="button" class="btn btn-outline-secondary" :disabled="isSubmitting" @click="closeAdjustment">
                     Cancel
                   </button>
-                  <button type="submit" class="btn btn-primary" :disabled="isSubmitting || shiftOptions.length === 0">
+                  <button type="submit" class="btn btn-primary" :disabled="isSubmitting || fieldOptions.length === 0">
                     <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
                     Submit Request
                   </button>
@@ -173,57 +165,57 @@ const isSubmitting = ref(false)
 const formError = ref('')
 const selectedRow = ref(null)
 const form = reactive({
-  attendanceLogId: null,
-  requestedTimeOut: '',
+  targetField: '',
+  requestedTime: '',
   reason: ''
 })
 
-const pendingLogIds = computed(() => new Set(
+const FIELD_DEFS = [
+  { targetField: 'AM_In', label: 'AM Time In', shift: 'morning', punch: 'timeIn' },
+  { targetField: 'AM_Out', label: 'AM Time Out', shift: 'morning', punch: 'timeOut' },
+  { targetField: 'PM_In', label: 'PM Time In', shift: 'afternoon', punch: 'timeIn' },
+  { targetField: 'PM_Out', label: 'PM Time Out', shift: 'afternoon', punch: 'timeOut' }
+]
+
+const pendingKeys = computed(() => new Set(
   adjustments.value
     .filter((item) => item.status === 'Pending')
-    .map((item) => Number(item.attendanceLogId))
+    .map((item) => `${Number(item.attendanceLogId)}:${item.targetField}`)
 ))
 
-const shiftOptions = computed(() => buildShiftOptions(selectedRow.value))
+const fieldOptions = computed(() => buildFieldOptions(selectedRow.value))
 
-function buildShiftOptions(row) {
+const selectedField = computed(() =>
+  fieldOptions.value.find((item) => item.targetField === form.targetField) || {
+    label: 'Requested time',
+    targetField: ''
+  }
+)
+
+function buildFieldOptions(row) {
   if (!row) return []
 
-  const options = []
-  if (row.morning?.id && !pendingLogIds.value.has(Number(row.morning.id))) {
-    options.push({ id: Number(row.morning.id), label: 'AM Time In', targetShift: 'AM_In' })
-    options.push({ id: Number(row.morning.id), label: 'AM Time Out', targetShift: 'AM_Out' })
-  }
-  if (row.afternoon?.id && !pendingLogIds.value.has(Number(row.afternoon.id))) {
-    options.push({ id: Number(row.afternoon.id), label: 'PM Time In', targetShift: 'PM_In' })
-    options.push({ id: Number(row.afternoon.id), label: 'PM Time Out', targetShift: 'PM_Out' })
-  }
-  return options
+  return FIELD_DEFS.flatMap((def) => {
+    const record = row[def.shift]
+    if (!record?.id) return []
+    if (pendingKeys.value.has(`${Number(record.id)}:${def.targetField}`)) return []
+    return [{
+      ...def,
+      attendanceLogId: Number(record.id),
+      current: record[def.punch]
+    }]
+  })
 }
 
 function hasPending(row) {
-  const morningPending = row.morning?.id
-    ? pendingLogIds.value.has(Number(row.morning.id))
-    : false
-  const afternoonPending = row.afternoon?.id
-    ? pendingLogIds.value.has(Number(row.afternoon.id))
-    : false
-  return morningPending || afternoonPending
+  const ids = [row.morning?.id, row.afternoon?.id].filter(Boolean).map(Number)
+  return adjustments.value.some((item) =>
+    item.status === 'Pending' && ids.includes(Number(item.attendanceLogId))
+  )
 }
 
 function canRequestAdjustment(row) {
-  return buildShiftOptions(row).length > 0
-}
-
-function shiftRecord(id) {
-  if (!selectedRow.value) return null
-  if (selectedRow.value.morning?.id && Number(selectedRow.value.morning.id) === Number(id)) {
-    return selectedRow.value.morning
-  }
-  if (selectedRow.value.afternoon?.id && Number(selectedRow.value.afternoon.id) === Number(id)) {
-    return selectedRow.value.afternoon
-  }
-  return null
+  return buildFieldOptions(row).length > 0
 }
 
 function timeInputValue(value) {
@@ -233,19 +225,16 @@ function timeInputValue(value) {
 }
 
 function syncRequestedTime() {
-  const record = shiftRecord(form.attendanceLogId)
-  form.requestedTimeOut = timeInputValue(record?.timeOut)
+  const option = fieldOptions.value.find((item) => item.targetField === form.targetField)
+  form.requestedTime = timeInputValue(option?.current)
 }
 
 function openAdjustment(row) {
   selectedRow.value = row
   formError.value = ''
   form.reason = ''
-
-  const options = buildShiftOptions(row)
-  form.attendanceLogId = options[0]?.id ?? null
+  form.targetField = buildFieldOptions(row)[0]?.targetField ?? ''
   syncRequestedTime()
-
   isAdjustmentOpen.value = true
 }
 
@@ -254,59 +243,38 @@ function closeAdjustment() {
   isAdjustmentOpen.value = false
 }
 
-function openAdjustmentShift(row) {
-  selectedRow.value = row
-  formError.value = ''
-  form.reason = ''
-
-  const options = buildShiftOptions(row)
-  if (options.length === 0) {
-    formError.value = 'Every attendance log for this day already has a pending request.'
-    return
-  }
-  // Select the first available option (could be AM In, AM Out, PM In, or PM Out)
-  form.attendanceLogId = options[0]?.id ?? null
-  // For shift adjustment, we need to set the requested time based on the shift type
-  const record = shiftRecord(form.attendanceLogId)
-  if (record) {
-    form.requestedTimeOut = timeInputValue(record.timeIn)
-  }
-
-  isAdjustmentOpen.value = true
-}
-
 async function submitAdjustment() {
   formError.value = ''
 
-  const option = shiftOptions.value.find((item) => Number(item.id) === Number(form.attendanceLogId))
+  const option = fieldOptions.value.find((item) => item.targetField === form.targetField)
   if (!option) {
-    formError.value = 'Choose a shift that has an attendance log.'
+    formError.value = 'Choose AM Time In, AM Time Out, PM Time In, or PM Time Out.'
     return
   }
-  if (!form.requestedTimeOut) {
-    formError.value = 'Choose the requested time out.'
+  if (!form.requestedTime) {
+    formError.value = `Choose the requested ${option.label}.`
     return
   }
 
   const reason = form.reason.trim()
   if (!reason) {
-    formError.value = 'Enter a reason for the adjustment.'
+    formError.value = `Enter a reason for this ${option.label} adjustment.`
     return
   }
 
   isSubmitting.value = true
   try {
     await internPortalAPI.requestAdjustment({
-      attendanceLogId: option.id,
-      requestedTimeOut: form.requestedTimeOut,
-      targetShift: option.targetShift,
+      attendanceLogId: option.attendanceLogId,
+      requestedTime: form.requestedTime,
+      targetField: option.targetField,
       reason
     })
-    notice.value = `Adjustment request for ${option.label} was submitted for approval.`
+    notice.value = `${option.label} adjustment was submitted for approval.`
     isAdjustmentOpen.value = false
     await load({ silent: true })
   } catch (e) {
-    formError.value = getApiErrorMessage(e, 'Unable to submit the adjustment request.')
+    formError.value = getApiErrorMessage(e, `Unable to submit the ${option.label} request.`)
   } finally {
     isSubmitting.value = false
   }

@@ -270,7 +270,6 @@
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h3 class="card-title mb-0">User Management</h3>
             <button
-              v-if="userSection === 'users'"
               type="button"
               class="btn btn-primary btn-sm"
               :disabled="isLoadingUsers"
@@ -278,46 +277,10 @@
             >
               <i class="fas fa-plus me-1"></i> Add User
             </button>
-            <button
-              v-else
-              type="button"
-              class="btn btn-outline-primary btn-sm"
-              :disabled="isLoadingRequests"
-              @click="loadAttendanceRequests"
-            >
-              <i class="fas fa-rotate me-1"></i> Refresh
-            </button>
           </div>
-
-          <ul class="nav nav-tabs card-header-tabs mt-3">
-            <li class="nav-item">
-              <button
-                type="button"
-                class="nav-link"
-                :class="{ active: userSection === 'users' }"
-                @click="setUserSection('users')"
-              >
-                <i class="fas fa-users me-1"></i> Users
-              </button>
-            </li>
-            <li class="nav-item">
-              <button
-                type="button"
-                class="nav-link"
-                :class="{ active: userSection === 'requests' }"
-                @click="setUserSection('requests')"
-              >
-                <i class="fas fa-clock me-1"></i> Time Adjustment Requests
-                <span v-if="pendingRequests.length" class="badge rounded-pill text-bg-danger ms-1">
-                  {{ pendingRequests.length }}
-                </span>
-              </button>
-            </li>
-          </ul>
         </div>
 
         <div class="card-body">
-          <template v-if="userSection === 'users'">
           <div class="row g-2 mb-3">
             <div class="col-md-6">
               <input
@@ -421,98 +384,6 @@
               </tbody>
             </table>
           </div>
-          </template>
-
-          <template v-else>
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <div>
-                <h4 class="h5 mb-1">Pending Time Adjustment Requests</h4>
-                <p class="text-muted small mb-0">
-                  Approving applies the requested time-out to the attendance log. Rejecting leaves the log unchanged.
-                </p>
-              </div>
-              <span class="text-muted small">{{ pendingRequests.length }} pending</span>
-            </div>
-
-            <div v-if="isLoadingRequests" class="text-center my-4">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <p class="text-muted mt-2 mb-0">Loading requests...</p>
-            </div>
-
-            <div v-else-if="requestsError" class="alert alert-danger d-flex justify-content-between align-items-center">
-              <span><i class="fas fa-exclamation-triangle me-2"></i>{{ requestsError }}</span>
-              <button type="button" class="btn btn-sm btn-outline-danger" @click="loadAttendanceRequests">
-                Retry
-              </button>
-            </div>
-
-            <div v-else class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th scope="col">Intern</th>
-                    <th scope="col" style="width: 120px;">Date</th>
-                    <th scope="col" style="width: 120px;">Shift</th>
-                    <th scope="col" class="text-center" style="width: 130px;">Current Time Out</th>
-                    <th scope="col" class="text-center" style="width: 140px;">Requested Time Out</th>
-                    <th scope="col">Reason</th>
-                    <th scope="col" style="width: 170px;">Requested At</th>
-                    <th scope="col" class="text-center" style="width: 180px;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="request in pendingRequests" :key="request.id">
-                    <td>
-                      <div class="fw-semibold text-dark">{{ request.internName || '-' }}</div>
-                      <div class="text-muted small">{{ request.internEmail || '-' }}</div>
-                    </td>
-                    <td>{{ formatDate(request.date) }}</td>
-                    <td>
-                      <span class="badge text-bg-info">{{ shiftLabel(request.targetShift) }}</span>
-                    </td>
-                    <td class="text-center">{{ formatTime(request.currentTimeOut) }}</td>
-                    <td class="text-center fw-semibold text-dark">{{ formatTime(request.requestedTimeOut) }}</td>
-                    <td class="text-dark request-reason" :title="request.reason">{{ request.reason }}</td>
-                    <td class="text-muted small">{{ formatDateTime(request.requestedAt) }}</td>
-                    <td class="text-center">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-success me-1"
-                        title="Approve request"
-                        :disabled="processingRequestId === request.id"
-                        @click="approveAttendanceRequest(request)"
-                      >
-                        <span
-                          v-if="processingRequestId === request.id"
-                          class="spinner-border spinner-border-sm me-1"
-                          aria-hidden="true"
-                        ></span>
-                        <i v-else class="fas fa-check me-1"></i>
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline-danger"
-                        title="Reject request"
-                        :disabled="processingRequestId === request.id"
-                        @click="rejectAttendanceRequest(request)"
-                      >
-                        <i class="fas fa-times me-1"></i>
-                        Reject
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="pendingRequests.length === 0">
-                    <td colspan="8" class="text-center text-muted py-4">
-                      No pending time adjustment requests.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </template>
         </div>
       </div>
     </div>
@@ -704,7 +575,6 @@ import {
   adminUsersAPI,
   currentUser,
   getApiErrorMessage,
-  hrAttendanceAPI,
   isHRAdmin,
   saveProfile as persistProfile
 } from '@/services/api'
@@ -717,18 +587,11 @@ const isAdmin = ref(isHRAdmin())
 function tabFromHash() {
   const tab = window.location.hash.replace('#', '').toLowerCase()
   if (tab === 'security') return 'security'
-  if ((tab === 'users' || tab === 'attendance-requests') && isAdmin.value) return 'users'
+  if (tab === 'users' && isAdmin.value) return 'users'
   return 'profile'
 }
 
-function userSectionFromHash() {
-  return window.location.hash.replace('#', '').toLowerCase() === 'attendance-requests'
-    ? 'requests'
-    : 'users'
-}
-
 const activeTab = ref(tabFromHash())
-const userSection = ref(userSectionFromHash())
 
 /* ---- Toast ---- */
 const toastEl = ref(null)
@@ -830,32 +693,13 @@ function applyProfile(profile) {
   window.dispatchEvent(new Event('ojt:profile-changed'))
 }
 
-/* Sidebar sub-items link to account.html#security, account.html#users and
-   account.html#attendance-requests. Follow the hash so clicking them switches
-   the view without a page reload. */
+/* Sidebar sub-items link to account.html#security and account.html#users.
+   Follow the hash so clicking them switches the view without a page reload. */
 function readTabFromUrl() {
   activeTab.value = tabFromHash()
-  userSection.value = userSectionFromHash()
 
-  if (activeTab.value === 'users') {
-    if (!usersLoaded.value && !isLoadingUsers.value) loadUsers()
-    if (!requestsLoaded.value && !isLoadingRequests.value) loadAttendanceRequests()
-  }
-}
-
-function setUserSection(section) {
-  userSection.value = section
-
-  const hash = section === 'requests' ? '#attendance-requests' : '#users'
-  if (window.location.hash !== hash) {
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash}`)
-  }
-
-  if (section === 'users' && !usersLoaded.value && !isLoadingUsers.value) {
+  if (activeTab.value === 'users' && !usersLoaded.value && !isLoadingUsers.value) {
     loadUsers()
-  }
-  if (section === 'requests' && !requestsLoaded.value && !isLoadingRequests.value) {
-    loadAttendanceRequests()
   }
 }
 
@@ -1099,91 +943,6 @@ async function loadUsers() {
     usersError.value = getApiErrorMessage(error, 'Failed to load users.')
   } finally {
     isLoadingUsers.value = false
-  }
-}
-
-/* ---- Attendance time adjustment requests ---- */
-const pendingRequests = ref([])
-const requestsLoaded = ref(false)
-const isLoadingRequests = ref(false)
-const requestsError = ref('')
-const processingRequestId = ref(null)
-
-async function loadAttendanceRequests() {
-  isLoadingRequests.value = true
-  requestsError.value = ''
-
-  try {
-    pendingRequests.value = await hrAttendanceAPI.getPending()
-    requestsLoaded.value = true
-  } catch (error) {
-    requestsError.value = getApiErrorMessage(error, 'Failed to load time adjustment requests.')
-  } finally {
-    isLoadingRequests.value = false
-  }
-}
-
-function shiftLabel(value) {
-  if (value === 'AM_Out') return 'AM Time Out'
-  if (value === 'PM_Out') return 'PM Time Out'
-  return value || '-'
-}
-
-function formatTime(value) {
-  if (!value) return '-'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '-'
-  return parsed.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-}
-
-function formatDateTime(value) {
-  if (!value) return '-'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '-'
-  return parsed.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-function formatHours(value) {
-  const hours = Number(value)
-  return Number.isFinite(hours) ? hours.toFixed(2) : '0.00'
-}
-
-async function approveAttendanceRequest(request) {
-  if (processingRequestId.value) return
-
-  processingRequestId.value = request.id
-  try {
-    const result = await hrAttendanceAPI.approve(request.id)
-    pendingRequests.value = pendingRequests.value.filter((item) => item.id !== request.id)
-    showToast(
-      `Approved ${shiftLabel(request.targetShift)} on ${formatDate(request.date)}. ` +
-      `Updated daily total: ${formatHours(result.dailyHours)} hours.`
-    )
-  } catch (error) {
-    showToast(getApiErrorMessage(error, 'Failed to approve the request.'), 'danger')
-  } finally {
-    processingRequestId.value = null
-  }
-}
-
-async function rejectAttendanceRequest(request) {
-  if (processingRequestId.value) return
-
-  processingRequestId.value = request.id
-  try {
-    await hrAttendanceAPI.reject(request.id)
-    pendingRequests.value = pendingRequests.value.filter((item) => item.id !== request.id)
-    showToast(`Rejected ${shiftLabel(request.targetShift)} request for ${formatDate(request.date)}.`, 'warning')
-  } catch (error) {
-    showToast(getApiErrorMessage(error, 'Failed to reject the request.'), 'danger')
-  } finally {
-    processingRequestId.value = null
   }
 }
 
@@ -1433,13 +1192,5 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-/* Keep long adjustment reasons from stretching the requests table. */
-.request-reason {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>

@@ -55,8 +55,8 @@ namespace OJTMISApi.Controllers
                 {
                     x.Id,
                     x.AttendanceLogId,
-                    x.RequestedTimeOut,
-                    x.TargetShift,
+                    x.RequestedTime,
+                    x.TargetField,
                     x.Reason,
                     x.Status,
                     x.RequestedAt,
