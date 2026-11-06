@@ -219,6 +219,7 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { dtrAPI, getApiErrorMessage } from '@/services/api'
+import { dateKey as toDateKey, formatClock, formatDisplayDate } from '@/utils/datetime'
 
 // ================= State =================
 const isLoading = ref(false)
@@ -321,28 +322,15 @@ const visiblePages = computed(() => {
 
 // ================= Methods =================
 function dateKey(value) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10)
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
+  return toDateKey(value)
 }
 
 function formatDate(value) {
-  const date = value ? new Date(value) : null
-  return date && !Number.isNaN(date.getTime())
-    ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '—'
+  return formatDisplayDate(value)
 }
 
 function formatTime(time) {
-  if (!time) return '—'
-  const date = new Date(time)
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
-  }
-  return '—'
+  return formatClock(time)
 }
 
 function formatHours(hours) {
@@ -350,16 +338,23 @@ function formatHours(hours) {
   return Number.isFinite(value) && value > 0 ? value.toFixed(2) : '—'
 }
 
+function clockMinutes(value) {
+  if (!value) return null
+  const match = String(value).match(/(?:T|\s|^)(\d{1,2}):(\d{2})/)
+  if (!match) return null
+  return Number(match[1]) * 60 + Number(match[2])
+}
+
 function isAfterEight(value) {
-  const date = value ? new Date(value) : null
-  if (!date || Number.isNaN(date.getTime())) return false
-  return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds() > 8 * 3600
+  const minutes = clockMinutes(value)
+  return minutes != null && minutes > 8 * 60
 }
 
 function shiftHours(record) {
-  if (!record?.timeIn || !record?.timeOut) return 0
-  const diff = (new Date(record.timeOut) - new Date(record.timeIn)) / 36e5
-  return Number.isFinite(diff) ? Math.max(0, diff) : 0
+  const start = clockMinutes(record?.timeIn)
+  const end = clockMinutes(record?.timeOut)
+  if (start == null || end == null || end < start) return 0
+  return (end - start) / 60
 }
 
 function groupByDay(records) {
@@ -376,10 +371,11 @@ function groupByDay(records) {
       })
     }
     const row = rows.get(key)
-    const started = record.timeIn ? new Date(record.timeIn) : null
     const slot = String(record.shiftType || '').toLowerCase() === 'afternoon' ? 'afternoon' : 'morning'
     const current = row[slot]
-    if (!current || (started && new Date(current.timeIn) < started)) row[slot] = record
+    const started = clockMinutes(record.timeIn) ?? -1
+    const currentStarted = current ? (clockMinutes(current.timeIn) ?? -1) : -1
+    if (!current || started >= currentStarted) row[slot] = record
     if (record.internName) row.name = record.internName
   }
 

@@ -482,7 +482,7 @@
 import { computed, inject, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import officesData from '../assets/json/offices.json'
-import { getApiErrorMessage, internsAPI } from '@/services/api'
+import { getApiErrorMessage, hrAttendanceAPI, internsAPI } from '@/services/api'
 
 /* Same shared office list that feeds the Signatories module dropdown. */
 const officeOptions = [
@@ -803,6 +803,15 @@ async function printCard() {
   /* Make sure the preview QR is ready before the browser snapshots the page. */
   if (qrPayload.value && !qrDataUrl.value) {
     await renderQr(qrPayload.value)
+  }
+
+  const internName = (form.fullName || '').trim()
+  if (internName) {
+    hrAttendanceAPI.logGeneratedDocument({
+      documentType: 'ID',
+      internId: selectedInternId.value,
+      internName
+    }).catch(() => {})
   }
 
   window.print()

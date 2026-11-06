@@ -50,8 +50,8 @@
                 </td>
                 <td>{{ formatDate(req.date) }}</td>
                 <td>{{ shiftLabel(req) }}</td>
-                <td>{{ formatTime(req.currentTime) }}</td>
-                <td>{{ formatTime(req.requestedTime) }}</td>
+                <td>{{ formatTime(currentTimeOf(req)) }}</td>
+                <td>{{ formatTime(requestedTimeOf(req)) }}</td>
                 <td class="text-start">{{ req.reason || '—' }}</td>
                 <td>
                   <span v-if="req.status === 'Approved'" class="badge bg-success">Approved</span>
@@ -91,6 +91,7 @@
 <script setup>
 import { inject, onMounted, ref } from 'vue'
 import { getApiErrorMessage, hrAttendanceAPI } from '@/services/api'
+import { formatClock, formatDisplayDate } from '@/utils/datetime'
 import '../assets/css/Request.css'
 
 const dialog = inject('dialog')
@@ -150,18 +151,26 @@ function shiftLabel(req) {
   return req.shiftType || '—'
 }
 
+function isTimeInField(req) {
+  const field = String(req.targetField || req.targetShift || '')
+  return field === 'AM_In' || field === 'PM_In' || /in/i.test(field)
+}
+
+function currentTimeOf(req) {
+  if (req.currentTime) return req.currentTime
+  return isTimeInField(req) ? req.timeIn : (req.timeOut ?? req.timeIn)
+}
+
+function requestedTimeOf(req) {
+  return req.requestedTime || req.requestedTimeOut || ''
+}
+
 function formatDate(v) {
-  const d = v ? new Date(v) : null
-  return d && !Number.isNaN(d.getTime())
-    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '—'
+  return formatDisplayDate(v)
 }
 
 function formatTime(v) {
-  const d = v ? new Date(v) : null
-  return d && !Number.isNaN(d.getTime())
-    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '—'
+  return formatClock(v)
 }
 
 onMounted(loadAdjustmentRequests)

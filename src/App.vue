@@ -18,6 +18,7 @@ import InternDtrPage from '../pages/intern-dtr.vue'
 import InternAttendancePage from '../pages/intern-attendance.vue'
 import InternDocumentsPage from '../pages/intern-documents.vue'
 import CocGeneratePage from '../pages/coc-generate.vue'
+import DtrMonitoringPage from '../pages/dtr.vue'
 import { clearSession, isHRAdmin, isIntern } from './services/api'
 
 /* Lahat ng page na kayang buksan ng app. Kailangan ding nakasaad
@@ -54,7 +55,7 @@ const pageComponents = {
   'account.html': AccountPage,
   'internlist.html': ModulePage,
   'forms.html': ModulePage,
-  'dtr.html': ModulePage,
+  'dtr.html': DtrMonitoringPage,
   'attendance.html': AttendancePage,
   'logs.html': LogsPage,
   'idgenerate.html': IdGeneratePage,

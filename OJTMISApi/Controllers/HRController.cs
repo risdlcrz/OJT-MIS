@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -46,7 +47,7 @@ namespace OJTMISApi.Controllers
                     ShiftType = r.AttendanceLog != null ? r.AttendanceLog.ShiftType : null,
                     TimeIn = r.AttendanceLog != null ? (DateTime?)r.AttendanceLog.TimeIn : null,
                     TimeOut = r.AttendanceLog != null ? r.AttendanceLog.TimeOut : null,
-                    r.RequestedTime,
+                    RequestedTimeValue = r.RequestedTime,
                     r.TargetField,
                     r.Reason,
                     r.Status,
@@ -63,10 +64,10 @@ namespace OJTMISApi.Controllers
                 r.InternEmail,
                 r.Date,
                 r.ShiftType,
-                r.TimeIn,
-                r.TimeOut,
-                CurrentTime = AttendanceAdjustmentField.IsTimeIn(r.TargetField) ? r.TimeIn : r.TimeOut,
-                r.RequestedTime,
+                TimeIn = FormatTimestamp(r.TimeIn),
+                TimeOut = FormatTimestamp(r.TimeOut),
+                CurrentTime = FormatTimestamp(ResolveCurrentTime(r.TargetField, r.TimeIn, r.TimeOut)),
+                RequestedTime = FormatTimestamp(r.RequestedTimeValue),
                 r.TargetField,
                 r.Reason,
                 r.Status,
@@ -251,5 +252,147 @@ namespace OJTMISApi.Controllers
 
             return Math.Round(records.Sum(x => AttendanceShift.Hours(x)), 2);
         }
+
+        /// <summary>
+        /// Interns whose rendered attendance hours meet or exceed the required hours.
+        /// </summary>
+        [HttpGet("Certificates/Eligible")]
+        public async Task<ActionResult<IEnumerable<object>>> GetCertificateEligible()
+        {
+            var interns = await _context.Interns
+                .AsNoTracking()
+                .Where(i => i.Status == "Hired" || i.Status == "Completed")
+                .OrderBy(i => i.FullName)
+                .ToListAsync();
+
+            var punches = await _context.DailyTimeRecords
+                .AsNoTracking()
+                .Where(d => d.InternId != null && d.TimeOut != null)
+                .Select(d => new { d.InternId, d.TimeIn, d.TimeOut })
+                .ToListAsync();
+
+            var hoursByIntern = punches
+                .GroupBy(d => d.InternId!.Value)
+                .ToDictionary(
+                    g => g.Key,
+                    g => Math.Round(g.Sum(d => Math.Max(0, (d.TimeOut!.Value - d.TimeIn).TotalHours)), 2));
+
+            var eligible = interns
+                .Select(intern =>
+                {
+                    hoursByIntern.TryGetValue(intern.Id, out var rendered);
+                    return new
+                    {
+                        intern.Id,
+                        intern.FullName,
+                        intern.FirstName,
+                        intern.MiddleName,
+                        intern.LastName,
+                        intern.Suffix,
+                        intern.ApplicantNo,
+                        intern.School,
+                        intern.SchoolName,
+                        intern.Program,
+                        intern.ApplicantOffice,
+                        intern.RequiredHours,
+                        intern.StartDate,
+                        intern.EndDate,
+                        intern.Status,
+                        HoursRendered = rendered
+                    };
+                })
+                .Where(intern => intern.RequiredHours > 0 && intern.HoursRendered + 0.009 >= intern.RequiredHours)
+                .ToList();
+
+            return Ok(eligible);
+        }
+
+        /// <summary>POST: api/HR/Documents/Generated — records ID or certificate printing.</summary>
+        [HttpPost("Documents/Generated")]
+        public async Task<ActionResult<object>> LogGeneratedDocument([FromBody] GeneratedDocumentInput input)
+        {
+            var type = NormalizeGeneratedType(input.DocumentType);
+            if (type is null)
+            {
+                return BadRequest(new { message = "Choose ID or Certificate of Completion." });
+            }
+
+            var internName = (input.InternName ?? string.Empty).Trim();
+            if (input.InternId is int internId)
+            {
+                var intern = await _context.Interns.AsNoTracking().FirstOrDefaultAsync(i => i.Id == internId);
+                if (intern is not null && string.IsNullOrWhiteSpace(internName))
+                {
+                    internName = intern.FullName;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(internName))
+            {
+                return BadRequest(new { message = "Intern name is required." });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var action = type == "ID"
+                ? "Generated an intern ID"
+                : "Generated a Certificate of Completion";
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+                UserName = user?.FullName ?? User.Identity?.Name ?? "HR Admin",
+                Email = user?.Email ?? User.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
+                Category = "HR",
+                Method = "POST",
+                Path = "/api/HR/Documents/Generated",
+                Action = action,
+                Details = $"{action} for {internName}.",
+                IsVerified = true,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"{action} for {internName}." });
+        }
+
+        private static DateTime? ResolveCurrentTime(string? targetField, DateTime? timeIn, DateTime? timeOut)
+        {
+            var field = AttendanceAdjustmentField.Normalize(targetField);
+            if (field is not null)
+            {
+                return AttendanceAdjustmentField.IsTimeIn(field) ? timeIn : timeOut;
+            }
+
+            var text = (targetField ?? string.Empty).Trim();
+            if (text.Contains("in", StringComparison.OrdinalIgnoreCase)) return timeIn;
+            if (text.Contains("out", StringComparison.OrdinalIgnoreCase)) return timeOut;
+            return timeOut ?? timeIn;
+        }
+
+        /// <summary>
+        /// Second-precision timestamp. Seven fractional digits are rejected by Date.
+        /// </summary>
+        private static string? FormatTimestamp(DateTime? value) =>
+            value?.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+
+        private static string? NormalizeGeneratedType(string? value)
+        {
+            var type = (value ?? string.Empty).Trim();
+            if (type.Equals("ID", StringComparison.OrdinalIgnoreCase)) return "ID";
+            if (type.Equals("Certificate of Completion", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("COC", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Certificate of Completion";
+            }
+
+            return null;
+        }
+    }
+
+    public class GeneratedDocumentInput
+    {
+        public string? DocumentType { get; set; }
+        public int? InternId { get; set; }
+        public string? InternName { get; set; }
     }
 }

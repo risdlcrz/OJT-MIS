@@ -153,6 +153,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getApiErrorMessage, internPortalAPI } from '@/services/api'
+import { formatClock, formatDisplayDate } from '@/utils/datetime'
 
 const rows = ref([])
 const adjustments = ref([])
@@ -219,9 +220,10 @@ function canRequestAdjustment(row) {
 }
 
 function timeInputValue(value) {
-  const date = value ? new Date(value) : null
-  if (!date || Number.isNaN(date.getTime())) return ''
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  if (!value) return ''
+  const match = String(value).match(/(?:T|\s|^)(\d{1,2}):(\d{2})/)
+  if (!match) return ''
+  return `${match[1].padStart(2, '0')}:${match[2]}`
 }
 
 function syncRequestedTime() {
@@ -281,17 +283,11 @@ async function submitAdjustment() {
 }
 
 function formatDate(v) {
-  const d = v ? new Date(v) : null
-  return d && !Number.isNaN(d.getTime())
-    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '—'
+  return formatDisplayDate(v)
 }
 
 function formatTime(v) {
-  const d = v ? new Date(v) : null
-  return d && !Number.isNaN(d.getTime())
-    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '—'
+  return formatClock(v)
 }
 
 function formatHours(hours) {

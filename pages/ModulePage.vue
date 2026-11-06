@@ -411,7 +411,7 @@ const MODULES = {
         label: 'Generate COC',
         icon: 'fas fa-certificate',
         class: 'btn btn-info',
-        condition: (row) => row.status === 'Completed'
+        condition: () => true
       }
     ]
   },
@@ -842,12 +842,8 @@ function handleAction(actionName, row) {
     confirmDelete(row)
   } else if (actionName === 'generate-coc') {
     /* Navigate to COC generation page with the intern pre-selected */
-    if (row.status === 'Completed') {
-      window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    } else {
-      alert('Only interns with Completed status can generate a Certificate of Completion.')
-    }
+    window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
   }
 }
 

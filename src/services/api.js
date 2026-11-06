@@ -227,7 +227,9 @@ export const adminUsersAPI = {
 export const hrAttendanceAPI = {
   getPending: async () => (await apiClient.get('/HR/AttendanceRequests/Pending')).data,
   approve: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Approve/${id}`)).data,
-  reject: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Reject/${id}`)).data
+  reject: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Reject/${id}`)).data,
+  eligibleForCertificate: async () => (await apiClient.get('/HR/Certificates/Eligible')).data,
+  logGeneratedDocument: async (payload) => (await apiClient.post('/HR/Documents/Generated', payload)).data
 }
 
 /** HR Admin only: audit trail ng mga aksyon ng bawat user. */

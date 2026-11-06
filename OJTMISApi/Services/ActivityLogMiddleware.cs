@@ -15,6 +15,8 @@ namespace OJTMISApi.Services
         {
             "/api/logs",
             "/api/notifications",
+            // Written by HRController with the intern name and document type.
+            "/api/hr/documents",
             // Login is logged explicitly by AuthController; avoid duplicates.
             "/api/auth"
         };
@@ -90,12 +92,21 @@ namespace OJTMISApi.Services
             var resource = parts.Length > 1 ? parts[1].ToLowerInvariant() : "record";
             var last = parts.Length > 0 ? parts[^1].ToLowerInvariant() : string.Empty;
 
-            if (resource == "applicants" && last == "hire") return "Hired an applicant";
+            if (parts.Length >= 4 && parts[1].Equals("HR", StringComparison.OrdinalIgnoreCase))
+            {
+                var area = parts[2].ToLowerInvariant();
+                var verb = parts[3].ToLowerInvariant();
+                if (area == "attendancerequests" && verb == "approve") return "Approved a time adjustment request";
+                if (area == "attendancerequests" && verb == "reject") return "Rejected a time adjustment request";
+            }
+
+            if (resource == "applicants" && last == "hire") return "Approved and hired an applicant";
             if (resource == "account" && last == "change-password") return "Changed account password";
-            if (resource == "account" && last == "profile") return "Updated own profile";
+            if (resource == "account" && last == "profile") return "Updated account profile";
             if (resource == "intern" && last == "scan") return "Scanned intern ID for DTR";
             if (resource == "attendance" && last == "logtime") return "Logged intern DTR time";
-            if (resource == "intern" && last == "documents") return "Requested intern document";
+            if (resource == "attendance" && last == "requestadjustment") return "Submitted a time adjustment request";
+            if (resource == "intern" && last == "documents") return "Requested an intern document";
             if (resource == "admin" && parts.Length > 2) resource = parts[2].ToLowerInvariant();
 
             var label = resource switch
@@ -107,7 +118,7 @@ namespace OJTMISApi.Services
                 "intern" => "intern portal",
                 "internrequests" => "intern request",
                 "programs" => "program",
-                "users" => "user",
+                "users" => "user profile",
                 _ => resource
             };
 
