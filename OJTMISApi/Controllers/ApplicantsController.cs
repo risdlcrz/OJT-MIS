@@ -36,15 +36,18 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ApplicantsController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _email;
 
         public ApplicantsController(
             ApplicationDbContext context,
             ILogger<ApplicantsController> logger,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IEmailSender email)
         {
             _context = context;
             _logger = logger;
             _userManager = userManager;
+            _email = email;
         }
 
         /// <summary>GET: api/applicants</summary>
@@ -291,6 +294,13 @@ namespace OJTMISApi.Controllers
             internRequest.UpdatedAt = now;
 
             _context.Interns.Add(intern);
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/applicants/{id}/hire",
+                "Approved and hired an applicant",
+                $"Hired {fullName} and opened an intern record.");
             await _context.SaveChangesAsync();
 
             // Bigyan ng user account ang bagong intern gamit ang email na
@@ -312,7 +322,7 @@ namespace OJTMISApi.Controllers
         private sealed record InternAccountResult(
             bool Created,
             string? Email,
-            string? TemporaryPassword,
+            bool Emailed,
             string? Warning);
 
         /// <summary>
@@ -325,7 +335,7 @@ namespace OJTMISApi.Controllers
             var email = applicant.Email?.Trim();
             if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
             {
-                return new(false, null, null,
+                return new(false, null, false,
                     "The applicant has no valid email, so no user account was created.");
             }
 
@@ -337,7 +347,7 @@ namespace OJTMISApi.Controllers
                     await _userManager.AddToRoleAsync(existing, UserRoles.Intern);
                 }
 
-                return new(false, email, null,
+                return new(false, email, false,
                     "An account with this email already exists; Intern access was ensured.");
             }
 
@@ -349,8 +359,7 @@ namespace OJTMISApi.Controllers
                 FirstName = applicant.FirstName,
                 LastName = applicant.LastName,
                 Office = applicant.ApplicantOffice,
-                EmailConfirmed = true,
-                TemporaryPassword = password
+                EmailConfirmed = true
             };
 
             var createResult = await _userManager.CreateAsync(user, password);
@@ -359,13 +368,23 @@ namespace OJTMISApi.Controllers
                 _logger.LogWarning("Could not create intern account for {Email}: {Errors}",
                     email, string.Join(" ", createResult.Errors.Select(e => e.Description)));
 
-                return new(false, email, null,
+                return new(false, email, false,
                     "The intern was hired, but the user account could not be created.");
             }
 
             await _userManager.AddToRoleAsync(user, UserRoles.Intern);
 
-            return new(true, email, password, null);
+            try
+            {
+                await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                return new(true, email, true, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Hired {Email} but the temporary password email failed.", email);
+                return new(true, email, false,
+                    "The account was created, but the temporary password email could not be sent. The intern can use Forgot Password.");
+            }
         }
 
         private static string BuildFullName(Applicant a)

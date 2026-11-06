@@ -2,7 +2,10 @@
   <section class="content">
     <div class="card shadow-sm">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h3 class="card-title mb-0">Daily Time Record</h3>
+        <div>
+          <h3 class="card-title mb-0">Daily Time Record</h3>
+          <p class="text-muted small mb-0">Same day view as the intern record, with the intern name on every row.</p>
+        </div>
         <div class="input-group input-group-sm" style="width: min(100%, 280px)">
           <span class="input-group-text"><i class="fas fa-search"></i></span>
           <input
@@ -41,7 +44,7 @@
               <td colspan="8" class="text-center text-muted py-4">No attendance records yet.</td>
             </tr>
             <tr v-for="row in rows" :key="row.id">
-              <td class="text-dark">{{ row.name }}</td>
+              <td class="text-dark fw-semibold">{{ row.name }}</td>
               <td>{{ formatDisplayDate(row.date) }}</td>
               <td>{{ formatClock(row.morning?.timeIn) }}</td>
               <td>{{ formatClock(row.morning?.timeOut) }}</td>
@@ -100,7 +103,7 @@ function groupByInternDay(list) {
     if (!map.has(key)) {
       map.set(key, {
         id: key,
-        name: record.internName || '—',
+        name: record.internName || record.internEmail || 'Unknown intern',
         date: record.date,
         morning: null,
         afternoon: null

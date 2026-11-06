@@ -17,15 +17,18 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<InternsController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _email;
 
         public InternsController(
             ApplicationDbContext context,
             ILogger<InternsController> logger,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IEmailSender email)
         {
             _context = context;
             _logger = logger;
             _userManager = userManager;
+            _email = email;
         }
 
         /// <summary>GET: api/interns</summary>
@@ -308,14 +311,22 @@ namespace OJTMISApi.Controllers
                     FirstName = string.IsNullOrWhiteSpace(intern.FirstName) ? intern.FullName : intern.FirstName,
                     LastName = intern.LastName ?? string.Empty,
                     Office = intern.ApplicantOffice,
-                    EmailConfirmed = false,
-                    TemporaryPassword = TemporaryPasswordGenerator.Generate()
+                    EmailConfirmed = false
                 };
 
-                var result = await _userManager.CreateAsync(user, user.TemporaryPassword);
+                var password = TemporaryPasswordGenerator.Generate();
+                var result = await _userManager.CreateAsync(user, password);
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, UserRoles.Intern);
+                    try
+                    {
+                        await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                    }
+                    catch (Exception mailEx)
+                    {
+                        _logger.LogWarning(mailEx, "Intern account for {Email} was created but the password email failed.", email);
+                    }
                 }
             }
             catch (Exception ex)

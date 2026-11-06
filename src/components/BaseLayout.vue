@@ -265,7 +265,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import '../../assets/css/navigation.css'
 import '../../assets/css/Dashboard.css'
 import menuConfig from '../../assets/json/menu.json'
@@ -531,9 +531,21 @@ function toggleMenu(item) {
     sidebarCollapsed.value = false
   }
   const next = new Set(openMenus.value)
-  if (next.has(item.name)) next.delete(item.name)
-  else next.add(item.name)
+  const opening = !next.has(item.name)
+  if (opening) next.add(item.name)
+  else next.delete(item.name)
   openMenus.value = next
+
+  if (!opening) return
+  nextTick(() => {
+    const reveal = () => {
+      document.querySelector('.main-sidebar .nav-treeview.is-open')
+        ?.lastElementChild
+        ?.scrollIntoView({ block: 'nearest' })
+    }
+    reveal()
+    window.setTimeout(reveal, 320)
+  })
 }
 
 function toggleSidebar() {
@@ -935,9 +947,13 @@ body {
 /* ---------- Sidebar navigation (photo reference) ---------- */
 .main-sidebar .sidebar {
   flex: 1 1 auto;
+  min-height: 0;
   max-height: none;
-  padding: 0.35rem 0 0.5rem;
+  padding: 0.35rem 0 1rem;
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.55) transparent;
 }
 
 .main-sidebar .nav-sidebar .nav-link {
@@ -1000,7 +1016,7 @@ body {
 }
 
 .main-sidebar .nav-treeview.is-open {
-  max-height: 14rem;
+  max-height: 40rem;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -1012,13 +1028,15 @@ body {
 
 .main-sidebar .nav-treeview > .nav-item > .nav-link {
   margin: 0 !important;
-  padding: 0.72rem 1.1rem 0.72rem 2.7rem !important;
+  padding: 0.62rem 0.9rem 0.62rem 2.15rem !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: #ffe9d2 !important;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  white-space: normal;
   text-transform: uppercase;
 }
 
@@ -1031,7 +1049,7 @@ body {
   background: rgba(0, 0, 0, 0.35) !important;
   color: #ffffff !important;
   box-shadow: none !important;
-  padding: 0.72rem 1.1rem 0.72rem 2.7rem !important;
+  padding: 0.62rem 0.9rem 0.62rem 2.15rem !important;
 }
 
 .sidebar-footer {

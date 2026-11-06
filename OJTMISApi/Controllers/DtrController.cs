@@ -31,6 +31,30 @@ namespace OJTMISApi.Controllers
                     .AsNoTracking()
                     .OrderByDescending(x => x.Date)
                     .ToListAsync();
+
+                var missingIds = items
+                    .Where(x => string.IsNullOrWhiteSpace(x.InternName) && x.InternId != null)
+                    .Select(x => x.InternId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (missingIds.Count > 0)
+                {
+                    var names = await _context.Interns
+                        .AsNoTracking()
+                        .Where(i => missingIds.Contains(i.Id))
+                        .ToDictionaryAsync(i => i.Id, i => i.FullName);
+
+                    foreach (var item in items)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.InternName) || item.InternId is not int id) continue;
+                        if (names.TryGetValue(id, out var name) && !string.IsNullOrWhiteSpace(name))
+                        {
+                            item.InternName = name;
+                        }
+                    }
+                }
+
                 return Ok(items);
             }
             catch (Exception ex)

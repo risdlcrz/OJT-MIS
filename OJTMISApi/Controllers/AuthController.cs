@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -23,19 +24,25 @@ namespace OJTMISApi.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly JwtSettings _jwt;
         private readonly ApplicationDbContext _context;
+        private readonly IEmailSender _email;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             RoleManager<IdentityRole> roleManager,
             IOptions<JwtSettings> jwt,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IEmailSender email,
+            ILogger<AuthController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _roleManager = roleManager;
             _jwt = jwt.Value;
             _context = context;
+            _email = email;
+            _logger = logger;
         }
 
         // POST: api/auth/register
@@ -119,6 +126,96 @@ namespace OJTMISApi.Controllers
             await LogLoginAsync(user);
 
             return await IssueTokenAsync(user);
+        }
+
+        /// <summary>POST: api/auth/forgot-password</summary>
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            const string generic = "If that email is registered, a password reset link has been sent.";
+            var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+            if (user is null || string.IsNullOrWhiteSpace(user.Email))
+            {
+                return Ok(new { message = generic });
+            }
+
+            try
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                await _email.SendPasswordResetLinkAsync(user.Email, user.FullName, token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not send a password reset email.");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = "The password reset email could not be sent. Try again later."
+                });
+            }
+
+            return Ok(new { message = generic });
+        }
+
+        /// <summary>POST: api/auth/reset-password</summary>
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            if (!string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+            {
+                return BadRequest(new { message = "New password and confirmation do not match." });
+            }
+
+            var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+            if (user is null)
+            {
+                return BadRequest(new { message = "This reset link is invalid or has expired." });
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    message = "This reset link is invalid or has expired. Request a new one from Forgot Password."
+                });
+            }
+
+            if (!string.IsNullOrEmpty(user.TemporaryPassword))
+            {
+                user.TemporaryPassword = null;
+                await _userManager.UpdateAsync(user);
+            }
+
+            try
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                _context.ActivityLogs.Add(new ActivityLog
+                {
+                    UserId = user.Id,
+                    UserName = user.FullName,
+                    Email = user.Email ?? string.Empty,
+                    Category = ActivityLogWriter.CategoryFor(roles),
+                    Method = "POST",
+                    Path = "/api/auth/reset-password",
+                    Action = "Reset a password from email",
+                    Details = "Completed a Forgot Password reset.",
+                    IsVerified = true,
+                    CreatedAt = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Password was reset but the activity log was not written.");
+            }
+
+            return Ok(new { message = "Password updated. You can sign in with the new password." });
         }
 
         // GET: api/auth/me - kailangan ng session para ma-load ang profile.
@@ -267,6 +364,27 @@ namespace OJTMISApi.Controllers
 
         [Required, StringLength(100, MinimumLength = 8)]
         public string Password { get; set; } = string.Empty;
+    }
+
+    public class ForgotPasswordRequest
+    {
+        [Required, EmailAddress, StringLength(256)]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordRequest
+    {
+        [Required, EmailAddress, StringLength(256)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Token { get; set; } = string.Empty;
+
+        [Required, StringLength(100, MinimumLength = 8)]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 
     public class LoginRequest

@@ -127,7 +127,9 @@ export const authAPI = {
     saveProfile(data)
     return data
   },
-  logout: () => clearSession()
+  logout: () => clearSession(),
+  forgotPassword: async (email) => (await apiClient.post('/auth/forgot-password', { email })).data,
+  resetPassword: async (payload) => (await apiClient.post('/auth/reset-password', payload)).data
 }
 
 export function saveProfile(profile) {

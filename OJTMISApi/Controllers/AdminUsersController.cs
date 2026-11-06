@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -17,11 +18,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly IEmailSender _email;
 
-        public AdminUsersController(UserManager<ApplicationUser> userManager, ApplicationDbContext context)
+        public AdminUsersController(
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context,
+            IEmailSender email)
         {
             _userManager = userManager;
             _context = context;
+            _email = email;
         }
 
         /// <summary>GET: api/admin/users?role=Intern</summary>
@@ -121,6 +127,11 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = $"Role must be one of: {string.Join(", ", UserRoles.All)}." });
             }
 
+            if (!string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { message = "HR cannot set a password directly. A temporary password is emailed to the user." });
+            }
+
             var email = request.Email.Trim();
 
             if (await _userManager.FindByEmailAsync(email) is not null)
@@ -128,6 +139,7 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = "That email is already registered." });
             }
 
+            var password = TemporaryPasswordGenerator.Generate();
             var user = new ApplicationUser
             {
                 UserName = email,
@@ -138,7 +150,7 @@ namespace OJTMISApi.Controllers
                 EmailConfirmed = true
             };
 
-            var createResult = await _userManager.CreateAsync(user, request.Password);
+            var createResult = await _userManager.CreateAsync(user, password);
             if (!createResult.Succeeded)
             {
                 return BadRequest(new
@@ -156,6 +168,19 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new
                 {
                     message = string.Join(" ", roleResult.Errors.Select(e => e.Description))
+                });
+            }
+
+            try
+            {
+                await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+            }
+            catch (Exception)
+            {
+                await _userManager.DeleteAsync(user);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = "The account was not created because the temporary password email could not be sent."
                 });
             }
 
@@ -186,9 +211,9 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = "You cannot remove your own HR Admin access." });
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Password) && request.Password.Length < 8)
+            if (!string.IsNullOrWhiteSpace(request.Password))
             {
-                return BadRequest(new { message = "Password must be at least 8 characters long." });
+                return BadRequest(new { message = "HR cannot change a password directly. The user can reset it from Forgot Password or Account > Security." });
             }
 
             var email = request.Email.Trim();
@@ -217,24 +242,6 @@ namespace OJTMISApi.Controllers
                 {
                     message = string.Join(" ", updateResult.Errors.Select(e => e.Description))
                 });
-            }
-
-            // Optional password reset when the admin typed a new password.
-            if (!string.IsNullOrWhiteSpace(request.Password))
-            {
-                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var passwordResult = await _userManager.ResetPasswordAsync(user, resetToken, request.Password);
-                if (!passwordResult.Succeeded)
-                {
-                    return BadRequest(new
-                    {
-                        message = string.Join(" ", passwordResult.Errors.Select(e => e.Description))
-                    });
-                }
-
-                user.TemporaryPassword = null;
-                user.EmailConfirmed = true;
-                await _userManager.UpdateAsync(user);
             }
 
             var currentRoles = await _userManager.GetRolesAsync(user);
@@ -276,7 +283,6 @@ namespace OJTMISApi.Controllers
                 FullName = user.FullName,
                 Office = user.Office,
                 AvatarUrl = user.AvatarUrl,
-                TemporaryPassword = user.TemporaryPassword,
                 EmailConfirmed = user.EmailConfirmed,
                 Roles = roles.ToArray(),
                 CreatedAt = user.CreatedAt
@@ -306,7 +312,6 @@ namespace OJTMISApi.Controllers
         public string FullName { get; set; } = string.Empty;
         public string? Office { get; set; }
         public string? AvatarUrl { get; set; }
-        public string? TemporaryPassword { get; set; }
         public bool EmailConfirmed { get; set; }
         public string[] Roles { get; set; } = Array.Empty<string>();
         public DateTime CreatedAt { get; set; }
@@ -329,8 +334,8 @@ namespace OJTMISApi.Controllers
         [Required]
         public string Role { get; set; } = string.Empty;
 
-        [Required, StringLength(100, MinimumLength = 8)]
-        public string Password { get; set; } = string.Empty;
+        /// <summary>Ignored. HR cannot choose a password; one is emailed instead.</summary>
+        public string? Password { get; set; }
     }
 
     public class UpdateAdminUserRequest
@@ -350,8 +355,7 @@ namespace OJTMISApi.Controllers
         [Required]
         public string Role { get; set; } = string.Empty;
 
-        /// <summary>Leave blank to keep the current password.</summary>
-        [StringLength(100)]
+        /// <summary>Not accepted. Password changes go through Forgot Password or Account > Security.</summary>
         public string? Password { get; set; }
     }
 }

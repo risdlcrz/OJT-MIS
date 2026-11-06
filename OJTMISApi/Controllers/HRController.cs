@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -64,10 +65,10 @@ namespace OJTMISApi.Controllers
                 r.InternEmail,
                 r.Date,
                 r.ShiftType,
-                TimeIn = FormatTimestamp(r.TimeIn),
-                TimeOut = FormatTimestamp(r.TimeOut),
-                CurrentTime = FormatTimestamp(ResolveCurrentTime(r.TargetField, r.TimeIn, r.TimeOut)),
-                RequestedTime = FormatTimestamp(r.RequestedTimeValue),
+                TimeIn = FormatClockLabel(r.TimeIn),
+                TimeOut = FormatClockLabel(r.TimeOut),
+                CurrentTime = FormatClockLabel(ResolveCurrentTime(r.TargetField, r.TimeIn, r.TimeOut)),
+                RequestedTime = FormatClockLabel(r.RequestedTimeValue),
                 r.TargetField,
                 r.Reason,
                 r.Status,
@@ -149,6 +150,15 @@ namespace OJTMISApi.Controllers
                 $"Your {label} adjustment for {log.Date:MMM d, yyyy} was approved.",
                 now);
 
+            var internName = request.Intern?.FullName ?? log.InternName ?? "an intern";
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/HR/AttendanceRequests/Approve/{id}",
+                "Approved a time adjustment request",
+                $"Approved {internName}'s {label} adjustment for {log.Date:MMM d, yyyy}.");
+
             await _context.SaveChangesAsync();
 
             var dailyHours = await CalculateDailyHoursAsync(request.InternId, log.Date);
@@ -207,6 +217,15 @@ namespace OJTMISApi.Controllers
                 "Time adjustment rejected",
                 $"Your {label} adjustment for {when} was rejected.",
                 now);
+
+            var internName = request.Intern?.FullName ?? request.AttendanceLog?.InternName ?? "an intern";
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/HR/AttendanceRequests/Reject/{id}",
+                "Rejected a time adjustment request",
+                $"Rejected {internName}'s {label} adjustment for {when}.");
 
             await _context.SaveChangesAsync();
 
@@ -370,10 +389,11 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
-        /// Second-precision timestamp. Seven fractional digits are rejected by Date.
+        /// Clock label such as "8:30 AM". A full timestamp with 7 fractional digits
+        /// is rejected by Date and was showing up as a blank on the HR screen.
         /// </summary>
-        private static string? FormatTimestamp(DateTime? value) =>
-            value?.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+        private static string? FormatClockLabel(DateTime? value) =>
+            value?.ToString("h:mm tt", CultureInfo.InvariantCulture);
 
         private static string? NormalizeGeneratedType(string? value)
         {

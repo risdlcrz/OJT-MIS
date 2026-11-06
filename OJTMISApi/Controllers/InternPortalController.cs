@@ -143,6 +143,14 @@ namespace OJTMISApi.Controllers
 
             _context.DocumentRequests.Add(entity);
 
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                "/api/intern/documents",
+                type == "ID" ? "Requested an intern ID" : "Requested a Certificate of Completion",
+                $"{intern.FullName} requested a {type}.");
+
             var hrUsers = await _userManager.GetUsersInRoleAsync(UserRoles.HRAdmin);
             foreach (var hr in hrUsers)
             {

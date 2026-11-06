@@ -18,6 +18,9 @@ coverage
 bin/
 obj/
 
+# Local mailbox used when SMTP is not configured
+OJTMISApi/App_Data/
+
 # Editor directories and files
 .vs/
 .vscode/*

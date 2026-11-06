@@ -17,15 +17,18 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignatoriesController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _email;
 
         public SignatoriesController(
             ApplicationDbContext context,
             ILogger<SignatoriesController> logger,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IEmailSender email)
         {
             _context = context;
             _logger = logger;
             _userManager = userManager;
+            _email = email;
         }
 
         /// <summary>GET: api/signatories</summary>
@@ -141,8 +144,8 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
-        /// Gumagawa ng unverified user account para sa signatory kung wala pa.
-        /// Ang HR ang magbibigay ng access/password sa User Management.
+        /// Creates an unverified user account for a signatory when one does not exist.
+        /// The temporary password is emailed; HR cannot type it.
         /// </summary>
         private async Task ProvisionAccountAsync(Signatory signatory)
         {
@@ -168,14 +171,22 @@ namespace OJTMISApi.Controllers
                     FirstName = firstName,
                     LastName = lastName,
                     Office = string.IsNullOrWhiteSpace(signatory.Department) ? null : signatory.Department,
-                    EmailConfirmed = false,
-                    TemporaryPassword = TemporaryPasswordGenerator.Generate()
+                    EmailConfirmed = false
                 };
 
-                var result = await _userManager.CreateAsync(user, user.TemporaryPassword);
+                var password = TemporaryPasswordGenerator.Generate();
+                var result = await _userManager.CreateAsync(user, password);
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, isHr ? UserRoles.HRAdmin : UserRoles.Supervisor);
+                    try
+                    {
+                        await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                    }
+                    catch (Exception mailEx)
+                    {
+                        _logger.LogWarning(mailEx, "Signatory account for {Email} was created but the password email failed.", email);
+                    }
                 }
             }
             catch (Exception ex)

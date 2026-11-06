@@ -156,13 +156,31 @@ function isTimeInField(req) {
   return field === 'AM_In' || field === 'PM_In' || /in/i.test(field)
 }
 
+function firstPresent(req, keys) {
+  for (const key of keys) {
+    const value = req?.[key]
+    if (value != null && String(value).trim() !== '') return value
+  }
+  return ''
+}
+
 function currentTimeOf(req) {
-  if (req.currentTime) return req.currentTime
-  return isTimeInField(req) ? req.timeIn : (req.timeOut ?? req.timeIn)
+  const specific = firstPresent(req, ['currentTime', 'CurrentTime'])
+  if (specific) return specific
+  return isTimeInField(req)
+    ? firstPresent(req, ['timeIn', 'TimeIn', 'timeOut', 'TimeOut'])
+    : firstPresent(req, ['timeOut', 'TimeOut', 'timeIn', 'TimeIn'])
 }
 
 function requestedTimeOf(req) {
-  return req.requestedTime || req.requestedTimeOut || ''
+  return firstPresent(req, [
+    'requestedTime',
+    'RequestedTime',
+    'requestedTimeOut',
+    'RequestedTimeOut',
+    'requestedTimeValue',
+    'RequestedTimeValue'
+  ])
 }
 
 function formatDate(v) {

@@ -24,9 +24,10 @@ export function formatClock(value) {
     return clockFromMatch(hour, labeled[2])
   }
 
-  const wall = text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/)
-  const bare = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
-  const match = wall || bare
+  const wall = text.match(/(?:T|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\.\d+)?/)
+  const bare = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\.\d+)?$/)
+  const embedded = text.match(/(\d{1,2}):(\d{2})(?::\d{2})?(?:\.\d+)?/)
+  const match = wall || bare || embedded
   if (match) return clockFromMatch(match[1], match[2])
 
   const normalized = text.replace(/(\.\d{3})\d+/, '$1')

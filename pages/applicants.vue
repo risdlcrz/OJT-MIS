@@ -1910,8 +1910,8 @@ async function submitHire() {
             remarks: pendingAction?.remarks || applicant.remarks || ''
         })
 
-        const accountLines = result.account?.temporaryPassword
-            ? `\n\nUser Account\nEmail: ${result.account.email}\nTemporary Password: ${result.account.temporaryPassword}\nThe intern can change this in Account > Security.`
+        const accountLines = result.account?.emailed
+            ? `\n\nA temporary password was emailed to ${result.account.email}. The intern can change it from Account > Security.`
             : (result.account?.warning ? `\n\nUser Account: ${result.account.warning}` : '')
 
         await showAlert(

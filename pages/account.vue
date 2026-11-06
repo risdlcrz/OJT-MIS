@@ -187,6 +187,7 @@
             </div>
             <div class="card-body">
               <p class="text-muted small mb-3">
+                Change your password here, or use Forgot Password on the sign-in page. HR cannot set it for you.
                 Use at least 8 characters and include a number.
               </p>
 
@@ -321,7 +322,6 @@
                   <th scope="col" class="text-center" style="width: 60px;">#</th>
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
-                  <th scope="col">Temporary Password</th>
                   <th scope="col">Status</th>
                   <th scope="col">Role</th>
                   <th scope="col">Office</th>
@@ -342,10 +342,6 @@
                     </div>
                   </td>
                   <td class="text-dark">{{ user.email }}</td>
-                  <td>
-                    <code v-if="user.temporaryPassword">{{ user.temporaryPassword }}</code>
-                    <span v-else class="text-muted small">Changed</span>
-                  </td>
                   <td>
                     <span class="badge" :class="user.emailConfirmed ? 'text-bg-success' : 'text-bg-danger'">
                       {{ user.emailConfirmed ? 'Verified' : 'Unverified' }}
@@ -377,7 +373,7 @@
                   </td>
                 </tr>
                 <tr v-if="filteredUsers.length === 0">
-                  <td colspan="9" class="text-center text-muted py-4">
+                  <td colspan="8" class="text-center text-muted py-4">
                     No users match your filters.
                   </td>
                 </tr>
@@ -501,22 +497,11 @@
                   </select>
                 </div>
 
-                <div class="col-md-6">
-                  <label for="userPassword" class="form-label fw-semibold">
-                    Password
-                    <span v-if="isEditingUser" class="text-muted fw-normal">(leave blank to keep current)</span>
-                  </label>
-                  <input
-                    id="userPassword"
-                    v-model="userForm.password"
-                    type="password"
-                    class="form-control"
-                    :class="{ 'is-invalid': userSubmitted && !isEditingUser && !userForm.password }"
-                    autocomplete="new-password"
-                    :disabled="isSavingUser"
-                  />
-                  <div class="invalid-feedback">Password is required for new users.</div>
-                  <div class="form-text">At least 8 characters and include a number.</div>
+                <div class="col-12">
+                  <p class="form-text mb-0">
+                    Passwords are not set here. A temporary password is emailed when an account is created.
+                    Later changes use Forgot Password or Account &gt; Security.
+                  </p>
                 </div>
               </div>
             </div>
@@ -967,8 +952,7 @@ const userForm = reactive({
   lastName: '',
   email: '',
   office: '',
-  role: 'Intern',
-  password: ''
+  role: 'Intern'
 })
 
 const isEditingUser = computed(() => Boolean(userForm.id))
@@ -980,7 +964,6 @@ function resetUserForm() {
   userForm.email = ''
   userForm.office = ''
   userForm.role = 'Intern'
-  userForm.password = ''
   userSubmitted.value = false
   userFormError.value = ''
 }
@@ -1020,7 +1003,6 @@ function applySelectedPerson() {
   userForm.email = person.email || ''
   userForm.office = person.office || ''
   userForm.role = person.role || 'Intern'
-  userForm.password = ''
 }
 
 function openEditUser(user) {
@@ -1054,20 +1036,6 @@ function validateUserForm() {
     return 'Please choose a valid role.'
   }
 
-  if (!isEditingUser.value && !userForm.password) {
-    return 'Password is required for new users.'
-  }
-
-  if (userForm.password) {
-    if (userForm.password.length < 8) {
-      return 'Password must be at least 8 characters long.'
-    }
-
-    if (!/\d/.test(userForm.password)) {
-      return 'Password must include at least one number.'
-    }
-  }
-
   return ''
 }
 
@@ -1091,10 +1059,6 @@ async function saveUser() {
     role: userForm.role
   }
 
-  if (userForm.password) {
-    payload.password = userForm.password
-  }
-
   try {
     if (isEditingUser.value) {
       const updated = await adminUsersAPI.update(userForm.id, payload)
@@ -1116,7 +1080,7 @@ async function saveUser() {
       const created = await adminUsersAPI.create(payload)
       users.value.push(created)
       sortUsers()
-      showToast('User created successfully.')
+      showToast(`User created. A temporary password was emailed to ${payload.email}.`)
     }
 
     userSubmitted.value = false

@@ -15,9 +15,12 @@ namespace OJTMISApi.Services
         {
             "/api/logs",
             "/api/notifications",
-            // Written by HRController with the intern name and document type.
+            // Written by the controllers with the intern name and outcome.
             "/api/hr/documents",
-            // Login is logged explicitly by AuthController; avoid duplicates.
+            "/api/hr/attendancerequests",
+            "/api/account/profile",
+            "/api/intern/documents",
+            // Login, forgot-password, and reset are logged by AuthController.
             "/api/auth"
         };
 
@@ -83,6 +86,7 @@ namespace OJTMISApi.Services
             if (method is not ("POST" or "PUT" or "PATCH" or "DELETE")) return false;
 
             var path = context.Request.Path.Value ?? string.Empty;
+            if (path.EndsWith("/hire", StringComparison.OrdinalIgnoreCase)) return false;
             return !IgnoredPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -103,10 +107,14 @@ namespace OJTMISApi.Services
             if (resource == "applicants" && last == "hire") return "Approved and hired an applicant";
             if (resource == "account" && last == "change-password") return "Changed account password";
             if (resource == "account" && last == "profile") return "Updated account profile";
+            if (resource == "account" && last == "reset-password") return "Reset a password from email";
             if (resource == "intern" && last == "scan") return "Scanned intern ID for DTR";
             if (resource == "attendance" && last == "logtime") return "Logged intern DTR time";
             if (resource == "attendance" && last == "requestadjustment") return "Submitted a time adjustment request";
             if (resource == "intern" && last == "documents") return "Requested an intern document";
+            if (last is "generated") return "Generated a document";
+            if (last is "approve") return "Approved a request";
+            if (last is "reject") return "Rejected a request";
             if (resource == "admin" && parts.Length > 2) resource = parts[2].ToLowerInvariant();
 
             var label = resource switch

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -81,6 +82,16 @@ namespace OJTMISApi.Controllers
                     message = string.Join(" ", result.Errors.Select(e => e.Description))
                 });
             }
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "PUT",
+                "/api/account/profile",
+                "Updated account profile",
+                avatarChanged
+                    ? $"Updated the profile picture for {user.FullName}."
+                    : $"Updated the profile for {user.FullName}.");
 
             await AddAccountNotificationAsync(user.Id, avatarChanged);
 

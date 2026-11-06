@@ -9,7 +9,7 @@
                 <div class="login-seal">
                     <img src="../assets/images/logo.png" alt="Commission on Audit seal" />
                 </div>
-                <h1 class="login-heading">Sign in with email</h1>
+                <h1 class="login-heading">{{ heading }}</h1>
             </header>
 
             <!-- Login Form -->
@@ -31,7 +31,7 @@
                 </div>
 
                 <!-- Password -->
-                <div class="login-field">
+                <div v-if="mode === 'login' || mode === 'signup'" class="login-field">
                     <input
                         id="emailpassword"
                         v-model="password"
@@ -44,10 +44,39 @@
                         maxlength="100"
                         required
                     />
-                    <div class="login-forgot">
-                        <a href="#" class="login-forgot-link" @click.prevent>Forgot password?</a>
+                    <div v-if="mode === 'login'" class="login-forgot">
+                        <a href="#" class="login-forgot-link" @click.prevent="showForgot">Forgot password?</a>
                     </div>
                 </div>
+
+                <template v-if="mode === 'reset'">
+                    <div class="login-field">
+                        <input
+                            id="newPassword"
+                            v-model="newPassword"
+                            type="password"
+                            class="login-input"
+                            placeholder="New password"
+                            autocomplete="new-password"
+                            aria-label="New password"
+                            maxlength="100"
+                            required
+                        />
+                    </div>
+                    <div class="login-field">
+                        <input
+                            id="confirmPassword"
+                            v-model="confirmPassword"
+                            type="password"
+                            class="login-input"
+                            placeholder="Confirm new password"
+                            autocomplete="new-password"
+                            aria-label="Confirm new password"
+                            maxlength="100"
+                            required
+                        />
+                    </div>
+                </template>
 
                 <!-- Sign Up Fields (Hidden by default) -->
                 <div v-if="mode === 'signup'" class="login-name-row">
@@ -78,6 +107,7 @@
                 </div>
 
                 <!-- Error Message -->
+                <p v-if="infoMessage" class="login-info" role="status">{{ infoMessage }}</p>
                 <p v-if="errorMessage" class="login-error" role="alert">{{ errorMessage }}</p>
 
                 <!-- Submit Button -->
@@ -88,25 +118,30 @@
                         role="status"
                         aria-hidden="true"
                     ></span>
-                    {{ mode === 'signup' ? 'Sign Up' : 'Login' }}
+                    {{ submitLabel }}
                 </button>
             </form>
 
             <!-- Sign Up / Sign In Toggle -->
             <footer class="login-footer">
-                <span class="login-footer-text">
-                    {{ mode === 'signup' ? 'Already have an account?' : "Don't have an account yet?" }}
-                </span>
-                <a href="#" class="login-footer-link" @click.prevent="toggleMode">
-                    {{ mode === 'signup' ? 'Sign in' : 'Sign up' }}
-                </a>
+                <template v-if="mode === 'forgot' || mode === 'reset'">
+                    <a href="#" class="login-footer-link" @click.prevent="showLogin">Back to sign in</a>
+                </template>
+                <template v-else>
+                    <span class="login-footer-text">
+                        {{ mode === 'signup' ? 'Already have an account?' : "Don't have an account yet?" }}
+                    </span>
+                    <a href="#" class="login-footer-link" @click.prevent="toggleMode">
+                        {{ mode === 'signup' ? 'Sign in' : 'Sign up' }}
+                    </a>
+                </template>
             </footer>
         </main>
     </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
@@ -116,27 +151,92 @@ import { authAPI, getApiErrorMessage } from '@/services/api'
 const mode = ref('login')
 const email = ref('')
 const password = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const resetToken = ref('')
 const firstName = ref('')
 const lastName = ref('')
 const errorMessage = ref('')
+const infoMessage = ref('')
 const isBusy = ref(false)
+
+const heading = computed(() => {
+    if (mode.value === 'signup') return 'Create your account'
+    if (mode.value === 'forgot') return 'Reset your password'
+    if (mode.value === 'reset') return 'Choose a new password'
+    return 'Sign in with email'
+})
+
+const submitLabel = computed(() => {
+    if (mode.value === 'signup') return 'Sign Up'
+    if (mode.value === 'forgot') return 'Send reset link'
+    if (mode.value === 'reset') return 'Update password'
+    return 'Login'
+})
+
+function showLogin() {
+    mode.value = 'login'
+    errorMessage.value = ''
+    infoMessage.value = ''
+}
+
+function showForgot() {
+    mode.value = 'forgot'
+    errorMessage.value = ''
+    infoMessage.value = ''
+}
 
 function toggleMode() {
     mode.value = mode.value === 'login' ? 'signup' : 'login'
     errorMessage.value = ''
+    infoMessage.value = ''
 }
 
 async function submit() {
     errorMessage.value = ''
+    infoMessage.value = ''
 
     if (mode.value === 'signup' && (!firstName.value || !lastName.value)) {
         errorMessage.value = 'Please enter your first and last name.'
         return
     }
 
+    if (mode.value === 'reset') {
+        if (newPassword.value.length < 8 || !/\d/.test(newPassword.value)) {
+            errorMessage.value = 'New password must be at least 8 characters and include a number.'
+            return
+        }
+        if (newPassword.value !== confirmPassword.value) {
+            errorMessage.value = 'New password and confirmation do not match.'
+            return
+        }
+    }
+
     isBusy.value = true
 
     try {
+        if (mode.value === 'forgot') {
+            const result = await authAPI.forgotPassword(email.value)
+            infoMessage.value = result?.message || 'If that email is registered, a password reset link has been sent.'
+            return
+        }
+
+        if (mode.value === 'reset') {
+            const result = await authAPI.resetPassword({
+                email: email.value,
+                token: resetToken.value,
+                newPassword: newPassword.value,
+                confirmPassword: confirmPassword.value
+            })
+            infoMessage.value = result?.message || 'Password updated. You can sign in.'
+            mode.value = 'login'
+            password.value = ''
+            newPassword.value = ''
+            confirmPassword.value = ''
+            window.history.replaceState({}, '', '/login.html')
+            return
+        }
+
         if (mode.value === 'signup') {
             await authAPI.register({
                 email: email.value,
@@ -159,6 +259,16 @@ async function submit() {
 
 /* Kung may session na, huwag nang ipakita ang login form. */
 onMounted(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    const resetEmail = params.get('email')
+    if (params.get('mode') === 'reset' && token && resetEmail) {
+        mode.value = 'reset'
+        email.value = resetEmail
+        resetToken.value = token
+        return
+    }
+
     if (localStorage.getItem('authToken')) {
         window.history.replaceState({}, '', '/dashboard.html')
         window.dispatchEvent(new PopStateEvent('popstate'))
@@ -301,6 +411,12 @@ onMounted(() => {
 }
 
 /* Error */
+.login-info {
+    margin: 0 0 12px;
+    color: #d7ffe8;
+    font-size: 0.86rem;
+}
+
 .login-error {
     margin: 0;
     padding: 10px 14px;

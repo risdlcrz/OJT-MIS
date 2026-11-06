@@ -5,7 +5,7 @@
         <h2 class="cocgen-title">Certificate of Completion</h2>
         <p class="cocgen-subtitle">
           Generate a certificate for interns who have rendered all of their required hours.
-          The preview follows the official Commission on Audit letter.
+          The certificate prints in landscape and fits one Letter or A4 page.
         </p>
       </div>
 
@@ -148,8 +148,8 @@
               <div class="mb-0">
                 <label for="cocgenPaper" class="form-label">Print Size</label>
                 <select id="cocgenPaper" v-model="form.paper" class="form-select">
-                  <option value="letter">Letter (8.5 × 11 in)</option>
-                  <option value="a4">A4 (210 × 297 mm)</option>
+                  <option value="letter">Letter landscape (11 × 8.5 in)</option>
+                  <option value="a4">A4 landscape (297 × 210 mm)</option>
                 </select>
               </div>
             </details>
@@ -192,13 +192,17 @@
             <span class="cocgen-preview-eyebrow">Live Preview</span>
             <p class="cocgen-preview-note mb-0">
               <i class="fas fa-ruler-combined me-1"></i>
-              Fits Letter and A4 on one page
+              Landscape, one Letter or A4 page
             </p>
           </div>
         </div>
 
         <div class="cocgen-preview-stage">
-          <article class="coc-sheet" aria-label="Certificate of Completion preview">
+          <article
+            class="coc-sheet"
+            :class="{ 'is-a4': form.paper === 'a4' }"
+            aria-label="Certificate of Completion preview"
+          >
             <header class="coc-head">
               <img class="coc-seal" :src="coaLogo" alt="Commission on Audit seal" />
               <div class="coc-head-copy">
@@ -498,7 +502,7 @@ function printCertificate() {
   const style = document.createElement('style')
   style.id = 'coc-print-page'
   const size = form.paper === 'a4' ? 'A4' : 'letter'
-  style.textContent = `@page { size: ${size} portrait; margin: 12mm; }`
+  style.textContent = `@page { size: ${size} landscape; margin: 8mm; }`
   document.head.appendChild(style)
   const cleanup = () => {
     style.remove()
@@ -710,14 +714,19 @@ onMounted(() => {
 
 .coc-sheet {
   box-sizing: border-box;
-  width: 186mm;
-  height: 250mm;
-  padding: 14mm 16mm 12mm;
+  width: 279.4mm;
+  height: 215.9mm;
+  padding: 12mm 16mm 10mm;
   border: 1.5px solid #111;
   background: #fff;
   color: #111;
   font-family: "Times New Roman", Times, serif;
-  zoom: 0.62;
+  zoom: 0.42;
+}
+
+.coc-sheet.is-a4 {
+  width: 297mm;
+  height: 210mm;
 }
 
 .coc-head {
@@ -749,7 +758,7 @@ onMounted(() => {
 }
 
 .coc-title {
-  margin: 11mm 0 9mm;
+  margin: 6mm 0 5mm;
   font-size: 18pt;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -762,7 +771,7 @@ onMounted(() => {
 .coc-issued {
   margin: 0;
   font-size: 13.5pt;
-  line-height: 1.85;
+  line-height: 1.55;
   text-align: justify;
 }
 
@@ -783,7 +792,7 @@ onMounted(() => {
 }
 
 .coc-sign {
-  margin-top: 16mm;
+  margin-top: 8mm;
   text-align: center;
 }
 
@@ -812,7 +821,7 @@ onMounted(() => {
   }
 
   .coc-sheet {
-    zoom: 0.48;
+    zoom: 0.32;
   }
 }
 
@@ -861,10 +870,11 @@ onMounted(() => {
     overflow: visible !important;
   }
 
-  .coc-sheet {
+  .coc-sheet,
+  .coc-sheet.is-a4 {
     width: 100% !important;
-    height: 250mm !important;
-    max-height: 250mm !important;
+    height: 186mm !important;
+    max-height: 186mm !important;
     margin: 0 !important;
     zoom: 1 !important;
     box-shadow: none !important;
