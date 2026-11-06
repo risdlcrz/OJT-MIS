@@ -13,10 +13,12 @@ function clockFromMatch(hours, minutes) {
 export function formatClock(value) {
   if (value == null || value === '') return '—'
 
-  const text = String(value).trim()
+  const text = String(value)
+    .trim()
+    .replace(/[\u00A0\u202F\u2007\u2009\u200A]/g, ' ')
   if (!text) return '—'
 
-  const labeled = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])$/)
+  const labeled = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])\.?$/)
   if (labeled) {
     let hour = Number(labeled[1])
     if (labeled[3].toLowerCase() === 'pm' && hour < 12) hour += 12
@@ -32,8 +34,8 @@ export function formatClock(value) {
 
   const normalized = text.replace(/(\.\d{3})\d+/, '$1')
   const date = new Date(normalized)
-  if (Number.isNaN(date.getTime())) return '—'
-  return clockFromMatch(date.getHours(), date.getMinutes())
+  if (!Number.isNaN(date.getTime())) return clockFromMatch(date.getHours(), date.getMinutes())
+  return /\d/.test(text) ? text : '—'
 }
 
 export function formatDisplayDate(value) {

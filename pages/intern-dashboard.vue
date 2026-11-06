@@ -36,7 +36,7 @@
           <section ref="summaryEl" class="ojt-summary">
             <h2 class="ojt-section-title">Status</h2>
             <div class="ojt-stats">
-              <article class="stat-card stat-orange reveal reveal-in">
+              <article class="stat-card stat-orange reveal">
                 <div>
                   <span class="stat-label">Total Hours Rendered</span>
                   <span class="stat-number">{{ hoursRendered }}</span>
@@ -44,7 +44,7 @@
                 <i class="fas fa-clock"></i>
               </article>
 
-              <article class="stat-card stat-blue reveal reveal-in">
+              <article class="stat-card stat-blue reveal">
                 <div>
                   <span class="stat-label">Remaining Hours</span>
                   <span class="stat-number">{{ remainingHours }}</span>
@@ -52,7 +52,7 @@
                 <i class="fas fa-hourglass-half"></i>
               </article>
 
-              <article class="stat-card stat-purple reveal reveal-in">
+              <article class="stat-card stat-purple reveal">
                 <div>
                   <span class="stat-label">Attendance Status</span>
                   <span class="stat-number stat-number-text">{{ attendanceStatus }}</span>
@@ -62,19 +62,19 @@
             </div>
 
             <div class="ojt-info-grid">
-              <article class="ojt-info reveal reveal-in">
+              <article class="ojt-info reveal">
                 <h3>Today</h3>
                 <p class="ojt-info-main">{{ todayLabel }}</p>
                 <p class="ojt-info-meta">{{ intern.applicantOffice || intern.program || 'Internship' }}</p>
               </article>
-              <article class="ojt-info reveal reveal-in">
+              <article class="ojt-info reveal">
                 <h3>Required hours</h3>
                 <p class="ojt-info-main">{{ intern.requiredHours || 0 }} hours</p>
                 <div class="progress mt-2" style="height: 8px;">
                   <div class="progress-bar" role="progressbar" :style="{ width: progress + '%' }"></div>
                 </div>
               </article>
-              <article class="ojt-info reveal reveal-in">
+              <article class="ojt-info reveal">
                 <h3>Internship</h3>
                 <p class="ojt-info-main">{{ formatDate(intern.startDate) }} – {{ formatDate(intern.endDate) }}</p>
                 <p class="ojt-info-meta">{{ intern.schoolName || intern.email || '—' }}</p>
@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getApiErrorMessage, internPortalAPI } from '@/services/api'
 import '../assets/css/Dashboard.css'
 
@@ -170,6 +170,7 @@ async function load() {
     error.value = getApiErrorMessage(e, 'Unable to load intern dashboard.')
   } finally {
     isLoading.value = false
+    nextTick(revealCards)
   }
 }
 
@@ -181,6 +182,25 @@ function onDtrUpdated(event) {
   clockedIn.value = Boolean(detail.clockedIn)
 }
 
+let observer = null
+
+function revealCards() {
+  observer?.disconnect()
+  const items = document.querySelectorAll('.ojt-summary .reveal')
+  if (!('IntersectionObserver' in window)) {
+    items.forEach((el) => el.classList.add('reveal-in'))
+    return
+  }
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return
+      entry.target.classList.add('reveal-in')
+      observer.unobserve(entry.target)
+    })
+  }, { threshold: 0.15 })
+  items.forEach((el) => observer.observe(el))
+}
+
 onMounted(() => {
   load()
   window.addEventListener('scroll', onScroll, { passive: true })
@@ -190,6 +210,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('ojt:dtr-updated', onDtrUpdated)
+  observer?.disconnect()
 })
 </script>
 

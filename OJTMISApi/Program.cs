@@ -61,7 +61,11 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
-builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient("ojtmis-email", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddSingleton<IEmailSender, ConfiguredEmailSender>();
 builder.Services.AddSingleton<AttendanceQrService>();
 builder.Services.AddScoped<AttendanceLogService>();
 

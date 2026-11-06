@@ -129,15 +129,6 @@
                                                     <button
                                                         type="button"
                                                         class="dropdown-item"
-                                                        @click="openEvaluation(applicant)"
-                                                    >
-                                                        <i class="fas fa-clipboard-check"></i>
-                                                        Evaluation
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        class="dropdown-item"
                                                         @click="openHire(applicant)"
                                                     >
                                                         <i class="fas fa-user-check"></i>
@@ -398,13 +389,62 @@
                             <div class="row">
                                 <div class="col-md-12 mb-4">
                                     <label>House Address</label>
-
-                                    <input
-                                        id="houseAddress"
-                                        type="text"
-                                        class="form-control"
-                                        placeholder="Complete Address"
-                                    />
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <select
+                                                v-model="addr.region"
+                                                class="form-control"
+                                                :disabled="isSavingApplicant || addrLoading.regions"
+                                                @change="onRegionChange"
+                                            >
+                                                <option value="">{{ addrLoading.regions ? 'Loading regions...' : 'Region' }}</option>
+                                                <option v-for="item in addrOptions.regions" :key="item.code" :value="item.code">{{ item.name }}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <select
+                                                v-model="addr.province"
+                                                class="form-control"
+                                                :disabled="isSavingApplicant || !addr.region || addrLoading.provinces"
+                                                @change="onProvinceChange"
+                                            >
+                                                <option value="">{{ addrLoading.provinces ? 'Loading...' : 'Province / District' }}</option>
+                                                <option v-for="item in addrOptions.provinces" :key="item.code" :value="item.code">{{ item.name }}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <select
+                                                v-model="addr.city"
+                                                class="form-control"
+                                                :disabled="isSavingApplicant || !addr.province || addrLoading.cities"
+                                                @change="onCityChange"
+                                            >
+                                                <option value="">{{ addrLoading.cities ? 'Loading...' : 'City / Municipality' }}</option>
+                                                <option v-for="item in addrOptions.cities" :key="item.code" :value="item.code">{{ item.name }}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <select
+                                                v-model="addr.barangay"
+                                                class="form-control"
+                                                :disabled="isSavingApplicant || !addr.city || addrLoading.barangays"
+                                            >
+                                                <option value="">{{ addrLoading.barangays ? 'Loading...' : 'Barangay' }}</option>
+                                                <option v-for="item in addrOptions.barangays" :key="item.code" :value="item.code">{{ item.name }}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12">
+                                            <input
+                                                v-model.trim="addr.street"
+                                                type="text"
+                                                class="form-control"
+                                                maxlength="200"
+                                                placeholder="Street / Building (optional)"
+                                                :disabled="isSavingApplicant"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p v-if="composedAddress" class="form-text mb-0 mt-2">{{ composedAddress }}</p>
                                 </div>
                             </div>
 
@@ -630,97 +670,6 @@
                                 type="button"
                                 class="btn btn-outline-secondary px-4"
                                 @click="closeRequirementsModal"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- ================= EVALUATION MODAL ================= -->
-        <div
-            id="evaluationModal"
-            class="modal fade action-side-panel"
-            :class="{ show: isEvaluationModalOpen }"
-            :style="{
-                display: isEvaluationModalOpen ? 'block' : 'none'
-            }"
-            tabindex="-1"
-            role="dialog"
-            :aria-hidden="!isEvaluationModalOpen"
-        >
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content modern-modal">
-                    <div class="modal-header modern-modal-header">
-                        <h5 class="modal-title font-weight-bold">
-                            Applicant Evaluation
-                        </h5>
-                        <button
-                            type="button"
-                            class="close"
-                            aria-label="Close"
-                            @click="closeEvaluationModal"
-                        >
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-
-                    <form @submit.prevent="saveEvaluation">
-                        <div class="modal-body p-4" style="overflow-y: auto;">
-                            <p class="text-muted">
-                                Applicant No.:
-                                <strong>{{ evalApplicantNo }}</strong>
-                            </p>
-
-                            <div class="form-group">
-                                <label for="evaluationOffice">
-                                    Assigned Office
-                                </label>
-                                <select
-                                    id="evaluationOffice"
-                                    v-model="evalOffice"
-                                    class="form-control"
-                                    required
-                                >
-                                    <option value="" disabled>
-                                        Select Office
-                                    </option>
-                                    <option
-                                        v-for="office in offices"
-                                        :key="office"
-                                        :value="office"
-                                    >
-                                        {{ office }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div class="form-group mb-0">
-                                <label for="evaluationRemarks">
-                                    Remarks
-                                </label>
-                                <textarea
-                                    id="evaluationRemarks"
-                                    v-model="evalRemarks"
-                                    class="form-control"
-                                    rows="4"
-                                    placeholder="Enter evaluation remarks"
-                                ></textarea>
-                            </div>
-                        </div>
-
-                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
-                            <button type="submit" class="btn btn-success px-4 modern-btn">
-                                <i class="fas fa-check mr-1"></i>
-                                Continue to Hire
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-outline-secondary px-4"
-                                @click="closeEvaluationModal"
                             >
                                 Cancel
                             </button>
@@ -1082,10 +1031,10 @@
             role="dialog"
             :aria-hidden="!isScheduleModalOpen"
         >
-            <div class="modal-dialog modal-lg modal-dialog-centered" role="document" style="max-height: 85vh;">
+            <div class="modal-dialog modal-dialog-centered schedule-modal-dialog" role="document">
                 <div class="modal-content modern-modal">
-                    <div class="modal-header modern-modal-header">
-                        <h5 class="modal-title font-weight-bold">
+                    <div class="modal-header modern-modal-header py-2">
+                        <h5 class="modal-title font-weight-bold mb-0">
                             Assign Orientation Schedule
                         </h5>
                         <button
@@ -1099,14 +1048,14 @@
                     </div>
 
                     <form @submit.prevent="saveSchedule">
-                        <div class="modal-body p-4" style="overflow-y: auto;">
-                            <p class="text-muted">
+                        <div class="modal-body py-3 px-3">
+                            <p class="text-muted small mb-2">
                                 Applicant No.:
                                 <strong>{{ schedApplicantNo }}</strong>
                             </p>
 
                             <div class="form-row">
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-6 mb-2">
                                     <label for="orientationDate">Date</label>
                                     <input
                                         id="orientationDate"
@@ -1116,7 +1065,7 @@
                                         required
                                     />
                                 </div>
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-6 mb-2">
                                     <label for="orientationTime">Time</label>
                                     <input
                                         id="orientationTime"
@@ -1125,7 +1074,7 @@
                                         class="form-control"
                                     />
                                 </div>
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-12 mb-0">
                                     <label for="orientationRequest">Applicant Request</label>
                                     <select
                                         id="orientationRequest"
@@ -1148,8 +1097,8 @@
                             </div>
                         </div>
 
-                        <div class="modal-footer border-0 pt-0" style="position: sticky; bottom: 0; background: #fff; z-index: 10;">
-                            <button type="submit" class="btn btn-primary px-4 modern-btn">
+                        <div class="modal-footer border-0 py-2">
+                            <button type="submit" class="btn btn-primary px-3 modern-btn">
                                 Save Schedule
                             </button>
                             <button
@@ -1168,7 +1117,7 @@
 
         <!-- Backdrop (side panels have none) -->
         <div
-            v-if="anyModalOpen && !isEvaluationModalOpen && !isHireModalOpen && !isViewModalOpen"
+            v-if="anyModalOpen && !isHireModalOpen && !isViewModalOpen"
             class="modal-backdrop fade show"
             @click="closeAllModals"
         ></div>
@@ -1184,7 +1133,8 @@ import {
     ref,
     watch,
     computed,
-    inject
+    inject,
+    reactive
 } from 'vue'
 
 import { applicantsAPI, getApiErrorMessage, internRequestsAPI, schoolsAPI } from '@/services/api'
@@ -1259,17 +1209,6 @@ function onSchoolChange() {
     courseStrandOptions.value = [...new Set([...courses, ...strands])]
 }
 
-/* Fallback office list, used if offices.json is missing or empty,
-   so the Office field is never stuck with nothing to pick from. */
-const FALLBACK_OFFICES = [
-    'HR Office',
-    'Records Office',
-    'IT Office',
-    'Finance Office',
-    'Administration Office'
-]
-
-
 /* Which tab is showing: 'list' (List of Applicants) or 'schedule'
    (Schedule Orientation). No routing involved, just local state. */
 const activeTab = ref('list')
@@ -1332,19 +1271,6 @@ const reqModalApplicantNo = ref(null)
 const reqChecks = ref([false, false, false, false, false, false])
 
 
-/* ---- Evaluation state ---- */
-
-const isEvaluationModalOpen = ref(false)
-
-const evalApplicantNo = ref(null)
-
-const evalOffice = ref('')
-
-const evalRemarks = ref('')
-
-const offices = ref([...FALLBACK_OFFICES])
-
-
 /* ---- Hire state ---- */
 
 const isHireModalOpen = ref(false)
@@ -1380,7 +1306,100 @@ const isHiring = ref(false)
 /** Mga intern request na may natitirang slot lamang. */
 const availableRequests = ref([])
 
-let pendingAction = null
+const PSGC = 'https://psgc.gitlab.io/api'
+const addr = reactive({ region: '', province: '', city: '', barangay: '', street: '' })
+const addrOptions = reactive({ regions: [], provinces: [], cities: [], barangays: [] })
+const addrLoading = reactive({ regions: false, provinces: false, cities: false, barangays: false })
+
+function psgcName(code, list) {
+    return list.find((item) => item.code === code)?.name || ''
+}
+
+const composedAddress = computed(() => {
+    const parts = [
+        addr.street,
+        psgcName(addr.barangay, addrOptions.barangays),
+        psgcName(addr.city, addrOptions.cities),
+        psgcName(addr.province, addrOptions.provinces),
+        psgcName(addr.region, addrOptions.regions)
+    ].filter(Boolean)
+    return parts.join(', ')
+})
+
+async function psgcGet(path) {
+    const res = await fetch(`${PSGC}${path}`)
+    if (!res.ok) return []
+    return res.json()
+}
+
+async function loadRegions() {
+    if (addrOptions.regions.length) return
+    addrLoading.regions = true
+    try {
+        addrOptions.regions = await psgcGet('/regions/')
+    } finally {
+        addrLoading.regions = false
+    }
+}
+
+async function onRegionChange() {
+    addr.province = ''
+    addr.city = ''
+    addr.barangay = ''
+    addrOptions.provinces = []
+    addrOptions.cities = []
+    addrOptions.barangays = []
+    if (!addr.region) return
+    addrLoading.provinces = true
+    try {
+        const provinces = await psgcGet(`/regions/${addr.region}/provinces/`)
+        addrOptions.provinces = provinces.length
+            ? provinces
+            : await psgcGet(`/regions/${addr.region}/districts/`)
+    } finally {
+        addrLoading.provinces = false
+    }
+}
+
+async function onProvinceChange() {
+    addr.city = ''
+    addr.barangay = ''
+    addrOptions.cities = []
+    addrOptions.barangays = []
+    if (!addr.province) return
+    addrLoading.cities = true
+    try {
+        const cities = await psgcGet(`/provinces/${addr.province}/cities-municipalities/`)
+        addrOptions.cities = cities.length
+            ? cities
+            : await psgcGet(`/districts/${addr.province}/cities-municipalities/`)
+    } finally {
+        addrLoading.cities = false
+    }
+}
+
+async function onCityChange() {
+    addr.barangay = ''
+    addrOptions.barangays = []
+    if (!addr.city) return
+    addrLoading.barangays = true
+    try {
+        addrOptions.barangays = await psgcGet(`/cities-municipalities/${addr.city}/barangays/`)
+    } finally {
+        addrLoading.barangays = false
+    }
+}
+
+function resetAddress() {
+    addr.region = ''
+    addr.province = ''
+    addr.city = ''
+    addr.barangay = ''
+    addr.street = ''
+    addrOptions.provinces = []
+    addrOptions.cities = []
+    addrOptions.barangays = []
+}
 
 
 /* ---- View / Delete state ---- */
@@ -1416,7 +1435,6 @@ const scheduleCandidates = computed(() =>
 const anyModalOpen = computed(() =>
     isApplicantModalOpen.value ||
     isRequirementsModalOpen.value ||
-    isEvaluationModalOpen.value ||
     isHireModalOpen.value ||
     isViewModalOpen.value ||
     isScheduleModalOpen.value
@@ -1426,7 +1444,6 @@ const anyModalOpen = computed(() =>
 function closeAllModals() {
     isApplicantModalOpen.value = false
     isRequirementsModalOpen.value = false
-    isEvaluationModalOpen.value = false
     isHireModalOpen.value = false
     isViewModalOpen.value = false
     isScheduleModalOpen.value = false
@@ -1571,7 +1588,6 @@ function handleOutsideClick() {
 
 
 function closeActionPanels() {
-    isEvaluationModalOpen.value = false
     isHireModalOpen.value = false
     isViewModalOpen.value = false
     isScheduleModalOpen.value = false
@@ -1607,6 +1623,11 @@ async function saveApplicant() {
         return
     }
 
+    if (!addr.region || !addr.province || !addr.city) {
+        await showAlert('Please select a region, province, and city or municipality.', 'Validation Error')
+        return
+    }
+
     /* Ang applicant no ay ginagawa ng backend para hindi mag-clash
        kahit may na-delete na applicant. */
     const applicant = {
@@ -1618,7 +1639,7 @@ async function saveApplicant() {
         suffix: value('suffix'),
         email: value('email'),
         contactNumber: value('contactNumber'),
-        houseAddress: value('houseAddress'),
+        houseAddress: composedAddress.value,
         schoolName,
         educationLevel,
         program: educationLevel || schoolName,
@@ -1644,6 +1665,7 @@ async function saveApplicant() {
 
         /* Reset form */
         document.getElementById('ojtForm')?.reset()
+        resetAddress()
 
         /* Reset the cascading Course/Strand state as well. */
         selectedSchoolName.value = ''
@@ -1727,70 +1749,6 @@ async function saveRequirements() {
 }
 
 
-/* ---- Evaluation ---- */
-
-function openEvaluation(applicant) {
-    closeActionPanels()
-
-    evalApplicantNo.value = applicant.applicantNo
-    evalOffice.value = applicant.applicantOffice || ''
-    evalRemarks.value = applicant.remarks || ''
-
-    isEvaluationModalOpen.value = true
-}
-
-
-function closeEvaluationModal() {
-    isEvaluationModalOpen.value = false
-
-    evalApplicantNo.value = null
-    evalOffice.value = ''
-    evalRemarks.value = ''
-}
-
-
-function nextRequestNo() {
-    const now = new Date()
-
-    const y = now.getFullYear()
-    const m = String(now.getMonth() + 1).padStart(2, '0')
-    const d = String(now.getDate()).padStart(2, '0')
-
-    const seq = applicants.value.filter(a => a.requestNo).length + 1
-
-    return `RQ-${y}${m}${d}-${String(seq).padStart(3, '0')}`
-}
-
-
-async function saveEvaluation() {
-    if (!evalOffice.value) {
-        await showAlert('Please select an office.', 'Validation Error')
-        return
-    }
-
-    const applicantNo = evalApplicantNo.value
-
-    pendingAction = {
-        applicantNo,
-        office: evalOffice.value,
-        remarks: evalRemarks.value,
-        requestNo: nextRequestNo(),
-        date: new Date().toISOString().slice(0, 10)
-    }
-
-    /* closeEvaluationModal() and closeActionPanels() don't touch pendingAction,
-       but openHire()'s closeHireModal() would, so pass it as preset data. */
-    const preset = pendingAction
-
-    closeEvaluationModal()
-
-    openHire(
-        applicants.value.find(a => a.applicantNo === applicantNo),
-        preset
-    )
-}
-
-
 /* ---- Hire ---- */
 
 async function openHire(applicant, presetData = {}) {
@@ -1829,8 +1787,6 @@ function closeHireModal() {
     hireDate.value = ''
     hireEstimate.value = null
     hireError.value = ''
-
-    pendingAction = null
 }
 
 
@@ -1906,8 +1862,8 @@ async function submitHire() {
             hireDate: hireDate.value,
             durationDays: durationDays,
             excludeFriday: hireExcludeFriday.value,
-            office: pendingAction?.office || applicant.applicantOffice || '',
-            remarks: pendingAction?.remarks || applicant.remarks || ''
+            office: applicant.orientation?.office || applicant.applicantOffice || '',
+            remarks: applicant.remarks || ''
         })
 
         const accountLines = result.account?.emailed
@@ -2045,6 +2001,7 @@ async function saveSchedule() {
 
     applicant.requestNo = request.id
     applicant.requestNoLabel = `#${request.id} - ${request.officeName}`
+    applicant.applicantOffice = request.officeName
     applicant.orientation = {
         date: orientationDate.value,
         time: orientationTime.value,
@@ -2073,6 +2030,10 @@ async function confirmOrientation(applicant) {
     persist(applicant)
 }
 
+
+watch(isApplicantModalOpen, (open) => {
+    if (open) loadRegions()
+})
 
 onMounted(async () => {
     readTabFromUrl()

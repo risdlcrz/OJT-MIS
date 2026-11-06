@@ -471,3 +471,16 @@ body.modal-open {
         width: 100%;
     }
 }
+
+.schedule-modal-dialog {
+    max-width: 460px;
+    margin: 0.75rem auto;
+}
+
+.schedule-modal-dialog .modal-content {
+    border-radius: 12px;
+}
+
+.schedule-modal-dialog .form-group {
+    margin-bottom: 0.55rem;
+}

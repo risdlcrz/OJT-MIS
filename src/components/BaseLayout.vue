@@ -949,7 +949,7 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
-  padding: 0.35rem 0 1rem;
+  padding: 0.2rem 0 0.6rem;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -957,9 +957,9 @@ body {
 }
 
 .main-sidebar .nav-sidebar .nav-link {
-  gap: 0.9rem;
+  gap: 0.7rem;
   margin: 0 !important;
-  padding: 0.85rem 1.1rem !important;
+  padding: 0.55rem 0.9rem !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: #ffffff !important;
@@ -1016,7 +1016,8 @@ body {
 }
 
 .main-sidebar .nav-treeview.is-open {
-  max-height: 40rem;
+  max-height: none;
+  overflow: visible;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -1028,7 +1029,7 @@ body {
 
 .main-sidebar .nav-treeview > .nav-item > .nav-link {
   margin: 0 !important;
-  padding: 0.62rem 0.9rem 0.62rem 2.15rem !important;
+  padding: 0.42rem 0.75rem 0.42rem 1.7rem !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: #ffe9d2 !important;
@@ -1049,7 +1050,7 @@ body {
   background: rgba(0, 0, 0, 0.35) !important;
   color: #ffffff !important;
   box-shadow: none !important;
-  padding: 0.62rem 0.9rem 0.62rem 2.15rem !important;
+  padding: 0.42rem 0.75rem 0.42rem 1.7rem !important;
 }
 
 .sidebar-footer {

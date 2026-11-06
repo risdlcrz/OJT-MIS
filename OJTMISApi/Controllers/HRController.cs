@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -389,11 +388,19 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
-        /// Clock label such as "8:30 AM". A full timestamp with 7 fractional digits
-        /// is rejected by Date and was showing up as a blank on the HR screen.
+        /// Clock label such as "8:30 AM" using a normal space.
+        /// Culture-formatted "tt" can insert a narrow no-break space that the
+        /// HR screen cannot parse, which showed up as a blank.
         /// </summary>
-        private static string? FormatClockLabel(DateTime? value) =>
-            value?.ToString("h:mm tt", CultureInfo.InvariantCulture);
+        private static string? FormatClockLabel(DateTime? value)
+        {
+            if (value is null) return null;
+            var time = value.Value;
+            var hour = time.Hour % 12;
+            if (hour == 0) hour = 12;
+            var suffix = time.Hour >= 12 ? "PM" : "AM";
+            return $"{hour}:{time.Minute:00} {suffix}";
+        }
 
         private static string? NormalizeGeneratedType(string? value)
         {

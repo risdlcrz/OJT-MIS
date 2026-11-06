@@ -119,12 +119,36 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = "An applicant with the same applicant number already exists." });
             }
 
+            var beforeAccepted = existing.Accepted;
+            var beforeRejected = existing.Rejected;
+            var beforeConfirmed = existing.OrientationConfirmed;
+            var beforeRequest = existing.RequestNo;
+            var beforeAddress = existing.HouseAddress ?? string.Empty;
+            var applicantName = $"{existing.LastName}, {existing.FirstName}".Trim().Trim(',');
+
             Map(applicant, existing);
             if (!string.IsNullOrWhiteSpace(applicant.ApplicantNo))
             {
                 existing.ApplicantNo = applicant.ApplicantNo.Trim();
             }
             existing.UpdatedAt = DateTime.Now;
+
+            var (action, details) = DescribeApplicantChange(
+                applicantName,
+                beforeAccepted,
+                beforeRejected,
+                beforeConfirmed,
+                beforeRequest,
+                beforeAddress,
+                existing);
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "PUT",
+                $"/api/applicants/{id}",
+                action,
+                details);
 
             await _context.SaveChangesAsync();
             return Ok(existing);
@@ -256,7 +280,9 @@ namespace OJTMISApi.Controllers
                 GuardianName = applicant.GuardianName,
                 GuardianContact = applicant.GuardianContact,
                 RequirementsCsv = applicant.RequirementsCsv,
-                ApplicantOffice = string.IsNullOrWhiteSpace(request.Office) ? applicant.ApplicantOffice : request.Office!.Trim(),
+                ApplicantOffice = string.IsNullOrWhiteSpace(internRequest.OfficeName)
+                    ? applicant.ApplicantOffice
+                    : internRequest.OfficeName.Trim(),
                 Remarks = string.IsNullOrWhiteSpace(request.Remarks) ? applicant.Remarks : request.Remarks!.Trim(),
 
                 RequestId = internRequest.Id,
@@ -425,6 +451,47 @@ namespace OJTMISApi.Controllers
             }
 
             return next;
+        }
+
+        private static (string Action, string Details) DescribeApplicantChange(
+            string name,
+            bool beforeAccepted,
+            bool beforeRejected,
+            bool beforeConfirmed,
+            int? beforeRequest,
+            string beforeAddress,
+            Applicant current)
+        {
+            if (!beforeRejected && current.Rejected)
+            {
+                return ("Rejected an applicant", $"Rejected {name}.");
+            }
+
+            if (!beforeAccepted && current.Accepted)
+            {
+                return ("Accepted an applicant", $"Accepted {name} and moved them to orientation scheduling.");
+            }
+
+            if (!beforeConfirmed && current.OrientationConfirmed)
+            {
+                var office = string.IsNullOrWhiteSpace(current.ApplicantOffice) ? current.OrientationOffice : current.ApplicantOffice;
+                var where = string.IsNullOrWhiteSpace(office) ? "" : $" at {office}";
+                return ("Confirmed an orientation", $"Confirmed orientation for {name}{where}.");
+            }
+
+            if (beforeRequest != current.RequestNo && current.RequestNo is int requestId)
+            {
+                var office = string.IsNullOrWhiteSpace(current.ApplicantOffice) ? current.OrientationOffice : current.ApplicantOffice;
+                var where = string.IsNullOrWhiteSpace(office) ? "" : $" ({office})";
+                return ("Assigned an applicant to a request", $"Assigned {name} to request #{requestId}{where}.");
+            }
+
+            if (!string.Equals(beforeAddress, current.HouseAddress ?? string.Empty, StringComparison.Ordinal))
+            {
+                return ("Updated an applicant profile", $"Updated the profile for {name}.");
+            }
+
+            return ("Updated an applicant", $"Updated {name}.");
         }
 
         /// <summary>Kopya ng mga field mula sa DTO papunta sa entity.</summary>

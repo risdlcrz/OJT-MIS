@@ -272,6 +272,49 @@ namespace OJTMISApi.Controllers
             return Ok(ToDto(user, roles));
         }
 
+        /// <summary>
+        /// POST: api/admin/users/{id}/password-reset
+        /// HR cannot choose the new password. A reset link is emailed instead.
+        /// </summary>
+        [HttpPost("{id}/password-reset")]
+        public async Task<IActionResult> SendPasswordReset(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user is null)
+            {
+                return NotFound(new { message = $"User with id {id} was not found." });
+            }
+
+            if (string.IsNullOrWhiteSpace(user.Email))
+            {
+                return BadRequest(new { message = "This account has no email address to send a reset link to." });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            try
+            {
+                await _email.SendPasswordResetLinkAsync(user.Email, user.FullName, token);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = ex.Message
+                });
+            }
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/admin/users/{id}/password-reset",
+                "Emailed a password reset link",
+                $"Sent a password reset link to {user.Email}.");
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"A password reset link was emailed to {user.Email}." });
+        }
+
         private static AdminUserDto ToDto(ApplicationUser user, IEnumerable<string> roles)
         {
             return new AdminUserDto

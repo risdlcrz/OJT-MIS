@@ -87,6 +87,9 @@ namespace OJTMISApi.Services
 
             var path = context.Request.Path.Value ?? string.Empty;
             if (path.EndsWith("/hire", StringComparison.OrdinalIgnoreCase)) return false;
+            // ApplicantsController writes the specific accept, reject, assign, and profile rows.
+            if (method == "PUT" && path.StartsWith("/api/applicants/", StringComparison.OrdinalIgnoreCase)) return false;
+            if (path.Contains("/password-reset", StringComparison.OrdinalIgnoreCase)) return false;
             return !IgnoredPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         }
 

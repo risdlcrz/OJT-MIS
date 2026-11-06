@@ -360,7 +360,7 @@
                   </td>
                   <td class="text-dark">{{ user.office || '-' }}</td>
                   <td class="text-muted small">{{ formatDate(user.createdAt) }}</td>
-                  <td class="text-center">
+                  <td class="text-center text-nowrap">
                     <button
                       type="button"
                       class="btn btn-sm btn-outline-primary"
@@ -369,6 +369,15 @@
                       @click="openEditUser(user)"
                     >
                       <i class="fas fa-pen"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary ms-1"
+                      title="Email a password reset link"
+                      :disabled="isSavingUser || resettingUserId === user.id"
+                      @click="sendPasswordReset(user)"
+                    >
+                      <i class="fas fa-key"></i>
                     </button>
                   </td>
                 </tr>
@@ -500,7 +509,7 @@
                 <div class="col-12">
                   <p class="form-text mb-0">
                     Passwords are not set here. A temporary password is emailed when an account is created.
-                    Later changes use Forgot Password or Account &gt; Security.
+                    Use the key button on a user to email a reset link. The user can also use Forgot Password or Account &gt; Security.
                   </p>
                 </div>
               </div>
@@ -941,6 +950,7 @@ function sortUsers() {
 const userModalEl = ref(null)
 let userModal = null
 const isSavingUser = ref(false)
+const resettingUserId = ref('')
 const userSubmitted = ref(false)
 const userFormError = ref('')
 const availablePeople = ref([])
@@ -1003,6 +1013,19 @@ function applySelectedPerson() {
   userForm.email = person.email || ''
   userForm.office = person.office || ''
   userForm.role = person.role || 'Intern'
+}
+
+async function sendPasswordReset(user) {
+  if (!user?.id || resettingUserId.value) return
+  resettingUserId.value = user.id
+  try {
+    const result = await adminUsersAPI.sendPasswordReset(user.id)
+    showToast(result?.message || `A password reset link was emailed to ${user.email}.`)
+  } catch (error) {
+    showToast(getApiErrorMessage(error, 'Could not email the password reset link.'), 'danger')
+  } finally {
+    resettingUserId.value = ''
+  }
 }
 
 function openEditUser(user) {

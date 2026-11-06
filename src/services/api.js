@@ -222,6 +222,7 @@ export const adminUsersAPI = {
     (await apiClient.get('/admin/users', { params: role ? { role } : {} })).data,
   create: async (payload) => (await apiClient.post('/admin/users', payload)).data,
   update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data,
+  sendPasswordReset: async (id) => (await apiClient.post(`/admin/users/${id}/password-reset`)).data,
   availablePeople: async () => (await apiClient.get('/admin/users/available-people')).data
 }
 
