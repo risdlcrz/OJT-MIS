@@ -1,4 +1,9 @@
 {
-  "ExpandedNodes": [],
+  "ExpandedNodes": [
+    "",
+    "\\OJTMISApi",
+    "\\references",
+    "\\src"
+  ],
   "PreviewInSolutionExplorer": false
 }
