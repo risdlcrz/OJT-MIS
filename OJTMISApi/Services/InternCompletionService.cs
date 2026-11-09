@@ -16,8 +16,8 @@ namespace OJTMISApi.Services
         public const string CompletionNotificationType = "InternCompleted";
         public const string CertificateModule = "Certificate of Completion";
 
-        /// <summary>Frontend page that hosts the certificate generator.</summary>
-        public const string CertificatePage = "/coc-generate.html";
+        /// <summary>App route stored on the HR notification. The bell maps this to the COC page.</summary>
+        public const string CertificateLink = "/requests/certificate-completion";
 
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -43,9 +43,8 @@ namespace OJTMISApi.Services
         }
 
         /// <summary>
-        /// Marks the intern Completed and notifies HR when the rendered hours
-        /// reach the required hours. Safe to call after every punch/approval:
-        /// the <see cref="Intern.CompletionNotifiedAt"/> guard keeps it one-time.
+        /// Saves the recalculated hours. When they reach the required total and
+        /// the intern is not already Completed, marks them Completed and notifies HR once.
         /// </summary>
         /// <returns>True when this call marked the intern as completed.</returns>
         public async Task<bool> CheckAsync(
@@ -56,38 +55,42 @@ namespace OJTMISApi.Services
             var intern = await _context.Interns
                 .FirstOrDefaultAsync(i => i.Id == internId, cancellationToken);
 
-            if (intern is null || intern.RequiredHours <= 0) return false;
-            if (intern.CompletionNotifiedAt is not null) return false;
+            if (intern is null) return false;
 
-            var rendered = renderedHours ?? await RenderedHoursAsync(internId, cancellationToken);
-            if (rendered + 0.009 < intern.RequiredHours) return false;
-
+            var rendered = Math.Round(renderedHours ?? await RenderedHoursAsync(internId, cancellationToken), 2);
             var now = DateTime.Now;
-            intern.Status = CompletedStatus;
-            intern.CompletionNotifiedAt = now;
+            intern.HoursRendered = rendered;
             intern.UpdatedAt = now;
 
-            var hrUsers = await _userManager.GetUsersInRoleAsync(UserRoles.HRAdmin);
-            var link = $"{CertificatePage}?internId={intern.Id}";
+            var newlyCompleted = intern.RequiredHours > 0
+                && rendered + 0.009 >= intern.RequiredHours
+                && !string.Equals(intern.Status, CompletedStatus, StringComparison.OrdinalIgnoreCase);
 
-            foreach (var hr in hrUsers)
+            if (newlyCompleted)
             {
-                _context.Notifications.Add(new Notification
+                intern.Status = CompletedStatus;
+                intern.CompletionNotifiedAt = now;
+
+                var hrUsers = await _userManager.GetUsersInRoleAsync(UserRoles.HRAdmin);
+                foreach (var hr in hrUsers)
                 {
-                    UserId = hr.Id,
-                    Title = "Intern completed required hours",
-                    Message = $"Intern {intern.FullName} has completed their required hours and is ready for COC generation.",
-                    Module = CertificateModule,
-                    Link = link,
-                    InternId = intern.Id,
-                    Type = CompletionNotificationType,
-                    IsRead = false,
-                    CreatedAt = now
-                });
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = hr.Id,
+                        Title = "Completion Eligible",
+                        Message = $"{intern.FullName} completed required hours.",
+                        Module = CertificateModule,
+                        Link = CertificateLink,
+                        InternId = intern.Id,
+                        Type = CompletionNotificationType,
+                        IsRead = false,
+                        CreatedAt = now
+                    });
+                }
             }
 
             await _context.SaveChangesAsync(cancellationToken);
-            return true;
+            return newlyCompleted;
         }
     }
 }

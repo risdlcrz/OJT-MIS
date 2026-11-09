@@ -701,6 +701,9 @@ namespace OJTMISApi.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<double>("HoursRendered")
+                        .HasColumnType("float");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)

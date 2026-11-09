@@ -6,8 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using OJTMISApi.Controllers;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using System.Net.Http.Headers;
 using OJTMISApi.Services;
-using Resend;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,20 +63,23 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // ---------------------------------------------------------------------
-// Email - Resend is the single outbound provider for the whole API.
-// The API key is read from configuration (or the RESEND_API_KEY
-// environment variable as a fallback) and never from source code.
+// Email - Mailtrap Email API. A sandbox token posted to the transactional
+// host (or the reverse) is what Mailtrap's edge answers with HTTP 502.
+// InboxId > 0 selects the sandbox host; otherwise the transactional host
+// https://send.api.mailtrap.io is used. The token is read from
+// configuration or MAILTRAP_API_TOKEN, never from source code.
 // ---------------------------------------------------------------------
-builder.Services.Configure<ResendOptions>(
-    builder.Configuration.GetSection(ResendOptions.SectionName));
+builder.Services.Configure<MailtrapOptions>(
+    builder.Configuration.GetSection(MailtrapOptions.SectionName));
 
-builder.Services.AddResend(options =>
+builder.Services.AddHttpClient(MailtrapEmailService.HttpClientName, client =>
 {
-    options.ApiToken = builder.Configuration[$"{ResendOptions.SectionName}:ApiKey"] ?? string.Empty;
-    options.ThrowExceptions = true;
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("OJTMIS/1.0 (Mailtrap Email API)");
 });
 
-builder.Services.AddScoped<IEmailService, ResendEmailService>();
+builder.Services.AddScoped<IEmailService, MailtrapEmailService>();
 builder.Services.AddSingleton<AttendanceQrService>();
 builder.Services.AddScoped<AttendanceLogService>();
 builder.Services.AddScoped<InternCompletionService>();

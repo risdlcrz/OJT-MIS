@@ -307,7 +307,7 @@ function applyRouteIntern() {
   if (internsLoading.value) return
   const id = routeInternId.value
   if (!id) return
-  const intern = interns.value.find((item) => item.id === id)
+  const intern = interns.value.find((item) => Number(item.id) === id)
   if (intern) {
     applyIntern(intern)
     error.value = ''
@@ -520,9 +520,19 @@ function printCertificate() {
   window.print()
 }
 
+function onCertificateIntern(event) {
+  const id = Number(event.detail?.internId)
+  if (!Number.isFinite(id) || id <= 0) return
+  const params = new URLSearchParams(routeSearch.value)
+  params.set('internId', String(id))
+  const next = params.toString()
+  routeSearch.value = next ? `?${next}` : ''
+}
+
 onMounted(() => {
   window.addEventListener('hashchange', syncRoute)
   window.addEventListener('popstate', syncRoute)
+  window.addEventListener('ojt:certificate-intern', onCertificateIntern)
   loadInterns()
   loadSignatories()
 })
@@ -530,6 +540,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('hashchange', syncRoute)
   window.removeEventListener('popstate', syncRoute)
+  window.removeEventListener('ojt:certificate-intern', onCertificateIntern)
 })
 </script>
 

@@ -75,6 +75,9 @@ namespace OJTMISApi.Models
 
         public int RequiredHours { get; set; }
 
+        /// <summary>Sum of completed attendance punches. Updated on punch and adjustment approval.</summary>
+        public double HoursRendered { get; set; }
+
         [StringLength(200)]
         public string GuardianName { get; set; } = string.Empty;
 

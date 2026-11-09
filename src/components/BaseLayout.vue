@@ -444,10 +444,32 @@ async function markRead(item) {
 
   /* May navigation metadata ang targeted notifications (hal. intern
      completion). Isara ang dropdown at dalhin ang HR sa tamang module. */
-  if (item.link) {
+  const link = notificationDestination(item)
+  if (link) {
     notificationsOpen.value = false
-    navigateToLink(item.link)
+    navigateToLink(link)
   }
+}
+
+/* Completion alerts store /requests/certificate-completion plus internId.
+   That opens the certificate page with the intern already selected. */
+function notificationDestination(item) {
+  const internId = Number(item?.internId)
+  const hasIntern = Number.isFinite(internId) && internId > 0
+  let link = String(item?.link || '').trim()
+
+  const completion = item?.type === 'InternCompleted'
+    || link === '/requests/certificate-completion'
+    || link.endsWith('/certificate-completion')
+  if (completion) {
+    return hasIntern ? `/coc-generate.html?internId=${internId}` : '/coc-generate.html'
+  }
+
+  if (hasIntern && link && !/[?&]internId=/.test(link)) {
+    link += `${link.includes('?') ? '&' : '?'}internId=${internId}`
+  }
+
+  return link
 }
 
 /* Opens a notification link such as "/coc-generate.html?internId=12",
@@ -467,6 +489,11 @@ function navigateToLink(link) {
 
   syncHash()
   emit('navigate', page)
+
+  const internId = Number(url.searchParams.get('internId'))
+  if (page === 'coc-generate.html' && Number.isFinite(internId) && internId > 0) {
+    window.dispatchEvent(new CustomEvent('ojt:certificate-intern', { detail: { internId } }))
+  }
 
   /* pushState does not fire hashchange, so tell the target page
      (coc-generate.vue) to refresh its route parameters. */

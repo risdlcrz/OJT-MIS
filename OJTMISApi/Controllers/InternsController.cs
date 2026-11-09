@@ -39,9 +39,10 @@ namespace OJTMISApi.Controllers
             {
                 var query = _context.Interns.AsNoTracking();
 
-                // Ang Intern List ay para lamang sa mga naka-"Hired".
+                // Hired interns stay on the list after they are marked Completed
+                // so HR can open Generate COC from the row.
                 query = string.IsNullOrWhiteSpace(status)
-                    ? query.Where(x => x.Status == "Hired")
+                    ? query.Where(x => x.Status == "Hired" || x.Status == "Completed")
                     : query.Where(x => x.Status == status);
 
                 // Fetch interns first

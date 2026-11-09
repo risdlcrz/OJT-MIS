@@ -411,7 +411,7 @@ const MODULES = {
         label: 'Generate COC',
         icon: 'fas fa-certificate',
         class: 'btn btn-info',
-        condition: () => true
+        condition: (row) => row?.status === 'Completed'
       }
     ]
   },
