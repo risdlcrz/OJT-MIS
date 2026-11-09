@@ -18,12 +18,12 @@ namespace OJTMISApi.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
-        private readonly IEmailSender _email;
+        private readonly IEmailService _email;
 
         public AdminUsersController(
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
-            IEmailSender email)
+            IEmailService email)
         {
             _userManager = userManager;
             _context = context;

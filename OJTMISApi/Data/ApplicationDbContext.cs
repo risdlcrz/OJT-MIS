@@ -160,9 +160,12 @@ namespace OJTMISApi.Data
                 entity.Property(n => n.Title).IsRequired().HasMaxLength(200);
                 entity.Property(n => n.Message).IsRequired().HasMaxLength(500);
                 entity.Property(n => n.Module).IsRequired().HasMaxLength(50);
+                entity.Property(n => n.Link).HasMaxLength(300);
+                entity.Property(n => n.Type).HasMaxLength(50);
                 entity.Property(n => n.CreatedAt).ValueGeneratedNever();
 
                 entity.HasIndex(n => new { n.UserId, n.CreatedAt });
+                entity.HasIndex(n => new { n.InternId, n.Type });
 
                 entity.HasOne<ApplicationUser>()
                       .WithMany()

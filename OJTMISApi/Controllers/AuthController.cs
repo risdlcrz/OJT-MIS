@@ -24,7 +24,7 @@ namespace OJTMISApi.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly JwtSettings _jwt;
         private readonly ApplicationDbContext _context;
-        private readonly IEmailSender _email;
+        private readonly IEmailService _email;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
@@ -33,7 +33,7 @@ namespace OJTMISApi.Controllers
             RoleManager<IdentityRole> roleManager,
             IOptions<JwtSettings> jwt,
             ApplicationDbContext context,
-            IEmailSender email,
+            IEmailService email,
             ILogger<AuthController> logger)
         {
             _userManager = userManager;
@@ -305,8 +305,13 @@ namespace OJTMISApi.Controllers
         {
             if (string.IsNullOrWhiteSpace(email)) return false;
             var key = email.Trim().ToLower();
+
+            // "Completed" interns keep portal access so they can still view
+            // their records and documents; only "Hired" interns may punch.
             return await _context.Interns.AsNoTracking()
-                .AnyAsync(i => i.Email != null && i.Email.ToLower() == key && i.Status == "Hired");
+                .AnyAsync(i => i.Email != null &&
+                               i.Email.ToLower() == key &&
+                               (i.Status == "Hired" || i.Status == "Completed"));
         }
 
         private async Task<DateTime?> GetInternEndDateAsync(ApplicationUser user)

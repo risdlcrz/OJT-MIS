@@ -238,7 +238,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import coaLogo from '../assets/images/logo.png'
 import { getApiErrorMessage, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
 
@@ -291,9 +291,11 @@ const periodStart = computed(() => formatLongDate(form.dateStarted) || '________
 const periodEnd = computed(() => formatLongDate(form.dateCompleted) || '__________')
 const issued = computed(() => splitDate(form.dateIssued))
 
+const routeSearch = ref(window.location.search || '')
+
 const routeInternId = computed(() => {
   try {
-    const params = new URLSearchParams(window.location.search || '')
+    const params = new URLSearchParams(routeSearch.value)
     const id = Number(params.get('internId'))
     return Number.isFinite(id) && id > 0 ? id : null
   } catch {
@@ -301,7 +303,7 @@ const routeInternId = computed(() => {
   }
 })
 
-watch([interns, internsLoading], () => {
+function applyRouteIntern() {
   if (internsLoading.value) return
   const id = routeInternId.value
   if (!id) return
@@ -312,7 +314,13 @@ watch([interns, internsLoading], () => {
   } else if (!error.value) {
     error.value = 'That intern has not completed the required hours, so a certificate cannot be generated.'
   }
-})
+}
+
+function syncRoute() {
+  routeSearch.value = window.location.search || ''
+}
+
+watch([interns, internsLoading, routeInternId], applyRouteIntern)
 
 function todayInput() {
   const now = new Date()
@@ -513,8 +521,15 @@ function printCertificate() {
 }
 
 onMounted(() => {
+  window.addEventListener('hashchange', syncRoute)
+  window.addEventListener('popstate', syncRoute)
   loadInterns()
   loadSignatories()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('hashchange', syncRoute)
+  window.removeEventListener('popstate', syncRoute)
 })
 </script>
 

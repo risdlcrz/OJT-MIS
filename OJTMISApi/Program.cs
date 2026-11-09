@@ -7,6 +7,7 @@ using OJTMISApi.Controllers;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
 using OJTMISApi.Services;
+using Resend;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,14 +61,25 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
-builder.Services.AddHttpClient("ojtmis-email", client =>
+
+// ---------------------------------------------------------------------
+// Email - Resend is the single outbound provider for the whole API.
+// The API key is read from configuration (or the RESEND_API_KEY
+// environment variable as a fallback) and never from source code.
+// ---------------------------------------------------------------------
+builder.Services.Configure<ResendOptions>(
+    builder.Configuration.GetSection(ResendOptions.SectionName));
+
+builder.Services.AddResend(options =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30);
+    options.ApiToken = builder.Configuration[$"{ResendOptions.SectionName}:ApiKey"] ?? string.Empty;
+    options.ThrowExceptions = true;
 });
-builder.Services.AddSingleton<IEmailSender, ConfiguredEmailSender>();
+
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddSingleton<AttendanceQrService>();
 builder.Services.AddScoped<AttendanceLogService>();
+builder.Services.AddScoped<InternCompletionService>();
 
 // ---------------------------------------------------------------------
 // Services

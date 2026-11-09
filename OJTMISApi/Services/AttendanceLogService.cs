@@ -11,15 +11,18 @@ namespace OJTMISApi.Services
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AttendanceQrService _qr;
+        private readonly InternCompletionService _completion;
 
         public AttendanceLogService(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            AttendanceQrService qr)
+            AttendanceQrService qr,
+            InternCompletionService completion)
         {
             _context = context;
             _userManager = userManager;
             _qr = qr;
+            _completion = completion;
         }
 
         public async Task<(int Status, object Body)> LogAsync(ClaimsPrincipal user, string? payload)
@@ -121,12 +124,17 @@ namespace OJTMISApi.Services
 
             await _context.SaveChangesAsync();
 
+            var rendered = await _completion.RenderedHoursAsync(intern.Id);
+
+            // Kapag naabot na ang required hours, markahan ang intern na
+            // Completed at padalhan ng one-time notification ang HR.
+            await _completion.CheckAsync(intern.Id, rendered);
+
             var saved = await _context.DailyTimeRecords
                 .AsNoTracking()
                 .Where(x => x.InternId == intern.Id && x.Date >= today && x.Date < tomorrow)
                 .ToListAsync();
             var day = AttendanceShift.ShapeDay(today, saved);
-            var rendered = await RenderedHoursAsync(intern.Id);
             return (StatusCodes.Status200OK, new
             {
                 action,
@@ -151,17 +159,6 @@ namespace OJTMISApi.Services
                 .Where(i => i.Email != null && i.Email.ToLower() == key && i.Status == "Hired")
                 .OrderByDescending(i => i.EndDate)
                 .FirstOrDefaultAsync();
-        }
-
-        private async Task<double> RenderedHoursAsync(int internId)
-        {
-            var records = await _context.DailyTimeRecords
-                .AsNoTracking()
-                .Where(x => x.InternId == internId && x.TimeOut != null)
-                .Select(x => new { x.TimeIn, x.TimeOut })
-                .ToListAsync();
-
-            return records.Sum(x => AttendanceShift.Hours(x.TimeIn, x.TimeOut));
         }
     }
 }

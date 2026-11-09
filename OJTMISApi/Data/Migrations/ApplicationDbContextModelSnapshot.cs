@@ -638,6 +638,9 @@ namespace OJTMISApi.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime?>("CompletionNotifiedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ContactNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -832,8 +835,15 @@ namespace OJTMISApi.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("InternId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -850,12 +860,18 @@ namespace OJTMISApi.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Type")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("InternId", "Type");
 
                     b.HasIndex("UserId", "CreatedAt");
 

@@ -17,11 +17,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly InternCompletionService _completion;
 
-        public HRController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public HRController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            InternCompletionService completion)
         {
             _context = context;
             _userManager = userManager;
+            _completion = completion;
         }
 
         /// <summary>GET: api/HR/AttendanceRequests/Pending</summary>
@@ -162,9 +167,14 @@ namespace OJTMISApi.Controllers
 
             var dailyHours = await CalculateDailyHoursAsync(request.InternId, log.Date);
 
+            // Kapag ang approval na ito ang nagpaabot sa intern sa required
+            // hours, i-mark siyang Completed at abisuhan ang HR (one-time).
+            var completed = await _completion.CheckAsync(request.InternId);
+
             return Ok(new
             {
                 message = "Attendance adjustment approved.",
+                completed,
                 request = new
                 {
                     request.Id,

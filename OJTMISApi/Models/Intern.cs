@@ -97,6 +97,12 @@ namespace OJTMISApi.Models
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
 
+        /// <summary>
+        /// Set once the intern reaches the required hours and HR has been
+        /// notified, so the completion notification is only sent one time.
+        /// </summary>
+        public DateTime? CompletionNotifiedAt { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public DateTime UpdatedAt { get; set; } = DateTime.Now;

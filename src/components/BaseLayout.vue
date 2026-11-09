@@ -433,13 +433,46 @@ async function toggleNotifications() {
 }
 
 async function markRead(item) {
-  if (item.isRead) return
-  try {
-    await notificationsAPI.markRead(item.id)
-    item.isRead = true
-  } catch {
-    await loadNotifications()
+  if (!item.isRead) {
+    try {
+      await notificationsAPI.markRead(item.id)
+      item.isRead = true
+    } catch {
+      await loadNotifications()
+    }
   }
+
+  /* May navigation metadata ang targeted notifications (hal. intern
+     completion). Isara ang dropdown at dalhin ang HR sa tamang module. */
+  if (item.link) {
+    notificationsOpen.value = false
+    navigateToLink(item.link)
+  }
+}
+
+/* Opens a notification link such as "/coc-generate.html?internId=12",
+   keeping its query string and hash intact. */
+function navigateToLink(link) {
+  let url
+  try {
+    url = new URL(link, window.location.origin)
+  } catch {
+    return
+  }
+
+  const page = url.pathname.replace(/^\//, '').toLowerCase()
+  if (!ALLOWED_PAGES.includes(page)) return
+
+  window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+
+  syncHash()
+  emit('navigate', page)
+
+  /* pushState does not fire hashchange, so tell the target page
+     (coc-generate.vue) to refresh its route parameters. */
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+
+  if (sidebarFullscreen.value) closeSidebar()
 }
 
 async function markAllRead() {

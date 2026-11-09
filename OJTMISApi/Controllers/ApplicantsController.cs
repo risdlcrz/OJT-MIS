@@ -36,13 +36,13 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ApplicantsController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IEmailSender _email;
+        private readonly IEmailService _email;
 
         public ApplicantsController(
             ApplicationDbContext context,
             ILogger<ApplicantsController> logger,
             UserManager<ApplicationUser> userManager,
-            IEmailSender email)
+            IEmailService email)
         {
             _context = context;
             _logger = logger;
