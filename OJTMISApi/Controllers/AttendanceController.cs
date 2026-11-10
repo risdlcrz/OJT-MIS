@@ -122,6 +122,9 @@ namespace OJTMISApi.Controllers
                     Title = "Time adjustment submitted",
                     Message = $"Your {fieldLabel} adjustment for {log.Date:MMM d, yyyy} is pending approval.",
                     Module = "Attendance",
+                    Link = "/intern-attendance.html",
+                    InternId = intern.Id,
+                    Type = "AttendanceAdjustment",
                     IsRead = false,
                     CreatedAt = now
                 });
@@ -137,6 +140,9 @@ namespace OJTMISApi.Controllers
                     Title = "Time adjustment pending review",
                     Message = $"{intern.FullName} requested a {fieldLabel} adjustment for {log.Date:MMM d, yyyy}.",
                     Module = "Attendance",
+                    Link = "/time-adjustments.html",
+                    InternId = intern.Id,
+                    Type = "AttendanceAdjustment",
                     IsRead = false,
                     CreatedAt = now
                 });

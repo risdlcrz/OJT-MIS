@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
@@ -91,6 +92,7 @@ namespace OJTMISApi.Controllers
             }
 
             var name = CertificateName(intern);
+            var displayName = DisplayName(intern);
             var signatory = await ResolveSignatoryAsync(input);
             var issued = input?.DateIssued?.Date ?? DateTime.Today;
 
@@ -127,7 +129,7 @@ namespace OJTMISApi.Controllers
 
             var fileName = $"Certificate-of-Completion-{Slug(name)}.pdf";
             var subject = "Your Certificate of Completion - Commission on Audit";
-            var html = EmailTemplates.CertificateOfCompletion(name, CertificatePdf.FormatHours(rendered));
+            var html = EmailTemplates.CertificateOfCompletion(model, displayName);
 
             try
             {
@@ -155,6 +157,30 @@ namespace OJTMISApi.Controllers
                     $"{ControllerPath}/GenerateAndSend/{internId}",
                     "Emailed a Certificate of Completion",
                     $"Sent the Certificate of Completion for {name} to {recipient}.");
+
+                // Permanent issuance history tied to the intern's profile:
+                // snapshots the finalized certificate details as sent.
+                _context.GeneratedDocuments.Add(new GeneratedDocument
+                {
+                    InternId = intern.Id,
+                    InternName = name,
+                    DocumentType = "Certificate of Completion",
+                    Honorific = model.Honorific,
+                    Office = model.Office,
+                    School = model.School,
+                    HoursRendered = rendered,
+                    RequiredHours = required,
+                    DateStarted = intern.StartDate,
+                    DateCompleted = intern.EndDate,
+                    DateIssued = issued,
+                    RecipientEmail = recipient,
+                    SignatoryName = model.SignatoryName,
+                    SignatoryPosition = model.SignatoryPosition,
+                    SignatoryOffice = model.SignatoryOffice,
+                    GeneratedBy = User.FindFirstValue(ClaimTypes.Name) ?? "HR Admin",
+                    CreatedAt = DateTime.Now
+                });
+
                 await _context.SaveChangesAsync(HttpContext.RequestAborted);
             }
             catch (Exception ex)
@@ -173,22 +199,27 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
-        /// Mirrors the name shown on the COC preview: first name, middle initial,
-        /// last name, and suffix, falling back to the stored full name.
+        /// Proper-case name of the intern ("Juan P. dela Cruz"), used for the
+        /// email greeting. Falls back to the stored full name.
         /// </summary>
-        private static string CertificateName(Intern intern)
+        private static string DisplayName(Intern intern)
         {
             var first = (intern.FirstName ?? string.Empty).Trim();
             var middle = (intern.MiddleName ?? string.Empty).Trim();
             var last = (intern.LastName ?? string.Empty).Trim();
             var suffix = (intern.Suffix ?? string.Empty).Trim();
 
-            var name = first.Length > 0 && last.Length > 0
+            return first.Length > 0 && last.Length > 0
                 ? $"{first}{(middle.Length > 0 ? $" {char.ToUpperInvariant(middle[0])}." : string.Empty)} {last}{(suffix.Length > 0 ? $" {suffix}" : string.Empty)}"
                 : (intern.FullName ?? string.Empty).Trim();
-
-            return name.ToUpperInvariant();
         }
+
+        /// <summary>
+        /// Mirrors the name shown on the COC preview: first name, middle initial,
+        /// last name, and suffix, falling back to the stored full name.
+        /// </summary>
+        private static string CertificateName(Intern intern) =>
+            DisplayName(intern).ToUpperInvariant();
 
         /// <summary>
         /// Uses the signatory chosen on the COC page, then any explicit fields in

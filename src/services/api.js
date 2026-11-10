@@ -232,7 +232,10 @@ export const hrAttendanceAPI = {
   approve: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Approve/${id}`)).data,
   reject: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Reject/${id}`)).data,
   eligibleForCertificate: async () => (await apiClient.get('/HR/Certificates/Eligible')).data,
-  logGeneratedDocument: async (payload) => (await apiClient.post('/HR/Documents/Generated', payload)).data
+  logGeneratedDocument: async (payload) => (await apiClient.post('/HR/Documents/Generated', payload)).data,
+  /* Permanent issuance history (ID cards and certificates) per intern. */
+  getGeneratedDocuments: async (internId = null) =>
+    (await apiClient.get('/HR/Documents/Generated', { params: internId ? { internId } : {} })).data
 }
 
 /**

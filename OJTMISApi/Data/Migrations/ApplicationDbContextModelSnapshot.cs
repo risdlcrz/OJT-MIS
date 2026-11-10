@@ -617,6 +617,120 @@ namespace OJTMISApi.Data.Migrations
                     b.ToTable("DocumentRequests");
                 });
 
+            modelBuilder.Entity("OJTMISApi.Models.GeneratedDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateCompleted")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateIssued")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateStarted")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("EmergencyContactAddress")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("EmergencyContactName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EmergencyContactNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("GeneratedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Honorific")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<double?>("HoursRendered")
+                        .HasColumnType("float");
+
+                    b.Property<string>("IdNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("InternId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InternName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Office")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("RequiredHours")
+                        .HasColumnType("int");
+
+                    b.Property<string>("School")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SchoolAddress")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("SignatoryName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SignatoryOffice")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SignatoryPosition")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("ValidUntil")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InternId", "CreatedAt");
+
+                    b.ToTable("GeneratedDocuments");
+                });
+
             modelBuilder.Entity("OJTMISApi.Models.Intern", b =>
                 {
                     b.Property<int>("Id")
@@ -696,13 +810,13 @@ namespace OJTMISApi.Data.Migrations
                     b.Property<DateTime?>("HireDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<double>("HoursRendered")
+                        .HasColumnType("float");
+
                     b.Property<string>("HouseAddress")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
-
-                    b.Property<double>("HoursRendered")
-                        .HasColumnType("float");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -1076,6 +1190,14 @@ namespace OJTMISApi.Data.Migrations
                     b.Navigation("Intern");
 
                     b.Navigation("Reviewer");
+                });
+
+            modelBuilder.Entity("OJTMISApi.Models.GeneratedDocument", b =>
+                {
+                    b.HasOne("OJTMISApi.Models.Intern", null)
+                        .WithMany()
+                        .HasForeignKey("InternId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("OJTMISApi.Models.Intern", b =>

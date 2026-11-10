@@ -263,6 +263,9 @@ namespace OJTMISApi.Controllers
                 Title = title,
                 Message = message,
                 Module = "Attendance",
+                Link = "/intern-attendance.html",
+                InternId = intern.Id,
+                Type = "AttendanceAdjustment",
                 IsRead = false,
                 CreatedAt = now
             });
@@ -335,7 +338,57 @@ namespace OJTMISApi.Controllers
             return Ok(eligible);
         }
 
-        /// <summary>POST: api/HR/Documents/Generated — records ID or certificate printing.</summary>
+        /// <summary>GET: api/HR/Documents/Generated — issuance history, optionally filtered per intern.</summary>
+        [HttpGet("Documents/Generated")]
+        public async Task<ActionResult<IEnumerable<object>>> GetGeneratedDocuments([FromQuery] int? internId)
+        {
+            var query = _context.GeneratedDocuments.AsNoTracking().AsQueryable();
+            if (internId is int id)
+            {
+                query = query.Where(d => d.InternId == id);
+            }
+
+            var documents = await query
+                .OrderByDescending(d => d.CreatedAt)
+                .ThenByDescending(d => d.Id)
+                .Take(500)
+                .Select(d => new
+                {
+                    d.Id,
+                    d.InternId,
+                    d.InternName,
+                    d.DocumentType,
+                    d.DateIssued,
+                    d.Office,
+                    d.School,
+                    d.IdNumber,
+                    d.ValidUntil,
+                    d.SchoolAddress,
+                    d.EmergencyContactName,
+                    d.EmergencyContactNumber,
+                    d.EmergencyContactAddress,
+                    d.Honorific,
+                    d.HoursRendered,
+                    d.RequiredHours,
+                    d.DateStarted,
+                    d.DateCompleted,
+                    d.RecipientEmail,
+                    d.SignatoryName,
+                    d.SignatoryPosition,
+                    d.SignatoryOffice,
+                    d.GeneratedBy,
+                    d.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(documents);
+        }
+
+        /// <summary>
+        /// POST: api/HR/Documents/Generated — records ID or certificate printing
+        /// and saves a permanent, intern-tied history row with the finalized
+        /// details that were issued.
+        /// </summary>
         [HttpPost("Documents/Generated")]
         public async Task<ActionResult<object>> LogGeneratedDocument([FromBody] GeneratedDocumentInput input)
         {
@@ -346,9 +399,10 @@ namespace OJTMISApi.Controllers
             }
 
             var internName = (input.InternName ?? string.Empty).Trim();
+            Intern? intern = null;
             if (input.InternId is int internId)
             {
-                var intern = await _context.Interns.AsNoTracking().FirstOrDefaultAsync(i => i.Id == internId);
+                intern = await _context.Interns.AsNoTracking().FirstOrDefaultAsync(i => i.Id == internId);
                 if (intern is not null && string.IsNullOrWhiteSpace(internName))
                 {
                     internName = intern.FullName;
@@ -379,9 +433,46 @@ namespace OJTMISApi.Controllers
                 CreatedAt = DateTime.Now
             });
 
+            // Permanent record tied to the intern's profile with the finalized
+            // details as issued. Kept even when no intern was linked (manual ID),
+            // but a stale internId is dropped so the foreign key stays valid.
+            _context.GeneratedDocuments.Add(new GeneratedDocument
+            {
+                InternId = intern?.Id,
+                InternName = internName,
+                DocumentType = type,
+                DateIssued = input.DateIssued,
+                Office = Trim(input.Office),
+                School = Trim(input.School),
+                IdNumber = Trim(input.IdNumber),
+                ValidUntil = input.ValidUntil,
+                SchoolAddress = Trim(input.SchoolAddress),
+                EmergencyContactName = Trim(input.EmergencyContactName),
+                EmergencyContactNumber = Trim(input.EmergencyContactNumber),
+                EmergencyContactAddress = Trim(input.EmergencyContactAddress),
+                HoursRendered = input.HoursRendered,
+                RequiredHours = input.RequiredHours,
+                DateStarted = input.DateStarted,
+                DateCompleted = input.DateCompleted,
+                RecipientEmail = Trim(input.RecipientEmail),
+                SignatoryName = Trim(input.SignatoryName),
+                SignatoryPosition = Trim(input.SignatoryPosition),
+                SignatoryOffice = Trim(input.SignatoryOffice),
+                GeneratedBy = user?.FullName ?? User.Identity?.Name ?? "HR Admin",
+                CreatedAt = DateTime.Now
+            });
+
             await _context.SaveChangesAsync();
-            return Ok(new { message = $"{action} for {internName}." });
+            return Ok(new
+            {
+                message = $"{action} for {internName}.",
+                internId = intern?.Id,
+                documentType = type
+            });
         }
+
+        private static string Trim(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 
         private static DateTime? ResolveCurrentTime(string? targetField, DateTime? timeIn, DateTime? timeOut)
         {
@@ -431,5 +522,24 @@ namespace OJTMISApi.Controllers
         public string? DocumentType { get; set; }
         public int? InternId { get; set; }
         public string? InternName { get; set; }
+
+        /* Finalized ID card / certificate details, snapshot as issued. */
+        public string? IdNumber { get; set; }
+        public string? Office { get; set; }
+        public string? School { get; set; }
+        public string? SchoolAddress { get; set; }
+        public DateTime? DateIssued { get; set; }
+        public DateTime? DateStarted { get; set; }
+        public DateTime? DateCompleted { get; set; }
+        public DateTime? ValidUntil { get; set; }
+        public string? EmergencyContactName { get; set; }
+        public string? EmergencyContactNumber { get; set; }
+        public string? EmergencyContactAddress { get; set; }
+        public double? HoursRendered { get; set; }
+        public int? RequiredHours { get; set; }
+        public string? RecipientEmail { get; set; }
+        public string? SignatoryName { get; set; }
+        public string? SignatoryPosition { get; set; }
+        public string? SignatoryOffice { get; set; }
     }
 }

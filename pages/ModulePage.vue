@@ -26,34 +26,25 @@
             <thead class="table-light">
               <tr>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
-                <th scope="col" class="text-center" style="width: 120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, index) in rows" :key="row.id">
+              <!-- Ang buong row ay clickable sa Intern List: binubuksan nito
+                   ang intern profile. -->
+              <tr
+                v-for="(row, index) in rows"
+                :key="row.id"
+                :style="config.clickableRows ? 'cursor: pointer;' : ''"
+                @click="rowClick(row)"
+              >
                 <td v-for="col in displayColumns" :key="col.prop">
                   <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
-                  <span v-else-if="col.prop === 'status' && row[col.prop]" class="badge" :class="statusBadge(row[col.prop])">{{ row[col.prop] }}</span>
+                  <span v-else-if="col.prop === 'status' && row[col.prop]" class="badge" :class="statusBadge(row[col.prop])">{{ statusLabel(row[col.prop]) }}</span>
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
-                </td>
-                <td class="text-center text-nowrap">
-                  <!-- Render action buttons from config -->
-                  <template v-for="action in (config.value?.actions || [])" :key="action.name">
-                    <button
-                      v-if="action.condition ? action.condition(row) : true"
-                      type="button"
-                      :class="action.class"
-                      :title="action.label"
-                      :disabled="isLoading || isSaving"
-                      @click="handleAction(action.name, row)"
-                    >
-                      <i :class="action.icon"></i>
-                    </button>
-                  </template>
                 </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length + 1" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length" class="text-center text-muted py-4">
                   No {{ (config.title || 'module').toLowerCase() }} yet.
                 </td>
               </tr>
@@ -302,7 +293,7 @@
             <button type="button" class="btn-close" aria-label="Close" :disabled="isSaving" @click="closeView"></button>
           </div>
           <div class="modal-body p-4 overflow-auto">
-            <div class="bg-white rounded-3 shadow-sm p-4 border" style="border-color: rgba(33,37,41,0.08) !important;">
+            <div class="bg-white rounded-3 shadow-sm p-4 border mb-3" style="border-color: rgba(33,37,41,0.08) !important;">
               <div class="row g-3">
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Applicant No.</label>
@@ -330,7 +321,7 @@
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Hours Rendered</label>
-                <div class="fw-bold" style="color: #1E0F0C;">{{ viewIntern.durationDays != null ? viewIntern.durationDays * 8 : '-' }}</div>
+                <div class="fw-bold" style="color: #1E0F0C;">{{ internHours(viewIntern) }}</div>
               </div>
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">OJT Period</label>
@@ -343,13 +334,60 @@
               <div class="col-md-6">
                 <label class="text-secondary small text-uppercase fw-semibold">Status</label>
                 <div>
-                  <span class="badge" :class="statusBadge(viewIntern.status)">{{ viewIntern.status || '-' }}</span>
+                  <span class="badge" :class="statusBadge(viewIntern.status)">{{ statusLabel(viewIntern.status) || '-' }}</span>
                 </div>
               </div>
             </div>
             </div>
+
+            <!-- Permanent issuance history: mga dokumentong na-issue sa intern. -->
+            <div class="bg-white rounded-3 shadow-sm p-4 border" style="border-color: rgba(33,37,41,0.08) !important;">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="mb-0 fw-bold" style="color: #1E0F0C;">
+                  <i class="fas fa-file-alt me-2" style="color: #ff6b00;"></i>Generated Documents
+                </h6>
+                <span v-if="viewDocumentsLoading" class="spinner-border spinner-border-sm text-secondary" role="status"></span>
+              </div>
+              <div v-if="viewDocuments.length" class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Document</th>
+                      <th>Issued</th>
+                      <th>Details</th>
+                      <th>Signatory</th>
+                      <th>Recorded</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="doc in viewDocuments" :key="doc.id">
+                      <td>
+                        <span class="badge" :class="doc.documentType === 'ID' ? 'bg-primary' : 'bg-info text-dark'">{{ doc.documentType }}</span>
+                      </td>
+                      <td class="text-nowrap">{{ formatDateOnly(doc.dateIssued) || '-' }}</td>
+                      <td class="small">
+                        <template v-if="doc.documentType === 'ID'">
+                          ID No. {{ doc.idNumber || '-' }}<span v-if="doc.validUntil"> &middot; valid until {{ formatDateOnly(doc.validUntil) }}</span>
+                        </template>
+                        <template v-else>
+                          {{ doc.hoursRendered }} of {{ doc.requiredHours }} hrs<span v-if="doc.recipientEmail"> &middot; emailed to {{ doc.recipientEmail }}</span>
+                        </template>
+                      </td>
+                      <td class="small">{{ doc.signatoryName || '-' }}</td>
+                      <td class="text-nowrap small text-muted">{{ formatDate(doc.createdAt) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else-if="!viewDocumentsLoading" class="text-muted small mb-0">
+                No documents have been generated for this intern yet.
+              </div>
+            </div>
           </div>
           <div class="modal-footer bg-transparent border-0 px-4 pt-2 pb-4 d-flex justify-content-end gap-3">
+            <button v-if="viewIntern.status === 'Completed'" type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #0dcaf0; color: #1E0F0C; border: none;" :disabled="isSaving" @click="generateCocFromView">
+              <i class="fas fa-certificate me-1"></i> Generate COC
+            </button>
             <button type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #ff6b00; color: #fff; border: none;" :disabled="isSaving" @click="editFromView">
               <i class="fas fa-pen me-1"></i> Edit
             </button>
@@ -379,12 +417,14 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, Toast } from 'bootstrap'
-import { getApiErrorMessage, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI, dtrAPI } from '@/services/api'
+import { getApiErrorMessage, hrAttendanceAPI, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI, dtrAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {
   'internlist.html': {
     title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true, needsSchools: true, fromApplicants: true,
+    /* Ang row mismo ang clickable papunta sa intern profile. */
+    clickableRows: true,
     columns: [
       { prop: 'fullName', label: 'Full Name', max: 200 },
       { prop: 'school', label: 'School', max: 200 },
@@ -399,20 +439,10 @@ const MODULES = {
       { prop: 'requiredHours', label: 'Required Hours' },
       { prop: 'requestOffice', label: 'Department' },
       { prop: 'startDate', label: 'Estimated Start', format: (_v, row) => row.startDate ? new Date(row.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
-      { prop: 'endDate', label: 'Estimated End', format: (_v, row) => row.endDate ? new Date(row.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }
-    ],
-
-    /* Action buttons sa table - Generate COC para sa mga intern na Completed */
-    actions: [
-      { name: 'edit', label: 'Edit', icon: 'fas fa-pen', class: 'btn btn-outline-primary me-1', condition: () => true },
-      { name: 'delete', label: 'Delete', icon: 'fas fa-trash', class: 'btn btn-outline-danger', condition: () => true },
-      {
-        name: 'generate-coc',
-        label: 'Generate COC',
-        icon: 'fas fa-certificate',
-        class: 'btn btn-info',
-        condition: (row) => row?.status === 'Completed'
-      }
+      { prop: 'endDate', label: 'Estimated End', format: (_v, row) => row.endDate ? new Date(row.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+      /* Huling column: ang status ng intern (Active / Completed / atbp.).
+         Ang row mismo ang clickable na papunta sa profile. */
+      { prop: 'status', label: 'Status' }
     ]
   },
   'programs.html': {
@@ -452,7 +482,7 @@ const props = defineProps({
 })
 
 const entry = computed(() => MODULES[props.modulePage] || {})
-const config = computed(() => entry.value || { actions: [] })
+const config = computed(() => entry.value || {})
 const title = computed(() => entry.value.title || 'Module')
 
 /* Mga column na ipinapakita sa table. Default: lahat ng config.columns.
@@ -491,6 +521,10 @@ const message = ref('')
 
 const form = reactive({ id: 0 })
 const isEditing = computed(() => form.id > 0)
+
+/* Generated-document history (issuance record) para sa bukas na intern. */
+const viewDocuments = ref([])
+const viewDocumentsLoading = ref(false)
 
 const formModalEl = ref(null)
 const deleteModalEl = ref(null)
@@ -781,13 +815,35 @@ function confirmDelete(row) {
 }
 function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = { id: null, name: '' } } }
 
+function rowClick(row) {
+  if (!config.value?.clickableRows) return
+  openView(row)
+}
+
 function openView(row) {
   viewIntern.value = row
   document.body.style.overflow = 'hidden'
+  loadViewDocuments(row.id)
 }
+
+/* History ng mga nai-issue nang dokumento (ID / COC) mula sa API. */
+async function loadViewDocuments(internId) {
+  viewDocuments.value = []
+  if (!Number.isFinite(Number(internId)) || Number(internId) <= 0) return
+  viewDocumentsLoading.value = true
+  try {
+    viewDocuments.value = await hrAttendanceAPI.getGeneratedDocuments(internId)
+  } catch {
+    viewDocuments.value = []
+  } finally {
+    viewDocumentsLoading.value = false
+  }
+}
+
 function closeView() {
   if (isSaving.value) return
   viewIntern.value = null
+  viewDocuments.value = []
   document.body.style.overflow = ''
 }
 function editFromView() {
@@ -802,6 +858,33 @@ function deleteFromView() {
   closeView()
   confirmDelete(row)
 }
+function generateCocFromView() {
+  const row = viewIntern.value
+  if (!row) return
+  closeView()
+  /* Navigate to COC generation page with the intern pre-selected */
+  window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+/* Naipapakita ang "Active" kung "Hired" ang naka-imbak na status. */
+function statusLabel(status) {
+  if (!status) return ''
+  return status === 'Hired' ? 'Active' : status
+}
+
+/* Hours rendered: galing sa na-recalculate na field, kung mayroon. */
+function internHours(row) {
+  if (row?.hoursRendered !== null && row?.hoursRendered !== undefined) return row.hoursRendered
+  return row?.durationDays != null ? row.durationDays * 8 : '-'
+}
+
+function formatDateOnly(v) {
+  const d = v ? new Date(v) : null
+  return d && !Number.isNaN(d.getTime())
+    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : ''
+}
 
 function formatOJTPeriod(row) {
   const s = formatDate(row.startDate)
@@ -810,7 +893,8 @@ function formatOJTPeriod(row) {
 }
 function statusBadge(status) {
   switch (status) {
-    case 'Hired': return 'bg-success'
+    case 'Hired':
+    case 'Active': return 'bg-success'
     case 'Pending': return 'bg-warning text-dark'
     case 'Completed': return 'bg-info text-dark'
     case 'Terminated': return 'bg-danger'
@@ -835,18 +919,6 @@ async function doDelete() {
   }
 }
 
-function handleAction(actionName, row) {
-  if (actionName === 'edit') {
-    openEdit(row)
-  } else if (actionName === 'delete') {
-    confirmDelete(row)
-  } else if (actionName === 'generate-coc') {
-    /* Navigate to COC generation page with the intern pre-selected */
-    window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }
-}
-
 function goHome() {
   window.history.pushState({}, '', '/dashboard.html')
   window.dispatchEvent(new PopStateEvent('popstate'))
@@ -858,16 +930,44 @@ onMounted(() => {
   // Toast ang tamang klase para sa `.toast` element — hindi Modal, dahil
   // walang `.modal-dialog` sa loob nito kaya magta-throw ng querySelector error.
   toast = new Toast(toastEl.value, { autohide: false })
-  load()
+  window.addEventListener('ojt:intern-profile', handleInternProfileEvent)
+  load().then(openInternFromRoute)
 })
 
 watch(() => props.modulePage, () => {
-  load()
+  load().then(openInternFromRoute)
 })
+
+/* Deep link (hal. mula sa notification): ?internId=12 sa Intern List.
+   Binubuksan ang profile modal ng intern matapos ma-load ang table. */
+function routeInternId() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const id = Number(params.get('internId'))
+    return Number.isFinite(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
+}
+
+function openInternFromRoute() {
+  if (props.modulePage !== 'internlist.html') return
+  const id = routeInternId()
+  if (!id) return
+  const row = rows.value.find((r) => Number(r.id) === id)
+  if (row) openView(row)
+}
+
+/* Notification click habang nasa Intern List page na. */
+function handleInternProfileEvent() {
+  if (isLoading.value) return
+  openInternFromRoute()
+}
 
 onBeforeUnmount(() => {
   formModal?.dispose(); deleteModal?.dispose(); toast?.dispose()
   window.clearTimeout(toastTimer)
+  window.removeEventListener('ojt:intern-profile', handleInternProfileEvent)
   document.body.style.overflow = ''
 })
 </script>

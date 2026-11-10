@@ -24,6 +24,7 @@ namespace OJTMISApi.Data
         public DbSet<DailyTimeRecord> DailyTimeRecords { get; set; } = null!;
         public DbSet<DocumentRequest> DocumentRequests { get; set; } = null!;
         public DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests { get; set; } = null!;
+        public DbSet<GeneratedDocument> GeneratedDocuments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -171,6 +172,39 @@ namespace OJTMISApi.Data
                       .WithMany()
                       .HasForeignKey(n => n.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<GeneratedDocument>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+
+                entity.Property(d => d.InternName).IsRequired().HasMaxLength(200);
+                entity.Property(d => d.DocumentType).IsRequired().HasMaxLength(80);
+                entity.Property(d => d.Office).HasMaxLength(200);
+                entity.Property(d => d.School).HasMaxLength(200);
+                entity.Property(d => d.IdNumber).HasMaxLength(50);
+                entity.Property(d => d.SchoolAddress).HasMaxLength(300);
+                entity.Property(d => d.EmergencyContactName).HasMaxLength(200);
+                entity.Property(d => d.EmergencyContactNumber).HasMaxLength(50);
+                entity.Property(d => d.EmergencyContactAddress).HasMaxLength(300);
+                entity.Property(d => d.Honorific).HasMaxLength(20);
+                entity.Property(d => d.RecipientEmail).HasMaxLength(200);
+                entity.Property(d => d.SignatoryName).HasMaxLength(200);
+                entity.Property(d => d.SignatoryPosition).HasMaxLength(150);
+                entity.Property(d => d.SignatoryOffice).HasMaxLength(200);
+                entity.Property(d => d.GeneratedBy).HasMaxLength(200);
+
+                // Issued when the document was generated, not by the database.
+                entity.Property(d => d.CreatedAt).ValueGeneratedNever();
+
+                entity.HasIndex(d => new { d.InternId, d.CreatedAt });
+
+                // An issued document is a permanent record: an intern with
+                // generated documents cannot be deleted outright.
+                entity.HasOne<Intern>()
+                      .WithMany()
+                      .HasForeignKey(d => d.InternId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<AttendanceAdjustmentRequest>(entity =>

@@ -479,7 +479,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import officesData from '../assets/json/offices.json'
 import { getApiErrorMessage, hrAttendanceAPI, internsAPI } from '@/services/api'
@@ -556,19 +556,27 @@ const internMatches = computed(() => {
     .slice(0, 8)
 })
 
-async function loadInterns() {
-  if (internsLoading.value || interns.value.length) return
+let internsLoadPromise = null
+
+function loadInterns() {
+  if (interns.value.length || internsLoadPromise) return internsLoadPromise
 
   internsLoading.value = true
   internError.value = ''
 
-  try {
-    interns.value = await internsAPI.getAll()
-  } catch (error) {
-    internError.value = getApiErrorMessage(error, 'Could not load interns.')
-  } finally {
-    internsLoading.value = false
-  }
+  internsLoadPromise = (async () => {
+    try {
+      interns.value = await internsAPI.getAll()
+    } catch (error) {
+      internError.value = getApiErrorMessage(error, 'Could not load interns.')
+      /* Payagan ang retry sa susunod na tawag kung bigo ang pag-load. */
+      internsLoadPromise = null
+    } finally {
+      internsLoading.value = false
+    }
+  })()
+
+  return internsLoadPromise
 }
 
 function openInternSearch() {
@@ -682,8 +690,38 @@ async function renderQr(value) {
 
 watch(qrPayload, renderQr, { immediate: true })
 
+/* Deep link (hal. mula sa notification): ?internId=12 — agad na napipili
+   ang intern sa autocomplete matapos ma-load ang listahan. */
+function routeInternId() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const id = Number(params.get('internId'))
+    return Number.isFinite(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
+}
+
+async function applyRouteIntern(id) {
+  if (!id) return
+  await loadInterns()
+  const intern = interns.value.find((item) => Number(item.id) === Number(id))
+  if (intern) applyIntern(intern)
+}
+
+function onIdInternEvent(event) {
+  const id = Number(event?.detail?.internId)
+  if (Number.isFinite(id) && id > 0) applyRouteIntern(id)
+}
+
+onMounted(() => {
+  window.addEventListener('ojt:id-intern', onIdInternEvent)
+  applyRouteIntern(routeInternId())
+})
+
 onBeforeUnmount(() => {
   qrRequest += 1
+  window.removeEventListener('ojt:id-intern', onIdInternEvent)
 })
 
 function loadImage(file) {
@@ -807,10 +845,24 @@ async function printCard() {
 
   const internName = (form.fullName || '').trim()
   if (internName) {
+    /* Save a permanent record with the finalized ID details as issued. */
     hrAttendanceAPI.logGeneratedDocument({
       documentType: 'ID',
       internId: selectedInternId.value,
-      internName
+      internName,
+      idNumber: form.idNumber,
+      office: form.office,
+      school: form.schoolName,
+      schoolAddress: form.schoolAddress,
+      dateIssued: form.dateIssued || null,
+      dateStarted: form.dateStarted || null,
+      validUntil: form.validUntil || null,
+      emergencyContactName: form.emergencyName,
+      emergencyContactNumber: form.emergencyNumber,
+      emergencyContactAddress: form.emergencyAddress,
+      signatoryName: form.signatoryName,
+      signatoryPosition: form.signatoryPosition,
+      signatoryOffice: form.signatoryOffice
     }).catch(() => {})
   }
 

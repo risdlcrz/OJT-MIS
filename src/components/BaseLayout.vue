@@ -465,11 +465,51 @@ function notificationDestination(item) {
     return hasIntern ? `/coc-generate.html?internId=${internId}` : '/coc-generate.html'
   }
 
-  if (hasIntern && link && !/[?&]internId=/.test(link)) {
+  /* Lahat ng item ay dapat clickable: kung walang nakaimbak na link
+     (hal. lumang notifications), hulaan ang destinasyon mula sa type/module. */
+  if (!link) link = notificationFallback(item)
+
+  /* Ang internId ay idinadagdag lamang sa mga page na nakaka-entindi
+     nito, para hindi magkalat ang query sa ibang module. */
+  const page = (link.split('?')[0] || '').replace(/^\//, '').toLowerCase()
+  if (hasIntern && INTERN_ID_PAGES.includes(page) && !/[?&]internId=/.test(link)) {
     link += `${link.includes('?') ? '&' : '?'}internId=${internId}`
   }
 
   return link
+}
+
+/* Mga page na kayang mag-deep link sa isang specific na intern. */
+const INTERN_ID_PAGES = ['internlist.html', 'coc-generate.html', 'idgenerate.html']
+
+/* Fallback na destinasyon batay sa notification type o module — para
+   clickable pa rin ang mga notification na walang Link na nakaimbak. */
+function notificationFallback(item) {
+  const type = String(item?.type || '').trim()
+  const module = String(item?.module || '').trim().toLowerCase()
+
+  const byType = {
+    Intern: '/internlist.html',
+    Applicant: '/applicants.html',
+    InternRequest: '/requests.html',
+    Signatory: '/signatories.html',
+    School: '/schools.html',
+    DocumentRequested: isIntern() ? '/intern-documents.html' : '/idgenerate.html',
+    AttendanceAdjustment: isIntern() ? '/intern-attendance.html' : '/time-adjustments.html'
+  }
+  if (byType[type]) return byType[type]
+
+  const byModule = {
+    interns: '/internlist.html',
+    applicants: '/applicants.html',
+    'applicant requests': '/requests.html',
+    signatories: '/signatories.html',
+    schools: '/schools.html',
+    documents: isIntern() ? '/intern-documents.html' : '/idgenerate.html',
+    attendance: isIntern() ? '/intern-attendance.html' : '/time-adjustments.html',
+    'certificate of completion': '/coc-generate.html'
+  }
+  return byModule[module] || ''
 }
 
 /* Opens a notification link such as "/coc-generate.html?internId=12",
@@ -491,8 +531,15 @@ function navigateToLink(link) {
   emit('navigate', page)
 
   const internId = Number(url.searchParams.get('internId'))
-  if (page === 'coc-generate.html' && Number.isFinite(internId) && internId > 0) {
-    window.dispatchEvent(new CustomEvent('ojt:certificate-intern', { detail: { internId } }))
+  const hasIntern = Number.isFinite(internId) && internId > 0
+  if (hasIntern) {
+    if (page === 'coc-generate.html') {
+      window.dispatchEvent(new CustomEvent('ojt:certificate-intern', { detail: { internId } }))
+    } else if (page === 'internlist.html') {
+      window.dispatchEvent(new CustomEvent('ojt:intern-profile', { detail: { internId } }))
+    } else if (page === 'idgenerate.html') {
+      window.dispatchEvent(new CustomEvent('ojt:id-intern', { detail: { internId } }))
+    }
   }
 
   /* pushState does not fire hashchange, so tell the target page

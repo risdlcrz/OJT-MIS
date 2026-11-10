@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 
 namespace OJTMISApi.Services
@@ -141,22 +142,74 @@ namespace OJTMISApi.Services
             return Layout("Reset your OJT-MIS password", content);
         }
 
-        public static string CertificateOfCompletion(string name, string hours)
+        /// <summary>
+        /// Builds the Certificate of Completion email from the values that were
+        /// actually placed on the certificate (intern name, hours, office,
+        /// school, OJT period, issuance date, and signatory), all pulled from
+        /// the intern's record and the finalized issuance details.
+        /// </summary>
+        public static string CertificateOfCompletion(CertificatePdfModel certificate, string recipientName)
         {
-            var greeting = string.IsNullOrWhiteSpace(name)
+            var greeting = string.IsNullOrWhiteSpace(recipientName)
                 ? "Hello"
-                : $"Hello {WebUtility.HtmlEncode(name)}";
-            var rendered = WebUtility.HtmlEncode(hours);
+                : $"Hello {WebUtility.HtmlEncode(recipientName)}";
+
+            var name = WebUtility.HtmlEncode(certificate.FullName);
+            var hours = WebUtility.HtmlEncode(CertificatePdf.FormatHours(certificate.HoursRendered));
+            var required = WebUtility.HtmlEncode(CertificatePdf.FormatHours(certificate.RequiredHours));
+            var school = WebUtility.HtmlEncode(certificate.School);
+            var office = WebUtility.HtmlEncode(certificate.Office);
+            var signatory = WebUtility.HtmlEncode(certificate.SignatoryName);
+            var signatoryPosition = WebUtility.HtmlEncode(certificate.SignatoryPosition);
+
+            var period = FormatPeriod(certificate.DateStarted, certificate.DateCompleted);
+            var issued = certificate.DateIssued?.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture) ?? "—";
 
             var content = $"""
                 <p style="margin:0 0 16px">{greeting},</p>
-                <p style="margin:0 0 16px">Congratulations! You have completed the required <strong>{rendered} hours</strong> of On-the-Job Training at the Commission on Audit.</p>
-                <p style="margin:0 0 16px">Your <strong>Certificate of Completion</strong> is attached to this email as a PDF. You can print it for your school records and future employment requirements.</p>
+                <p style="margin:0 0 16px">Congratulations! You have completed the required <strong>{required} hours</strong> of On-the-Job Training at the Commission on Audit, rendering a total of <strong>{hours} hours</strong>.</p>
+                <p style="margin:0 0 16px">Your <strong>Certificate of Completion</strong> for <strong style="text-transform:uppercase">{name}</strong> is attached to this email as a PDF. You can print it for your school records and future employment requirements.</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse;font-size:14px">
+                  <tr>
+                    <td style="padding:8px 12px;background:#f3f4f6;border-radius:6px 0 0 0;color:#6b7280;width:40%">School</td>
+                    <td style="padding:8px 12px;background:#f3f4f6;border-radius:0 6px 0 0;font-weight:600">{school}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 12px;background:#f9fafb;color:#6b7280">Office / Department</td>
+                    <td style="padding:8px 12px;background:#f9fafb;font-weight:600">{office}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 12px;background:#f3f4f6;color:#6b7280">OJT Period</td>
+                    <td style="padding:8px 12px;background:#f3f4f6;font-weight:600">{period}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 12px;background:#f9fafb;color:#6b7280">Hours Rendered</td>
+                    <td style="padding:8px 12px;background:#f9fafb;font-weight:600">{hours} of {required} hours</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 12px;background:#f3f4f6;color:#6b7280">Date Issued</td>
+                    <td style="padding:8px 12px;background:#f3f4f6;font-weight:600">{WebUtility.HtmlEncode(issued)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 12px;background:#f9fafb;color:#6b7280;border-radius:0 0 0 6px">Signed by</td>
+                    <td style="padding:8px 12px;background:#f9fafb;border-radius:0 0 6px 0;font-weight:600">{signatory}{(signatoryPosition.Length > 0 ? $"<br><span style=\"font-weight:400;color:#4b5563\">{signatoryPosition}</span>" : string.Empty)}</td>
+                  </tr>
+                </table>
                 <p style="margin:0 0 24px;color:#4b5563">Thank you for your service. We wish you the best in your next chapter.</p>
                 <p style="margin:0;color:#4b5563">Human Resource Management Office<br>Commission on Audit</p>
                 """;
 
             return Layout("Your Certificate of Completion", content);
+        }
+
+        private static string FormatPeriod(DateTime? start, DateTime? end)
+        {
+            var from = start?.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+            var to = end?.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+
+            return from is null && to is null
+                ? "—"
+                : $"{from ?? "—"} – {to ?? "—"}";
         }
 
         private static string Layout(string title, string content) =>

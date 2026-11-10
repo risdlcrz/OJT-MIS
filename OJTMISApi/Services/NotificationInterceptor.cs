@@ -44,9 +44,10 @@ namespace OJTMISApi.Services
             var userId = httpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId)) return;
 
+            var actingUserIsIntern = ActingUserIsIntern(httpContext);
             var entries = context.ChangeTracker.Entries()
                 .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
-                .Where(e => Describe(e) is not null)
+                .Where(e => Describe(e, actingUserIsIntern) is not null)
                 .ToList();
 
             if (entries.Count == 0) return;
@@ -57,15 +58,18 @@ namespace OJTMISApi.Services
 
             foreach (var entry in entries)
             {
-                var info = Describe(entry);
+                var info = Describe(entry, actingUserIsIntern);
                 if (info is null) continue;
 
                 context.Add(new Notification
                 {
                     UserId = userId,
-                    Title = $"{info.Value.Subject} {info.Value.Action}",
-                    Message = $"{info.Value.Label} was {info.Value.Action}{by}.",
-                    Module = info.Value.Module,
+                    Title = $"{info.Subject} {info.Action}",
+                    Message = $"{info.Label} was {info.Action}{by}.",
+                    Module = info.Module,
+                    Link = info.Link,
+                    InternId = info.InternId,
+                    Type = info.Type,
                     IsRead = false,
                     CreatedAt = now
                 });
@@ -75,7 +79,27 @@ namespace OJTMISApi.Services
             context.ChangeTracker.DetectChanges();
         }
 
-        private static (string Module, string Subject, string Label, string Action)? Describe(EntityEntry entry)
+        /// <summary>
+        /// Kapag ang nag-CRD ang intern mismo (hal. document request sa portal),
+        /// ang tamang destinasyon ay ang intern page, hindi ang HR page.
+        /// </summary>
+        private static bool ActingUserIsIntern(HttpContext? httpContext) =>
+            httpContext?.User.IsInRole(UserRoles.Intern) ?? false;
+
+        /// <summary>
+        /// Notification description: what to show plus where the item should
+        /// navigate when clicked (page link, intern id, machine type).
+        /// </summary>
+        private sealed record NotificationInfo(
+            string Module,
+            string Subject,
+            string Label,
+            string Action,
+            string? Type = null,
+            string? Link = null,
+            int? InternId = null);
+
+        private static NotificationInfo? Describe(EntityEntry entry, bool actingUserIsIntern)
         {
             var action = entry.State switch
             {
@@ -89,42 +113,62 @@ namespace OJTMISApi.Services
 
             return entry.Entity switch
             {
-                InternRequest request => (
+                InternRequest request => new NotificationInfo(
                     "Applicant Requests",
                     "Applicant Request",
                     Label($"Request #{request.Id}", request.OfficeName),
-                    action),
+                    action,
+                    Type: "InternRequest",
+                    Link: "/requests.html"),
 
-                Signatory signatory => (
+                Signatory signatory => new NotificationInfo(
                     "Signatories",
                     "Signatory",
                     Label($"Signatory #{signatory.Id}", signatory.Name),
-                    action),
+                    action,
+                    Type: "Signatory",
+                    Link: "/signatories.html"),
 
-                School school => (
+                School school => new NotificationInfo(
                     "Schools",
                     "School",
                     Label($"School #{school.Id}", school.Name),
-                    action),
+                    action,
+                    Type: "School",
+                    Link: "/schools.html"),
 
-                Applicant applicant => (
+                Applicant applicant => new NotificationInfo(
                     "Applicants",
                     "Applicant",
                     Label(applicant.ApplicantNo, FullName(
                         applicant.FirstName, applicant.MiddleName, applicant.LastName, applicant.Suffix)),
-                    action),
+                    action,
+                    Type: "Applicant",
+                    Link: "/applicants.html"),
 
-                Intern intern => (
+                Intern intern => new NotificationInfo(
                     "Interns",
                     "Intern",
                     Label(intern.ApplicantNo, intern.FullName),
-                    action),
+                    action,
+                    Type: "Intern",
+                    Link: "/internlist.html",
+                    InternId: intern.Id),
 
-                DocumentRequest document => (
+                DocumentRequest document => new NotificationInfo(
                     "Documents",
                     "Document Request",
                     Label(document.DocumentType, document.InternName),
-                    action),
+                    action,
+                    Type: "DocumentRequested",
+                    // Interns track their own requests; HR prepares the document
+                    // on the matching generation page.
+                    Link: actingUserIsIntern
+                        ? "/intern-documents.html"
+                        : string.Equals(document.DocumentType, "ID", StringComparison.OrdinalIgnoreCase)
+                            ? "/idgenerate.html"
+                            : "/coc-generate.html",
+                    InternId: document.InternId),
 
                 _ => null
             };

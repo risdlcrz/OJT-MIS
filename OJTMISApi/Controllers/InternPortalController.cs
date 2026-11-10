@@ -47,6 +47,25 @@ namespace OJTMISApi.Controllers
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
+            // Issued documents (permanent issuance history tied to this intern).
+            var issuedDocuments = await _context.GeneratedDocuments
+                .AsNoTracking()
+                .Where(x => x.InternId == intern.Id)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.DocumentType,
+                    x.DateIssued,
+                    x.Office,
+                    x.HoursRendered,
+                    x.RequiredHours,
+                    x.RecipientEmail,
+                    x.SignatoryName,
+                    x.CreatedAt
+                })
+                .ToListAsync();
+
             var adjustments = await _context.AttendanceAdjustmentRequests
                 .AsNoTracking()
                 .Where(x => x.InternId == intern.Id)
@@ -96,6 +115,7 @@ namespace OJTMISApi.Controllers
                 today = AttendanceShift.ShapeDay(DateTime.Now.Date, todayRecords),
                 attendance = days,
                 documents,
+                issuedDocuments,
                 adjustments
             });
         }
@@ -160,6 +180,12 @@ namespace OJTMISApi.Controllers
                     Title = "Document request created",
                     Message = $"{intern.FullName} requested a {type}.",
                     Module = "Documents",
+                    // Take HR straight to the page where the document is prepared.
+                    Link = type == "ID"
+                        ? $"/idgenerate.html?internId={intern.Id}"
+                        : $"/coc-generate.html?internId={intern.Id}",
+                    InternId = intern.Id,
+                    Type = "DocumentRequested",
                     IsRead = false,
                     CreatedAt = now
                 });
