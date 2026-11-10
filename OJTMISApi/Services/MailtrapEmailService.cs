@@ -127,6 +127,47 @@ namespace OJTMISApi.Services
             }
         }
 
+        /// <summary>
+        /// Simple one-recipient HTML email with an optional binary attachment.
+        /// The bytes are base64-encoded in the Mailtrap payload; a .pdf file
+        /// name gets the application/pdf MIME type automatically.
+        /// </summary>
+        public Task SendEmailAsync(
+            string to,
+            string subject,
+            string htmlBody,
+            byte[]? attachment = null,
+            string? attachmentName = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(to);
+            ArgumentException.ThrowIfNullOrWhiteSpace(subject);
+            ArgumentException.ThrowIfNullOrWhiteSpace(htmlBody);
+
+            var attachments = new List<EmailAttachment>();
+
+            if (attachment is not null)
+            {
+                // PDF reports are the expected attachment, so fall back to a
+                // .pdf name (and therefore the application/pdf MIME type).
+                attachments.Add(new EmailAttachment
+                {
+                    FileName = string.IsNullOrWhiteSpace(attachmentName)
+                        ? "attachment.pdf"
+                        : attachmentName.Trim(),
+                    Content = attachment
+                });
+            }
+
+            return SendAsync(new EmailRequest
+            {
+                To = new List<string> { to.Trim() },
+                Subject = subject.Trim(),
+                HtmlBody = htmlBody,
+                Attachments = attachments
+            }, cancellationToken);
+        }
+
         public Task SendTemporaryPasswordAsync(
             string email,
             string name,
@@ -357,6 +398,7 @@ namespace OJTMISApi.Services
             var value = token.Trim().Trim('<', '>');
             return value.Contains("your_api_token", StringComparison.OrdinalIgnoreCase)
                 || value.Contains("your-api-token", StringComparison.OrdinalIgnoreCase)
+                || value.Contains("your_mailtrap_api_token", StringComparison.OrdinalIgnoreCase)
                 || value.StartsWith("re_your_api_key", StringComparison.OrdinalIgnoreCase)
                 || value.Equals("change-me", StringComparison.OrdinalIgnoreCase);
         }

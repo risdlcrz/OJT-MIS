@@ -27,4 +27,10 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- COA seal embedded in the API assembly so the generated certificate PDF
+         never depends on the working directory or deployment layout. -->
+    <EmbeddedResource Include="Assets\coa-logo.png" />
+  </ItemGroup>
+
 </Project>

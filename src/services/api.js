@@ -235,6 +235,16 @@ export const hrAttendanceAPI = {
   logGeneratedDocument: async (payload) => (await apiClient.post('/HR/Documents/Generated', payload)).data
 }
 
+/**
+ * HR Admin only: renders the Certificate of Completion and emails the PDF to
+ * the intern's registered address. Rendering plus delivery can take longer than
+ * a normal API call, so this request gets a longer timeout.
+ */
+export const certificateAPI = {
+  generateAndSend: async (internId, payload = {}) =>
+    (await apiClient.post(`/Certificate/GenerateAndSend/${internId}`, payload, { timeout: 60000 })).data
+}
+
 /** HR Admin only: audit trail ng mga aksyon ng bawat user. */
 export const logsAPI = {
   getAll: async ({ category = 'all', search = '', take = 500 } = {}) =>

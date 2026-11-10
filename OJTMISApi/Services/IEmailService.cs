@@ -69,6 +69,18 @@ namespace OJTMISApi.Services
         /// <returns>The Mailtrap message identifier, or an outbox identifier when credentials are not set.</returns>
         Task<string> SendAsync(EmailRequest message, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Sends a single HTML email to one recipient with an optional binary
+        /// attachment (typically a generated PDF, sent base64-encoded).
+        /// </summary>
+        Task SendEmailAsync(
+            string to,
+            string subject,
+            string htmlBody,
+            byte[]? attachment = null,
+            string? attachmentName = null,
+            CancellationToken cancellationToken = default);
+
         /// <summary>Sends the account-creation email containing a temporary password.</summary>
         Task SendTemporaryPasswordAsync(
             string email,
@@ -127,6 +139,24 @@ namespace OJTMISApi.Services
                 """;
 
             return Layout("Reset your OJT-MIS password", content);
+        }
+
+        public static string CertificateOfCompletion(string name, string hours)
+        {
+            var greeting = string.IsNullOrWhiteSpace(name)
+                ? "Hello"
+                : $"Hello {WebUtility.HtmlEncode(name)}";
+            var rendered = WebUtility.HtmlEncode(hours);
+
+            var content = $"""
+                <p style="margin:0 0 16px">{greeting},</p>
+                <p style="margin:0 0 16px">Congratulations! You have completed the required <strong>{rendered} hours</strong> of On-the-Job Training at the Commission on Audit.</p>
+                <p style="margin:0 0 16px">Your <strong>Certificate of Completion</strong> is attached to this email as a PDF. You can print it for your school records and future employment requirements.</p>
+                <p style="margin:0 0 24px;color:#4b5563">Thank you for your service. We wish you the best in your next chapter.</p>
+                <p style="margin:0;color:#4b5563">Human Resource Management Office<br>Commission on Audit</p>
+                """;
+
+            return Layout("Your Certificate of Completion", content);
         }
 
         private static string Layout(string title, string content) =>

@@ -18,6 +18,7 @@ namespace OJTMISApi.Services
             // Written by the controllers with the intern name and outcome.
             "/api/hr/documents",
             "/api/hr/attendancerequests",
+            "/api/certificate",
             "/api/account/profile",
             "/api/intern/documents",
             // Login, forgot-password, and reset are logged by AuthController.

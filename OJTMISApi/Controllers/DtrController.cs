@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
+using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
@@ -14,11 +15,16 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<DtrController> _logger;
+        private readonly InternCompletionService _completion;
 
-        public DtrController(ApplicationDbContext context, ILogger<DtrController> logger)
+        public DtrController(
+            ApplicationDbContext context,
+            ILogger<DtrController> logger,
+            InternCompletionService completion)
         {
             _context = context;
             _logger = logger;
+            _completion = completion;
         }
 
         /// <summary>GET: api/dtr</summary>
@@ -90,6 +96,9 @@ namespace OJTMISApi.Controllers
             var now = DateTime.Now;
             var entity = new DailyTimeRecord
             {
+                InternId = item.InternId,
+                InternName = item.InternName,
+                InternEmail = item.InternEmail,
                 Date = item.Date,
                 ShiftType = string.IsNullOrWhiteSpace(item.ShiftType)
                     ? AttendanceShift.Morning
@@ -109,6 +118,15 @@ namespace OJTMISApi.Controllers
             {
                 _context.DailyTimeRecords.Add(entity);
                 await _context.SaveChangesAsync();
+
+                // Kapag nagdagdag ng oras ang record na ito at naabot na ng
+                // intern ang required hours, i-mark siyang Completed at
+                // abisuhan ang HR (one-time).
+                if (entity.InternId is int completedInternId)
+                {
+                    await _completion.CheckAsync(completedInternId);
+                }
+
                 return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
             }
             catch (Exception ex)
@@ -141,6 +159,15 @@ namespace OJTMISApi.Controllers
                     : item.Status;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
+
+                // Kapag binago ang oras ng DTR at naabot (o lumampas) na ng
+                // intern ang required hours, i-mark siyang Completed at
+                // abisuhan ang HR (one-time).
+                if (existing.InternId is int completedInternId)
+                {
+                    await _completion.CheckAsync(completedInternId);
+                }
+
                 return Ok(existing);
             }
             catch (Exception ex)
@@ -159,8 +186,18 @@ namespace OJTMISApi.Controllers
                 var entity = await _context.DailyTimeRecords.FindAsync(id);
                 if (entity is null) return NotFound(new { message = $"Daily Time Record with id {id} was not found." });
 
+                var internId = entity.InternId;
                 _context.DailyTimeRecords.Remove(entity);
                 await _context.SaveChangesAsync();
+
+                // Nawalan ng oras ang intern dahil sa natanggal na record;
+                // i-refresh ang HoursRendered at tingnan kung may bagong
+                // completion (hal. kapag binura ang maling entry).
+                if (internId is int completedInternId)
+                {
+                    await _completion.CheckAsync(completedInternId);
+                }
+
                 return NoContent();
             }
             catch (Exception ex)

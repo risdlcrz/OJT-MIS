@@ -5,16 +5,32 @@
         <h2 class="cocgen-title">Certificate of Completion</h2>
         <p class="cocgen-subtitle">
           Generate a certificate for interns who have rendered all of their required hours.
-          The certificate prints in landscape and fits one Letter or A4 page.
+          The certificate is rendered on one landscape page and emailed to the intern as a PDF.
         </p>
       </div>
 
       <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-outline-secondary" @click="resetForm">
+        <button type="button" class="btn btn-outline-secondary" :disabled="sending" @click="resetForm">
           <i class="fas fa-rotate-left me-1"></i> Reset
         </button>
-        <button type="button" class="btn btn-primary" :disabled="!selectedInternId" @click="generateCertificate">
-          <i class="fas fa-print me-1"></i> Generate Certificate
+        <button type="button" class="btn btn-outline-secondary" :disabled="sending" @click="printCertificate">
+          <i class="fas fa-print me-1"></i> Print Preview
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="!selectedInternId || sending"
+          :aria-busy="sending"
+          @click="generateCertificate"
+        >
+          <span
+            v-if="sending"
+            class="spinner-border spinner-border-sm me-1"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <i v-else class="fas fa-paper-plane me-1"></i>
+          {{ sending ? 'Sending…' : 'Generate Certificate' }}
         </button>
       </div>
     </div>
@@ -82,7 +98,7 @@
                   </template>
                 </ul>
               </div>
-              <p class="cocgen-hint mb-0">Only interns who finished their required hours can be selected.</p>
+              <p class="cocgen-hint mb-0">Only interns marked Completed can be selected.</p>
             </div>
 
             <details class="cocgen-form-section" open>
@@ -240,7 +256,7 @@
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import coaLogo from '../assets/images/logo.png'
-import { getApiErrorMessage, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
+import { getApiErrorMessage, certificateAPI, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
 
 const dialog = inject('dialog', null)
 const { showConfirm } = dialog || {}
@@ -255,7 +271,7 @@ const form = reactive({
   dateStarted: '',
   dateCompleted: '',
   dateIssued: todayInput(),
-  paper: 'letter',
+  paper: 'a4',
   signatoryName: '',
   signatoryPosition: '',
   signatoryOffice: ''
@@ -269,6 +285,7 @@ const internSearchOpen = ref(false)
 const selectedInternId = ref(null)
 const signatories = ref([])
 const selectedSignatoryId = ref(null)
+const sending = ref(false)
 const notice = ref('')
 const error = ref('')
 
@@ -435,7 +452,11 @@ async function loadInterns() {
   error.value = ''
   try {
     const data = await hrAttendanceAPI.eligibleForCertificate()
-    interns.value = Array.isArray(data) ? data : []
+    // The COC dropdown is limited to interns the completion service already
+    // marked Completed, so a certificate is only offered at the end of the OJT.
+    interns.value = (Array.isArray(data) ? data : []).filter(
+      (intern) => String(intern.status).toLowerCase() === 'completed'
+    )
   } catch (e) {
     interns.value = []
     internError.value = getApiErrorMessage(e, 'Could not load interns who completed their hours.')
@@ -472,7 +493,7 @@ function resetForm() {
   form.dateStarted = ''
   form.dateCompleted = ''
   form.dateIssued = todayInput()
-  form.paper = 'letter'
+  form.paper = 'a4'
   if (signatories.value.length) {
     selectedSignatoryId.value = signatories.value[0].id
     applySignatory()
@@ -486,23 +507,32 @@ async function generateCertificate() {
     return
   }
 
+  const message = `Generate the Certificate of Completion for ${intern.fullName} and email it to the intern's registered address?`
   const confirmed = showConfirm
-    ? await showConfirm(`Generate a Certificate of Completion for ${intern.fullName}?`, 'Confirm Generation')
-    : window.confirm(`Generate a Certificate of Completion for ${intern.fullName}?`)
+    ? await showConfirm(message, 'Confirm Generation')
+    : window.confirm(message)
   if (!confirmed) return
 
   notice.value = ''
   error.value = ''
+  sending.value = true
   try {
-    await hrAttendanceAPI.logGeneratedDocument({
-      documentType: 'Certificate of Completion',
-      internId: intern.id,
-      internName: intern.fullName
+    const result = await certificateAPI.generateAndSend(intern.id, {
+      honorific: form.honorific,
+      office: form.office,
+      signatoryId: selectedSignatoryId.value,
+      signatoryName: form.signatoryName,
+      signatoryPosition: form.signatoryPosition,
+      signatoryOffice: form.signatoryOffice,
+      dateIssued: form.dateIssued || null,
+      paper: form.paper
     })
-    notice.value = `Certificate of Completion generated for ${intern.fullName}.`
-    printCertificate()
+    notice.value =
+      result?.message || `Certificate of Completion sent to ${intern.fullName}.`
   } catch (e) {
-    error.value = getApiErrorMessage(e, 'Could not record the certificate generation.')
+    error.value = getApiErrorMessage(e, 'Could not generate and send the certificate.')
+  } finally {
+    sending.value = false
   }
 }
 

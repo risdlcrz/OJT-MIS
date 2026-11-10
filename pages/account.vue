@@ -127,15 +127,23 @@
 
                   <div class="col-md-6">
                     <label for="accountOffice" class="form-label fw-semibold">Office</label>
-                    <input
+                    <select
                       id="accountOffice"
                       v-model.trim="profileForm.office"
-                      type="text"
-                      class="form-control"
-                      maxlength="150"
-                      placeholder="e.g., ISDMD"
+                      class="form-select"
+                      :class="{ 'is-invalid': profileSubmitted && !profileForm.office }"
+                      required
                       :disabled="isSavingProfile"
-                    />
+                    >
+                      <option value="" disabled>-- Select Office --</option>
+                      <option v-if="profileForm.office && !officeOptions.includes(profileForm.office)" :value="profileForm.office">
+                        {{ profileForm.office }}
+                      </option>
+                      <option v-for="office in officeOptions" :key="office" :value="office">
+                        {{ office }}
+                      </option>
+                    </select>
+                    <div class="invalid-feedback">Please select an office.</div>
                   </div>
 
                   <div class="col-md-6">
@@ -483,15 +491,23 @@
 
                 <div class="col-md-6">
                   <label for="userOffice" class="form-label fw-semibold">Office</label>
-                  <input
+                  <select
                     id="userOffice"
                     v-model.trim="userForm.office"
-                    type="text"
-                    class="form-control"
-                    maxlength="150"
-                    placeholder="e.g., ISDMD"
+                    class="form-select"
+                    :class="{ 'is-invalid': userSubmitted && !userForm.office }"
+                    required
                     :disabled="isSavingUser"
-                  />
+                  >
+                    <option value="" disabled>-- Select Office --</option>
+                    <option v-if="userForm.office && !officeOptions.includes(userForm.office)" :value="userForm.office">
+                      {{ userForm.office }}
+                    </option>
+                    <option v-for="office in officeOptions" :key="office" :value="office">
+                      {{ office }}
+                    </option>
+                  </select>
+                  <div class="invalid-feedback">Please select an office.</div>
                 </div>
 
                 <div class="col-md-6">
@@ -564,6 +580,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Modal, Toast } from 'bootstrap'
+/* Same shared office list that feeds the Signatories module dropdown. */
+import officesData from '../assets/json/offices.json'
 import {
   accountAPI,
   adminUsersAPI,
@@ -574,6 +592,9 @@ import {
 } from '@/services/api'
 
 const roleOptions = ['HRAdmin', 'Supervisor', 'Intern']
+const officeOptions = [
+  ...new Set((officesData.offices || []).map((office) => office.name).filter(Boolean))
+]
 const isAdmin = ref(isHRAdmin())
 
 /* Which account view is showing. The left sidebar drives this through the
@@ -722,6 +743,11 @@ async function saveProfile() {
 
   if (!isValidEmail(profileForm.email)) {
     profileFormError.value = 'Please enter a valid email address.'
+    return
+  }
+
+  if (!profileForm.office) {
+    profileFormError.value = 'Please select an office.'
     return
   }
 
@@ -1053,6 +1079,10 @@ function validateUserForm() {
 
   if (!isValidEmail(userForm.email)) {
     return 'Please enter a valid email address.'
+  }
+
+  if (!userForm.office) {
+    return 'Please select an office.'
   }
 
   if (!roleOptions.includes(userForm.role)) {
