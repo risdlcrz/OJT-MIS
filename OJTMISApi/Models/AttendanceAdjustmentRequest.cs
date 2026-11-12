@@ -105,6 +105,16 @@ namespace OJTMISApi.Models
         [ForeignKey(nameof(ReviewedBy))]
         public ApplicationUser? Reviewer { get; set; }
 
+        /// <summary>
+        /// Designated DTR approving officer (signatory directory entry) that
+        /// reviewed the request. Kept alongside <see cref="ReviewedBy"/> so the
+        /// approval remains attributable even if the login account is removed.
+        /// </summary>
+        public int? ApproverSignatoryId { get; set; }
+
+        [ForeignKey(nameof(ApproverSignatoryId))]
+        public Signatory? ApproverSignatory { get; set; }
+
         public DateTime? ReviewedAt { get; set; }
     }
 }

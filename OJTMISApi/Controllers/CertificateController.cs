@@ -174,6 +174,7 @@ namespace OJTMISApi.Controllers
                     DateCompleted = intern.EndDate,
                     DateIssued = issued,
                     RecipientEmail = recipient,
+                    SignatoryId = signatory.Id > 0 ? signatory.Id : null,
                     SignatoryName = model.SignatoryName,
                     SignatoryPosition = model.SignatoryPosition,
                     SignatoryOffice = model.SignatoryOffice,
@@ -223,8 +224,8 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// Uses the signatory chosen on the COC page, then any explicit fields in
-        /// the request, and finally the first signatory in the directory (which is
-        /// what the page selects by default).
+        /// the request, and finally the first certificate-capable signatory in
+        /// the directory (which is what the page selects by default).
         /// </summary>
         private async Task<Signatory> ResolveSignatoryAsync(CertificateSendInput? input)
         {
@@ -239,8 +240,14 @@ namespace OJTMISApi.Controllers
 
             signatory ??= await _context.Signatories
                 .AsNoTracking()
+                .Where(x => x.ApprovalScope == SignatoryApprovalScope.Certificate ||
+                            x.ApprovalScope == SignatoryApprovalScope.Both)
                 .OrderBy(x => x.Name)
                 .FirstOrDefaultAsync()
+                ?? await _context.Signatories
+                    .AsNoTracking()
+                    .OrderBy(x => x.Name)
+                    .FirstOrDefaultAsync()
                 ?? new Signatory();
 
             // Explicit fields from the page win over the stored record.
@@ -249,7 +256,8 @@ namespace OJTMISApi.Controllers
                 Id = signatory.Id,
                 Name = FirstNonEmpty(input?.SignatoryName, signatory.Name).ToUpperInvariant(),
                 Position = FirstNonEmpty(input?.SignatoryPosition, signatory.Position),
-                Department = FirstNonEmpty(input?.SignatoryOffice, signatory.Department)
+                Department = FirstNonEmpty(input?.SignatoryOffice, signatory.Department),
+                ApprovalScope = signatory.ApprovalScope
             };
         }
 

@@ -77,6 +77,13 @@ namespace OJTMISApi.Controllers
             var f2 = item.Position?.Trim() ?? string.Empty;
             var f3 = item.Department?.Trim() ?? string.Empty;
             var email = item.Email?.Trim() ?? string.Empty;
+            var scope = SignatoryApprovalScope.Normalize(item.ApprovalScope);
+
+            if (!string.IsNullOrWhiteSpace(item.UserId) &&
+                await _userManager.FindByIdAsync(item.UserId.Trim()) is null)
+            {
+                return BadRequest(new { message = "The selected user account was not found." });
+            }
 
             if (await _context.Signatories.AnyAsync(x => x.Name != null && x.Name.ToLower() == f1.ToLower()))
             {
@@ -84,7 +91,17 @@ namespace OJTMISApi.Controllers
             }
 
             var now = DateTime.Now;
-            var entity = new Signatory { Name = f1, Position = f2, Department = f3, Email = email, CreatedAt = now, UpdatedAt = now };
+            var entity = new Signatory
+            {
+                Name = f1,
+                Position = f2,
+                Department = f3,
+                Email = email,
+                UserId = await ResolveUserIdAsync(item.UserId, email),
+                ApprovalScope = scope,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
             try
             {
@@ -94,6 +111,7 @@ namespace OJTMISApi.Controllers
                 // Awtomatikong gumawa ng unverified account para makita agad
                 // sa User Management at mabigyan ng access ng HR.
                 await ProvisionAccountAsync(entity);
+                await _context.SaveChangesAsync();
 
                 return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
             }
@@ -115,6 +133,13 @@ namespace OJTMISApi.Controllers
             var f2 = item.Position?.Trim() ?? string.Empty;
             var f3 = item.Department?.Trim() ?? string.Empty;
             var email = item.Email?.Trim() ?? string.Empty;
+            var scope = SignatoryApprovalScope.Normalize(item.ApprovalScope);
+
+            if (!string.IsNullOrWhiteSpace(item.UserId) &&
+                await _userManager.FindByIdAsync(item.UserId.Trim()) is null)
+            {
+                return BadRequest(new { message = "The selected user account was not found." });
+            }
 
             try
             {
@@ -126,14 +151,24 @@ namespace OJTMISApi.Controllers
                     return Conflict(new { message = "A record with the same first field already exists." });
                 }
 
+                var userId = await ResolveUserIdAsync(item.UserId, email);
+                if (userId is not null &&
+                    await _context.Signatories.AnyAsync(x => x.Id != id && x.UserId == userId))
+                {
+                    return Conflict(new { message = "That user account is already linked to another signatory." });
+                }
+
                 existing.Name = f1;
                 existing.Position = f2;
                 existing.Department = f3;
                 existing.Email = email;
+                existing.UserId = userId;
+                existing.ApprovalScope = scope;
                 existing.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
 
                 await ProvisionAccountAsync(existing);
+                await _context.SaveChangesAsync();
                 return Ok(existing);
             }
             catch (Exception ex)
@@ -144,40 +179,78 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
-        /// Creates an unverified user account for a signatory when one does not exist.
-        /// The temporary password is emailed; HR cannot type it.
+        /// Finds the credential a signatory should be linked to: the explicit
+        /// user id first, then an existing account with the same email.
+        /// </summary>
+        private async Task<string?> ResolveUserIdAsync(string? userId, string? email)
+        {
+            var id = userId?.Trim();
+            if (!string.IsNullOrWhiteSpace(id) && await _userManager.FindByIdAsync(id) is not null)
+            {
+                return id;
+            }
+
+            var address = email?.Trim();
+            if (!string.IsNullOrWhiteSpace(address) && address.Contains('@'))
+            {
+                return (await _userManager.FindByEmailAsync(address))?.Id;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Creates an unverified user account for a signatory when one does not
+        /// exist and links the signatory record to that account. The temporary
+        /// password is emailed; HR cannot type it.
         /// </summary>
         private async Task ProvisionAccountAsync(Signatory signatory)
         {
             var email = signatory.Email?.Trim();
-            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) return;
 
-            try
+            ApplicationUser? user = null;
+
+            if (!string.IsNullOrWhiteSpace(signatory.UserId))
             {
-                if (await _userManager.FindByEmailAsync(email) is not null) return;
+                user = await _userManager.FindByIdAsync(signatory.UserId);
+            }
 
-                var nameParts = signatory.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var firstName = nameParts.Length > 1 ? string.Join(' ', nameParts[..^1]) : signatory.Name.Trim();
-                var lastName = nameParts.Length > 1 ? nameParts[^1] : string.Empty;
+            if (user is null && !string.IsNullOrWhiteSpace(email) && email.Contains('@'))
+            {
+                user = await _userManager.FindByEmailAsync(email);
+            }
 
-                var isHr = signatory.Department.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
-                           signatory.Position.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
-                           signatory.Department.Contains("Human Resource", StringComparison.OrdinalIgnoreCase);
+            if (user is null)
+            {
+                if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) return;
 
-                var user = new ApplicationUser
+                try
                 {
-                    UserName = email,
-                    Email = email,
-                    FirstName = firstName,
-                    LastName = lastName,
-                    Office = string.IsNullOrWhiteSpace(signatory.Department) ? null : signatory.Department,
-                    EmailConfirmed = false
-                };
+                    var nameParts = signatory.Name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    var firstName = nameParts.Length > 1 ? string.Join(' ', nameParts[..^1]) : signatory.Name.Trim();
+                    var lastName = nameParts.Length > 1 ? nameParts[^1] : string.Empty;
 
-                var password = TemporaryPasswordGenerator.Generate();
-                var result = await _userManager.CreateAsync(user, password);
-                if (result.Succeeded)
-                {
+                    var isHr = signatory.Department.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+                               signatory.Position.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
+                               signatory.Department.Contains("Human Resource", StringComparison.OrdinalIgnoreCase);
+
+                    user = new ApplicationUser
+                    {
+                        UserName = email,
+                        Email = email,
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Office = string.IsNullOrWhiteSpace(signatory.Department) ? null : signatory.Department,
+                        EmailConfirmed = false
+                    };
+
+                    var password = TemporaryPasswordGenerator.Generate();
+                    var result = await _userManager.CreateAsync(user, password);
+                    if (!result.Succeeded)
+                    {
+                        return;
+                    }
+
                     await _userManager.AddToRoleAsync(user, isHr ? UserRoles.HRAdmin : UserRoles.Supervisor);
                     try
                     {
@@ -188,10 +261,21 @@ namespace OJTMISApi.Controllers
                         _logger.LogWarning(mailEx, "Signatory account for {Email} was created but the password email failed.", email);
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not auto-create user account for signatory {Name}.", signatory.Name);
+                    return;
+                }
             }
-            catch (Exception ex)
+
+            // Bind the directory entry to the credential so the officer can be
+            // resolved in the certificate and DTR approval workflows.
+            signatory.UserId = user.Id;
+
+            if (string.IsNullOrWhiteSpace(user.Office) && !string.IsNullOrWhiteSpace(signatory.Department))
             {
-                _logger.LogWarning(ex, "Could not auto-create user account for signatory {Name}.", signatory.Name);
+                user.Office = signatory.Department.Trim();
+                await _userManager.UpdateAsync(user);
             }
         }
 

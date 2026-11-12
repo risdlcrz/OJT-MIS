@@ -471,6 +471,9 @@ namespace OJTMISApi.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("ApproverSignatoryId")
+                        .HasColumnType("int");
+
                     b.Property<int>("AttendanceLogId")
                         .HasColumnType("int");
 
@@ -510,6 +513,8 @@ namespace OJTMISApi.Data.Migrations
                         .HasDefaultValue("AM_Out");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApproverSignatoryId");
 
                     b.HasIndex("AttendanceLogId");
 
@@ -706,6 +711,9 @@ namespace OJTMISApi.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<int?>("SignatoryId")
+                        .HasColumnType("int");
+
                     b.Property<string>("SignatoryName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -725,6 +733,8 @@ namespace OJTMISApi.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SignatoryId");
 
                     b.HasIndex("InternId", "CreatedAt");
 
@@ -1084,6 +1094,13 @@ namespace OJTMISApi.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ApprovalScope")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Both");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1110,7 +1127,19 @@ namespace OJTMISApi.Data.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Signatories_UserId")
+                        .HasFilter("[UserId] IS NOT NULL");
+
+                    b.HasIndex("Department", "ApprovalScope")
+                        .HasDatabaseName("IX_Signatories_Department_ApprovalScope");
 
                     b.ToTable("Signatories");
                 });
@@ -1168,6 +1197,11 @@ namespace OJTMISApi.Data.Migrations
 
             modelBuilder.Entity("OJTMISApi.Models.AttendanceAdjustmentRequest", b =>
                 {
+                    b.HasOne("OJTMISApi.Models.Signatory", "ApproverSignatory")
+                        .WithMany()
+                        .HasForeignKey("ApproverSignatoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("OJTMISApi.Models.DailyTimeRecord", "AttendanceLog")
                         .WithMany()
                         .HasForeignKey("AttendanceLogId")
@@ -1185,6 +1219,8 @@ namespace OJTMISApi.Data.Migrations
                         .HasForeignKey("ReviewedBy")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.Navigation("ApproverSignatory");
+
                     b.Navigation("AttendanceLog");
 
                     b.Navigation("Intern");
@@ -1198,6 +1234,13 @@ namespace OJTMISApi.Data.Migrations
                         .WithMany()
                         .HasForeignKey("InternId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("OJTMISApi.Models.Signatory", "Signatory")
+                        .WithMany()
+                        .HasForeignKey("SignatoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Signatory");
                 });
 
             modelBuilder.Entity("OJTMISApi.Models.Intern", b =>
@@ -1224,6 +1267,16 @@ namespace OJTMISApi.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("OJTMISApi.Models.Signatory", b =>
+                {
+                    b.HasOne("OJTMISApi.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }

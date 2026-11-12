@@ -174,6 +174,43 @@ namespace OJTMISApi.Data
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
+            modelBuilder.Entity<Signatory>(entity =>
+            {
+                entity.HasKey(s => s.Id);
+
+                entity.Property(s => s.Name).IsRequired().HasMaxLength(200);
+                entity.Property(s => s.Position).IsRequired().HasMaxLength(150);
+                entity.Property(s => s.Department).IsRequired().HasMaxLength(200);
+                entity.Property(s => s.Email).IsRequired().HasMaxLength(200);
+                entity.Property(s => s.UserId).HasMaxLength(450);
+
+                entity.Property(s => s.ApprovalScope)
+                      .IsRequired()
+                      .HasMaxLength(20)
+                      .HasDefaultValue(SignatoryApprovalScope.Both);
+
+                entity.Property(s => s.CreatedAt).ValueGeneratedNever();
+                entity.Property(s => s.UpdatedAt).ValueGeneratedNever();
+
+                // One login account maps to at most one signatory record. The
+                // filter keeps unprovisioned directory entries (UserId = null)
+                // from conflicting with each other.
+                entity.HasIndex(s => s.UserId)
+                      .IsUnique()
+                      .HasFilter("[UserId] IS NOT NULL")
+                      .HasDatabaseName("IX_Signatories_UserId");
+
+                entity.HasIndex(s => new { s.Department, s.ApprovalScope })
+                      .HasDatabaseName("IX_Signatories_Department_ApprovalScope");
+
+                // Deleting a login account must not destroy the signatory
+                // history; the directory entry simply becomes unlinked.
+                entity.HasOne(s => s.User)
+                      .WithMany()
+                      .HasForeignKey(s => s.UserId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
             modelBuilder.Entity<GeneratedDocument>(entity =>
             {
                 entity.HasKey(d => d.Id);
@@ -205,6 +242,13 @@ namespace OJTMISApi.Data
                       .WithMany()
                       .HasForeignKey(d => d.InternId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                // The approving officer can be removed without losing the
+                // snapshot of who signed the issued certificate.
+                entity.HasOne(d => d.Signatory)
+                      .WithMany()
+                      .HasForeignKey(d => d.SignatoryId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<AttendanceAdjustmentRequest>(entity =>
@@ -239,6 +283,14 @@ namespace OJTMISApi.Data
                 entity.HasOne(r => r.Reviewer)
                       .WithMany()
                       .HasForeignKey(r => r.ReviewedBy)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                // Maps the approval to the designated DTR officer. If the
+                // signatory record is removed the review metadata (ReviewedBy,
+                // ReviewedAt, Status) still keeps the approval auditable.
+                entity.HasOne(r => r.ApproverSignatory)
+                      .WithMany()
+                      .HasForeignKey(r => r.ApproverSignatoryId)
                       .OnDelete(DeleteBehavior.SetNull);
             });
         }

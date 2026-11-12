@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OJTMISApi.Models
 {
@@ -70,6 +71,16 @@ namespace OJTMISApi.Models
         public string RecipientEmail { get; set; } = string.Empty;
 
         /* ---- Common issuance details ---- */
+
+        /// <summary>
+        /// Signatory directory record that approved/signed this document. The
+        /// name/position/office columns below are an immutable snapshot, so the
+        /// document remains readable even if the signatory record changes later.
+        /// </summary>
+        public int? SignatoryId { get; set; }
+
+        [ForeignKey(nameof(SignatoryId))]
+        public Signatory? Signatory { get; set; }
 
         [StringLength(200)]
         public string SignatoryName { get; set; } = string.Empty;

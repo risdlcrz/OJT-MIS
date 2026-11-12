@@ -146,6 +146,7 @@ namespace OJTMISApi.Controllers
             log.UpdatedAt = now;
             request.Status = AttendanceAdjustmentStatus.Approved;
             request.ReviewedBy = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            request.ApproverSignatoryId = await ResolveApproverSignatoryIdAsync();
             request.ReviewedAt = now;
 
             await NotifyInternAsync(
@@ -217,6 +218,7 @@ namespace OJTMISApi.Controllers
             var now = DateTime.Now;
             request.Status = AttendanceAdjustmentStatus.Rejected;
             request.ReviewedBy = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            request.ApproverSignatoryId = await ResolveApproverSignatoryIdAsync();
             request.ReviewedAt = now;
 
             var label = AttendanceAdjustmentField.Label(request.TargetField);
@@ -248,6 +250,25 @@ namespace OJTMISApi.Controllers
                     request.ReviewedAt
                 }
             });
+        }
+
+        /// <summary>
+        /// Resolves the designated DTR officer for the signed-in user. Returns
+        /// null when the account has no DTR-scoped signatory mapping.
+        /// </summary>
+        private async Task<int?> ResolveApproverSignatoryIdAsync()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId)) return null;
+
+            return await _context.Signatories
+                .AsNoTracking()
+                .Where(s => s.UserId == userId &&
+                            (s.ApprovalScope == SignatoryApprovalScope.Dtr ||
+                             s.ApprovalScope == SignatoryApprovalScope.Both))
+                .OrderBy(s => s.Id)
+                .Select(s => (int?)s.Id)
+                .FirstOrDefaultAsync();
         }
 
         private async Task NotifyInternAsync(Intern? intern, string title, string message, DateTime now)
