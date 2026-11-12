@@ -9,13 +9,31 @@
       </div>
 
       <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-outline-secondary" @click="resetForm">
+        <button type="button" class="btn btn-outline-secondary" :disabled="saving" @click="resetForm">
           <i class="fas fa-rotate-left me-1"></i> Reset
         </button>
-        <button type="button" class="btn btn-primary" @click="printCard">
-          <i class="fas fa-print me-1"></i> Print ID
+        <button type="button" class="btn btn-outline-secondary" :disabled="saving" @click="printCard">
+          <i class="fas fa-print me-1"></i> Print Preview
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          :disabled="saving || !selectedInternId"
+          :aria-busy="saving"
+          title="Save this ID to the intern's document history and print it"
+          @click="generateId"
+        >
+          <span v-if="saving" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i v-else class="far fa-id-card me-1"></i>
+          {{ saving ? 'Saving…' : (selectedIdHistory ? 'Regenerate ID' : 'Generate ID') }}
         </button>
       </div>
+    </div>
+
+    <div v-if="notice" class="alert alert-success mb-0">{{ notice }}</div>
+    <div v-if="error" class="alert alert-danger mb-0 d-flex justify-content-between align-items-center">
+      <span>{{ error }}</span>
+      <button type="button" class="btn btn-sm btn-outline-danger" @click="error = ''">Dismiss</button>
     </div>
 
     <div class="idgen-workspace">
@@ -70,12 +88,30 @@
                           {{ intern.applicantNo || `#${intern.id}` }}
                           &middot; {{ intern.applicantOffice || intern.school || '—' }}
                         </span>
+                        <span v-if="idHistoryFor(intern)" class="idgen-lookup-badge">
+                          <i class="fas fa-check-circle me-1"></i>
+                          Already generated
+                          <template v-if="formatHistoryDate(idHistoryFor(intern).dateIssued || idHistoryFor(intern).createdAt)">
+                            &middot; {{ formatHistoryDate(idHistoryFor(intern).dateIssued || idHistoryFor(intern).createdAt) }}
+                          </template>
+                          &middot; Regenerate
+                        </span>
                       </button>
                     </li>
                   </template>
                 </ul>
               </div>
               <p class="idgen-hint mb-0">Pick an intern to fill the card details automatically.</p>
+              <p v-if="selectedInternId && !selectedIdHistory" class="idgen-hint mb-0">
+                <i class="fas fa-info-circle me-1"></i>
+                No ID has been generated for this intern yet.
+              </p>
+              <p v-if="selectedIdHistory" class="idgen-generated-hint mb-0">
+                <i class="fas fa-circle-check me-1"></i>
+                An ID was already generated for this intern on
+                {{ formatHistoryDate(selectedIdHistory.dateIssued || selectedIdHistory.createdAt) || 'a previous date' }}.
+                Generating again adds a new issuance record.
+              </p>
             </div>
 
             <details class="idgen-form-section" open>
@@ -516,6 +552,13 @@ const attendanceToken = ref('')
 const qrValue = ref('')
 const qrDataUrl = ref('')
 const qrError = ref('')
+const saving = ref(false)
+const notice = ref('')
+const error = ref('')
+
+/* Issuance history for the "Already generated / Regenerate" labels. */
+const generatedDocuments = ref([])
+const generatedLoading = ref(false)
 
 const dialog = inject('dialog', null)
 
@@ -533,6 +576,36 @@ const formattedDates = computed(() => ({
   validUntil: formatDate(form.validUntil),
   issued: formatDate(form.dateIssued)
 }))
+
+const idHistoryByIntern = computed(() => {
+  const history = new Map()
+  for (const doc of generatedDocuments.value) {
+    if (doc.documentType !== 'ID') continue
+    const internId = Number(doc.internId)
+    if (!Number.isFinite(internId) || internId <= 0) continue
+
+    const current = history.get(internId)
+    const currentDate = current ? new Date(current.createdAt).getTime() : 0
+    const nextDate = new Date(doc.createdAt).getTime()
+    if (!current || nextDate >= currentDate) history.set(internId, doc)
+  }
+  return history
+})
+
+const selectedIdHistory = computed(
+  () => idHistoryByIntern.value.get(Number(selectedInternId.value)) || null
+)
+
+function idHistoryFor(intern) {
+  return idHistoryByIntern.value.get(Number(intern?.id)) || null
+}
+
+function formatHistoryDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 /* ---------------- Intern autocomplete ---------------- */
 const interns = ref([])
@@ -582,6 +655,20 @@ function loadInterns() {
 function openInternSearch() {
   internSearchOpen.value = true
   loadInterns()
+  loadGeneratedDocuments()
+}
+
+async function loadGeneratedDocuments() {
+  if (generatedLoading.value) return
+  generatedLoading.value = true
+  try {
+    const data = await hrAttendanceAPI.getGeneratedDocuments()
+    generatedDocuments.value = Array.isArray(data) ? data : []
+  } catch {
+    generatedDocuments.value = []
+  } finally {
+    generatedLoading.value = false
+  }
 }
 
 function onInternInput() {
@@ -613,6 +700,8 @@ async function applyIntern(intern) {
   selectedInternId.value = intern.id
   internQuery.value = intern.fullName || intern.applicantNo || `#${intern.id}`
   internSearchOpen.value = false
+  notice.value = ''
+  error.value = ''
   attendanceToken.value = ''
   try {
     const qr = await internsAPI.attendanceQr(intern.id)
@@ -716,6 +805,7 @@ function onIdInternEvent(event) {
 
 onMounted(() => {
   window.addEventListener('ojt:id-intern', onIdInternEvent)
+  loadGeneratedDocuments()
   applyRouteIntern(routeInternId())
 })
 
@@ -835,35 +925,72 @@ async function resetForm() {
   photoError.value = ''
   signatureError.value = ''
   autoQr.value = true
+  selectedInternId.value = null
+  internQuery.value = ''
+  attendanceToken.value = ''
+  notice.value = ''
+  error.value = ''
+}
+
+const idPayload = computed(() => ({
+  documentType: 'ID',
+  internId: selectedInternId.value ? Number(selectedInternId.value) : null,
+  internName: (form.fullName || '').trim(),
+  idNumber: form.idNumber,
+  office: form.office,
+  school: form.schoolName,
+  schoolAddress: form.schoolAddress,
+  dateIssued: form.dateIssued || null,
+  dateStarted: form.dateStarted || null,
+  validUntil: form.validUntil || null,
+  emergencyContactName: form.emergencyName,
+  emergencyContactNumber: form.emergencyNumber,
+  emergencyContactAddress: form.emergencyAddress,
+  signatoryName: form.signatoryName,
+  signatoryPosition: form.signatoryPosition,
+  signatoryOffice: form.signatoryOffice
+}))
+
+async function generateId() {
+  const internId = Number(selectedInternId.value)
+  if (!Number.isFinite(internId) || internId <= 0) {
+    error.value = 'Select an intern first so the ID can be saved to their document history.'
+    return
+  }
+
+  const internName = (form.fullName || '').trim()
+  if (!internName) {
+    error.value = 'Enter the intern full name before generating the ID.'
+    return
+  }
+
+  const message = selectedIdHistory.value
+    ? `An ID was already generated for ${internName}. Generate and save a new ID issuance for this intern?`
+    : `Generate the ID for ${internName} and save it to the intern's document history?`
+  const confirmed = dialog?.showConfirm
+    ? await dialog.showConfirm(message, selectedIdHistory.value ? 'Regenerate ID' : 'Generate ID')
+    : window.confirm(message)
+  if (!confirmed) return
+
+  notice.value = ''
+  error.value = ''
+  saving.value = true
+  try {
+    await hrAttendanceAPI.logGeneratedDocument(idPayload.value)
+    notice.value = `ID for ${internName} was saved to the intern's document history.`
+    await loadGeneratedDocuments()
+    await printCard()
+  } catch (e) {
+    error.value = getApiErrorMessage(e, 'Could not save the generated ID. Please try again.')
+  } finally {
+    saving.value = false
+  }
 }
 
 async function printCard() {
   /* Make sure the preview QR is ready before the browser snapshots the page. */
   if (qrPayload.value && !qrDataUrl.value) {
     await renderQr(qrPayload.value)
-  }
-
-  const internName = (form.fullName || '').trim()
-  if (internName) {
-    /* Save a permanent record with the finalized ID details as issued. */
-    hrAttendanceAPI.logGeneratedDocument({
-      documentType: 'ID',
-      internId: selectedInternId.value,
-      internName,
-      idNumber: form.idNumber,
-      office: form.office,
-      school: form.schoolName,
-      schoolAddress: form.schoolAddress,
-      dateIssued: form.dateIssued || null,
-      dateStarted: form.dateStarted || null,
-      validUntil: form.validUntil || null,
-      emergencyContactName: form.emergencyName,
-      emergencyContactNumber: form.emergencyNumber,
-      emergencyContactAddress: form.emergencyAddress,
-      signatoryName: form.signatoryName,
-      signatoryPosition: form.signatoryPosition,
-      signatoryOffice: form.signatoryOffice
-    }).catch(() => {})
   }
 
   window.print()
@@ -1042,6 +1169,31 @@ async function printCard() {
 .idgen-hint {
   margin-top: 0.25rem;
   color: #8a7a71;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.idgen-lookup-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: #e8f7ec;
+  color: #166534 !important;
+  font-size: 0.62rem !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.idgen-generated-hint {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #ccebd5;
+  border-radius: 0.45rem;
+  background: #f1fbf4;
+  color: #166534;
   font-size: 0.7rem;
   line-height: 1.35;
 }

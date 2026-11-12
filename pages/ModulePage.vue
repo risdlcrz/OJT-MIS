@@ -388,6 +388,9 @@
             <button v-if="viewIntern.status === 'Completed'" type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #0dcaf0; color: #1E0F0C; border: none;" :disabled="isSaving" @click="generateCocFromView">
               <i class="fas fa-certificate me-1"></i> Generate COC
             </button>
+            <button v-if="viewIntern.status === 'Hired' || viewIntern.status === 'Completed'" type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #0d6efd; color: #fff; border: none;" :disabled="isSaving" @click="generateIdFromView">
+              <i class="far fa-id-card me-1"></i> Generate ID
+            </button>
             <button type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #ff6b00; color: #fff; border: none;" :disabled="isSaving" @click="editFromView">
               <i class="fas fa-pen me-1"></i> Edit
             </button>
@@ -864,6 +867,15 @@ function generateCocFromView() {
   closeView()
   /* Navigate to COC generation page with the intern pre-selected */
   window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+function generateIdFromView() {
+  const row = viewIntern.value
+  if (!row) return
+  closeView()
+  /* Navigate to ID generation page with the intern pre-selected */
+  window.history.pushState({}, '', `/idgenerate.html?internId=${row.id}`)
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 

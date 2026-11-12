@@ -18,6 +18,15 @@
         </button>
         <button
           type="button"
+          class="btn btn-outline-primary"
+          :disabled="!selectedInternId || sending"
+          title="Open ID generation with this intern selected"
+          @click="openIdGenerator"
+        >
+          <i class="far fa-id-card me-1"></i> Generate ID
+        </button>
+        <button
+          type="button"
           class="btn btn-primary"
           :disabled="!selectedInternId || sending"
           :aria-busy="sending"
@@ -30,7 +39,7 @@
             aria-hidden="true"
           ></span>
           <i v-else class="fas fa-paper-plane me-1"></i>
-          {{ sending ? 'Sending…' : 'Generate Certificate' }}
+          {{ sending ? 'Sending…' : (selectedCocHistory ? 'Regenerate Certificate' : 'Generate Certificate') }}
         </button>
       </div>
     </div>
@@ -93,12 +102,26 @@
                           {{ formatHours(intern.hoursRendered) }} / {{ intern.requiredHours }} hrs
                           · {{ intern.schoolName || intern.school || '—' }}
                         </span>
+                        <span v-if="cocHistoryFor(intern)" class="cocgen-lookup-badge">
+                          <i class="fas fa-check-circle me-1"></i>
+                          Already generated
+                          <template v-if="formatGeneratedDate(cocHistoryFor(intern).dateIssued || cocHistoryFor(intern).createdAt)">
+                            &middot; {{ formatGeneratedDate(cocHistoryFor(intern).dateIssued || cocHistoryFor(intern).createdAt) }}
+                          </template>
+                          &middot; Regenerate
+                        </span>
                       </button>
                     </li>
                   </template>
                 </ul>
               </div>
               <p class="cocgen-hint mb-0">Only interns marked Completed can be selected.</p>
+              <p v-if="selectedCocHistory" class="cocgen-generated-hint mb-0">
+                <i class="fas fa-circle-check me-1"></i>
+                A Certificate of Completion was already generated for this intern on
+                {{ formatGeneratedDate(selectedCocHistory.dateIssued || selectedCocHistory.createdAt) || 'a previous date' }}.
+                Generating again adds a new issuance record.
+              </p>
             </div>
 
             <details class="cocgen-form-section" open>
@@ -289,6 +312,30 @@ const sending = ref(false)
 const notice = ref('')
 const error = ref('')
 
+/* Issuance history: marks interns whose Certificate of Completion already
+   exists and powers the "Already generated / Regenerate" labels. */
+const generatedDocuments = ref([])
+const generatedLoading = ref(false)
+
+const cocHistoryByIntern = computed(() => {
+  const history = new Map()
+  for (const doc of generatedDocuments.value) {
+    if (doc.documentType !== 'Certificate of Completion') continue
+    const internId = Number(doc.internId)
+    if (!Number.isFinite(internId) || internId <= 0) continue
+
+    const current = history.get(internId)
+    const currentDate = current ? new Date(current.createdAt).getTime() : 0
+    const nextDate = new Date(doc.createdAt).getTime()
+    if (!current || nextDate >= currentDate) history.set(internId, doc)
+  }
+  return history
+})
+
+const selectedCocHistory = computed(
+  () => cocHistoryByIntern.value.get(Number(selectedInternId.value)) || null
+)
+
 const filteredInterns = computed(() => {
   const query = internQuery.value.trim().toLowerCase()
   if (!query) return interns.value
@@ -394,6 +441,17 @@ function formatHours(value) {
   return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0$/, '').replace(/\.0$/, '')
 }
 
+function formatGeneratedDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function cocHistoryFor(intern) {
+  return cocHistoryByIntern.value.get(Number(intern?.id)) || null
+}
+
 function certificateName(intern) {
   const first = (intern.firstName || '').trim()
   const middle = (intern.middleName || '').trim()
@@ -479,6 +537,29 @@ async function loadSignatories() {
   }
 }
 
+async function loadGeneratedDocuments() {
+  generatedLoading.value = true
+  try {
+    const data = await hrAttendanceAPI.getGeneratedDocuments()
+    generatedDocuments.value = Array.isArray(data) ? data : []
+  } catch {
+    generatedDocuments.value = []
+  } finally {
+    generatedLoading.value = false
+  }
+}
+
+function openIdGenerator() {
+  const internId = Number(selectedInternId.value)
+  if (!Number.isFinite(internId) || internId <= 0) {
+    error.value = 'Select an intern first so the ID can be linked to their profile.'
+    return
+  }
+
+  window.history.pushState({}, '', `/idgenerate.html?internId=${internId}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
 function resetForm() {
   selectedInternId.value = null
   internQuery.value = ''
@@ -507,7 +588,9 @@ async function generateCertificate() {
     return
   }
 
-  const message = `Generate the Certificate of Completion for ${intern.fullName} and email it to the intern's registered address?`
+  const message = cocHistoryFor(intern)
+    ? `A Certificate of Completion was already generated for ${intern.fullName}. Generate a new issuance and email it to the intern's registered address?`
+    : `Generate the Certificate of Completion for ${intern.fullName} and email it to the intern's registered address?`
   const confirmed = showConfirm
     ? await showConfirm(message, 'Confirm Generation')
     : window.confirm(message)
@@ -529,6 +612,7 @@ async function generateCertificate() {
     })
     notice.value =
       result?.message || `Certificate of Completion sent to ${intern.fullName}.`
+    await loadGeneratedDocuments()
   } catch (e) {
     error.value = getApiErrorMessage(e, 'Could not generate and send the certificate.')
   } finally {
@@ -565,6 +649,7 @@ onMounted(() => {
   window.addEventListener('ojt:certificate-intern', onCertificateIntern)
   loadInterns()
   loadSignatories()
+  loadGeneratedDocuments()
 })
 
 onBeforeUnmount(() => {
@@ -733,6 +818,31 @@ onBeforeUnmount(() => {
 .cocgen-hint {
   color: #8a7a71;
   font-size: 0.75rem;
+}
+
+.cocgen-lookup-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: #e8f7ec;
+  color: #166534 !important;
+  font-size: 0.65rem !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cocgen-generated-hint {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #ccebd5;
+  border-radius: 0.45rem;
+  background: #f1fbf4;
+  color: #166534;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .cocgen-lookup-state {

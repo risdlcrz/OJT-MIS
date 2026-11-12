@@ -18,6 +18,7 @@ import InternDtrPage from '../pages/intern-dtr.vue'
 import InternAttendancePage from '../pages/intern-attendance.vue'
 import InternDocumentsPage from '../pages/intern-documents.vue'
 import CocGeneratePage from '../pages/coc-generate.vue'
+import DocumentsHistoryPage from '../pages/documents-history.vue'
 import DtrMonitoringPage from '../pages/dtr.vue'
 import { clearSession, isHRAdmin, isIntern } from './services/api'
 
@@ -32,6 +33,7 @@ const APP_PAGES = [
   'internlist.html',
   'forms.html',
   'coc-generate.html',
+  'documents-history.html',
   'dtr.html',
   'attendance.html',
   'logs.html',
@@ -60,6 +62,7 @@ const pageComponents = {
   'logs.html': LogsPage,
   'idgenerate.html': IdGeneratePage,
   'coc-generate.html': CocGeneratePage,
+  'documents-history.html': DocumentsHistoryPage,
   'utility.html': ModulePage,
   'signatories.html': ModulePage,
   'contact.html': ModulePage,
