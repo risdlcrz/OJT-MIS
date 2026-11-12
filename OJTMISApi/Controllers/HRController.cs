@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -305,10 +306,29 @@ namespace OJTMISApi.Controllers
                     g => g.Key,
                     g => Math.Round(g.Sum(d => Math.Max(0, (d.TimeOut!.Value - d.TimeIn).TotalHours)), 2));
 
+            // The ID preview uses the intern's account photo. Interns are linked
+            // to their ApplicationUser by email address.
+            var avatars = await _userManager.Users
+                .AsNoTracking()
+                .Where(u => u.Email != null && u.AvatarUrl != null)
+                .Select(u => new { u.Email, u.AvatarUrl })
+                .ToListAsync();
+
+            var avatarByEmail = avatars
+                .GroupBy(u => u.Email!.Trim().ToLowerInvariant())
+                .ToDictionary(g => g.Key, g => g.First().AvatarUrl);
+
             var eligible = interns
                 .Select(intern =>
                 {
                     hoursByIntern.TryGetValue(intern.Id, out var rendered);
+
+                    string? avatarUrl = null;
+                    if (!string.IsNullOrWhiteSpace(intern.Email))
+                    {
+                        avatarByEmail.TryGetValue(intern.Email.Trim().ToLowerInvariant(), out avatarUrl);
+                    }
+
                     return new
                     {
                         intern.Id,
@@ -318,14 +338,20 @@ namespace OJTMISApi.Controllers
                         intern.LastName,
                         intern.Suffix,
                         intern.ApplicantNo,
+                        intern.Email,
                         intern.School,
                         intern.SchoolName,
                         intern.Program,
                         intern.ApplicantOffice,
+                        intern.GuardianName,
+                        intern.GuardianContact,
+                        intern.HouseAddress,
                         intern.RequiredHours,
+                        intern.HireDate,
                         intern.StartDate,
                         intern.EndDate,
                         intern.Status,
+                        AvatarUrl = avatarUrl,
                         HoursRendered = rendered
                     };
                 })
@@ -346,9 +372,10 @@ namespace OJTMISApi.Controllers
             }
 
             var internName = (input.InternName ?? string.Empty).Trim();
+            Intern? intern = null;
             if (input.InternId is int internId)
             {
-                var intern = await _context.Interns.AsNoTracking().FirstOrDefaultAsync(i => i.Id == internId);
+                intern = await _context.Interns.AsNoTracking().FirstOrDefaultAsync(i => i.Id == internId);
                 if (intern is not null && string.IsNullOrWhiteSpace(internName))
                 {
                     internName = intern.FullName;
@@ -358,6 +385,27 @@ namespace OJTMISApi.Controllers
             if (string.IsNullOrWhiteSpace(internName))
             {
                 return BadRequest(new { message = "Intern name is required." });
+            }
+
+            var now = DateTime.Now;
+            if (intern is not null)
+            {
+                _context.GeneratedDocuments.Add(new GeneratedDocument
+                {
+                    InternId = intern.Id,
+                    DocumentType = type == "ID" ? "Intern ID" : "Certificate of Completion",
+                    IssuedDate = (input.IssuedDate ?? now).Date,
+                    Details = string.IsNullOrWhiteSpace(input.Details)
+                        ? JsonSerializer.Serialize(new { internName, email = intern.Email })
+                        : input.Details.Trim(),
+                    SignatoryName = string.IsNullOrWhiteSpace(input.SignatoryName)
+                        ? null
+                        : input.SignatoryName.Trim(),
+                    FilePath = string.IsNullOrWhiteSpace(input.FilePath)
+                        ? null
+                        : input.FilePath.Trim(),
+                    CreatedAt = now
+                });
             }
 
             var user = await _userManager.GetUserAsync(User);
@@ -431,5 +479,9 @@ namespace OJTMISApi.Controllers
         public string? DocumentType { get; set; }
         public int? InternId { get; set; }
         public string? InternName { get; set; }
+        public DateTime? IssuedDate { get; set; }
+        public string? Details { get; set; }
+        public string? SignatoryName { get; set; }
+        public string? FilePath { get; set; }
     }
 }

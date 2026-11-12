@@ -18,6 +18,14 @@
         </button>
         <button
           type="button"
+          class="btn btn-outline-primary"
+          :disabled="!selectedInternId || sending"
+          @click="openIdModal"
+        >
+          <i class="fas fa-id-card me-1"></i> Generate ID
+        </button>
+        <button
+          type="button"
           class="btn btn-primary"
           :disabled="!selectedInternId || sending"
           :aria-busy="sending"
@@ -30,7 +38,7 @@
             aria-hidden="true"
           ></span>
           <i v-else class="fas fa-paper-plane me-1"></i>
-          {{ sending ? 'Sending…' : 'Generate Certificate' }}
+          {{ sending ? 'Sending…' : (selectedHasGeneratedCoc ? 'Regenerate Certificate' : 'Generate Certificate') }}
         </button>
       </div>
     </div>
@@ -88,10 +96,18 @@
                         @mousedown.prevent
                         @click="applyIntern(intern)"
                       >
-                        <strong>{{ intern.fullName }}</strong>
+                        <strong class="cocgen-lookup-name">
+                          {{ intern.fullName }}
+                          <span
+                            v-if="hasGeneratedCoc(intern.id)"
+                            class="badge rounded-pill bg-warning text-dark"
+                            :title="generatedCocTitle(intern.id)"
+                          >Already Generated</span>
+                        </strong>
                         <span>
                           {{ formatHours(intern.hoursRendered) }} / {{ intern.requiredHours }} hrs
                           · {{ intern.schoolName || intern.school || '—' }}
+                          <template v-if="hasGeneratedCoc(intern.id)"> · Regenerate</template>
                         </span>
                       </button>
                     </li>
@@ -99,6 +115,11 @@
                 </ul>
               </div>
               <p class="cocgen-hint mb-0">Only interns marked Completed can be selected.</p>
+              <p v-if="selectedHasGeneratedCoc" class="cocgen-generated-note mb-0">
+                <i class="fas fa-circle-check me-1"></i>
+                A Certificate of Completion is already on record for this intern.
+                Generating again will create a new record (regenerate).
+              </p>
             </div>
 
             <details class="cocgen-form-section" open>
@@ -250,13 +271,208 @@
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="idModalOpen"
+        class="modal fade show d-block cocgen-id-modal"
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cocgenIdModalLabel"
+        @click.self="closeIdModal"
+        @keydown.esc="closeIdModal"
+      >
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h5 id="cocgenIdModalLabel" class="modal-title mb-0">Generate Intern ID</h5>
+                <p class="cocgen-id-subtitle mb-0">
+                  {{ selectedIntern?.fullName || 'Select an intern' }}
+                  <span v-if="selectedIntern?.applicantNo"> &middot; {{ selectedIntern.applicantNo }}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                class="btn-close"
+                aria-label="Close"
+                :disabled="idSending"
+                @click="closeIdModal"
+              ></button>
+            </div>
+
+            <div class="modal-body">
+              <div v-if="idNotice" class="alert alert-success py-2">{{ idNotice }}</div>
+              <div v-if="idError" class="alert alert-danger py-2">{{ idError }}</div>
+
+              <div class="row g-4">
+                <div class="col-lg-5">
+                  <div class="cocgen-id-form">
+                    <div class="cocgen-id-photo">
+                      <div class="cocgen-id-photo-thumb">
+                        <img v-if="idPhotoUrl" :src="idPhotoUrl" alt="Intern photo preview" />
+                        <span v-else>{{ idInitials || 'PHOTO' }}</span>
+                      </div>
+                      <div>
+                        <div class="d-flex flex-wrap gap-2">
+                          <label class="btn btn-sm btn-outline-primary mb-0">
+                            <i class="fas fa-camera me-1"></i>
+                            {{ idPhotoUrl ? 'Change Photo' : 'Upload Photo' }}
+                            <input type="file" accept="image/*" class="d-none" @change="handleIdPhotoChange" />
+                          </label>
+                          <button
+                            v-if="idPhotoUrl"
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            @click="idPhotoUrl = ''"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <p class="cocgen-hint mb-0 mt-1">Uses the intern's account photo by default.</p>
+                        <p v-if="idPhotoError" class="text-danger small mb-0 mt-1">{{ idPhotoError }}</p>
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="cocgenIdNumber" class="form-label">ID Number</label>
+                      <input
+                        id="cocgenIdNumber"
+                        v-model="idForm.idNumber"
+                        type="text"
+                        class="form-control"
+                        maxlength="30"
+                      />
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="cocgenIdDepartment" class="form-label">Department / Office</label>
+                      <input
+                        id="cocgenIdDepartment"
+                        v-model="idForm.department"
+                        type="text"
+                        class="form-control"
+                        maxlength="80"
+                      />
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                      <div class="col-6">
+                        <label for="cocgenIdStarted" class="form-label">Date Started</label>
+                        <input id="cocgenIdStarted" v-model="idForm.dateStarted" type="date" class="form-control" />
+                      </div>
+                      <div class="col-6">
+                        <label for="cocgenIdValid" class="form-label">Valid Until</label>
+                        <input id="cocgenIdValid" v-model="idForm.validUntil" type="date" class="form-control" />
+                      </div>
+                      <div class="col-6">
+                        <label for="cocgenIdIssued" class="form-label">Date Issued</label>
+                        <input id="cocgenIdIssued" v-model="idForm.dateIssued" type="date" class="form-control" />
+                      </div>
+                      <div class="col-6">
+                        <label for="cocgenIdSignatory" class="form-label">Signatory</label>
+                        <input
+                          id="cocgenIdSignatory"
+                          v-model="idForm.signatoryName"
+                          type="text"
+                          class="form-control"
+                          maxlength="60"
+                        />
+                      </div>
+                    </div>
+
+                    <p class="cocgen-hint mb-0">
+                      Credentials, department, photo, and validity are mapped from the selected intern.
+                      Adjust any field before saving.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="col-lg-7">
+                  <div class="cocgen-id-preview-stage">
+                    <article class="cocgen-idcard" aria-label="Intern ID preview">
+                      <header class="cocgen-idcard-head">
+                        <img :src="coaLogo" alt="Commission on Audit seal" />
+                        <div class="cocgen-idcard-head-copy">
+                          <span>Republic of the Philippines</span>
+                          <strong>COMMISSION ON AUDIT</strong>
+                          <span>Commonwealth Ave., Quezon City</span>
+                        </div>
+                      </header>
+
+                      <div class="cocgen-idcard-bar">STUDENT TRAINEE</div>
+
+                      <div class="cocgen-idcard-body">
+                        <div class="cocgen-idcard-photo">
+                          <img v-if="idPhotoUrl" :src="idPhotoUrl" alt="Trainee portrait" />
+                          <span v-else>{{ idInitials || 'PHOTO' }}</span>
+                        </div>
+
+                        <div class="cocgen-idcard-details">
+                          <h3>{{ selectedIntern?.fullName || 'STUDENT NAME' }}</h3>
+                          <p>
+                            <span>Date Started</span>
+                            <strong>{{ formatLongDate(idForm.dateStarted) || '—' }}</strong>
+                          </p>
+                          <p>
+                            <span>Valid Until</span>
+                            <strong>{{ formatLongDate(idForm.validUntil) || '—' }}</strong>
+                          </p>
+                          <p>
+                            <span>Date Issued</span>
+                            <strong>{{ formatLongDate(idForm.dateIssued) || '—' }}</strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="cocgen-idcard-signature">
+                        <span>Trainee Signature</span>
+                      </div>
+
+                      <div class="cocgen-idcard-office">{{ idForm.department || 'OFFICE / DEPARTMENT' }}</div>
+
+                      <footer class="cocgen-idcard-footer">
+                        <span>No. {{ idForm.idNumber || '—' }}</span>
+                      </footer>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" :disabled="idSending" @click="closeIdModal">
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="idSending"
+                :aria-busy="idSending"
+                @click="generateId"
+              >
+                <span
+                  v-if="idSending"
+                  class="spinner-border spinner-border-sm me-1"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                <i v-else class="fas fa-id-card me-1"></i>
+                {{ idSending ? 'Saving…' : 'Generate ID' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
 <script setup>
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import coaLogo from '../assets/images/logo.png'
-import { getApiErrorMessage, certificateAPI, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
+import { getApiErrorMessage, certificateAPI, documentsAPI, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
 
 const dialog = inject('dialog', null)
 const { showConfirm } = dialog || {}
@@ -288,6 +504,55 @@ const selectedSignatoryId = ref(null)
 const sending = ref(false)
 const notice = ref('')
 const error = ref('')
+const generatedCoc = ref(new Map())
+
+const idModalOpen = ref(false)
+const idSending = ref(false)
+const idNotice = ref('')
+const idError = ref('')
+const idPhotoError = ref('')
+const idPhotoUrl = ref('')
+const idForm = reactive({
+  idNumber: '',
+  department: '',
+  dateStarted: '',
+  validUntil: '',
+  dateIssued: todayInput(),
+  signatoryName: ''
+})
+
+const selectedIntern = computed(
+  () => interns.value.find((item) => item.id === selectedInternId.value) || null
+)
+
+const selectedHasGeneratedCoc = computed(() =>
+  selectedIntern.value ? hasGeneratedCoc(selectedIntern.value.id) : false
+)
+
+function hasGeneratedCoc(internId) {
+  return generatedCoc.value.has(Number(internId))
+}
+
+function generatedCocTitle(internId) {
+  const status = generatedCoc.value.get(Number(internId))
+  if (!status) return ''
+  const issued = formatLongDate(status.lastIssuedDate)
+  const count = Number(status.count) || 1
+  return issued
+    ? `Already generated ${count} time${count === 1 ? '' : 's'} · last issued ${issued}`
+    : `Already generated ${count} time${count === 1 ? '' : 's'}`
+}
+
+const idInitials = computed(() => {
+  const name = selectedIntern.value?.fullName || ''
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase()
+})
 
 const filteredInterns = computed(() => {
   const query = internQuery.value.trim().toLowerCase()
@@ -320,6 +585,16 @@ const routeInternId = computed(() => {
   }
 })
 
+const routeAction = computed(() => {
+  try {
+    return new URLSearchParams(routeSearch.value).get('action') || ''
+  } catch {
+    return ''
+  }
+})
+
+let routeActionHandled = false
+
 function applyRouteIntern() {
   if (internsLoading.value) return
   const id = routeInternId.value
@@ -328,6 +603,10 @@ function applyRouteIntern() {
   if (intern) {
     applyIntern(intern)
     error.value = ''
+    if (routeAction.value === 'id' && !routeActionHandled) {
+      routeActionHandled = true
+      openIdModal()
+    }
   } else if (!error.value) {
     error.value = 'That intern has not completed the required hours, so a certificate cannot be generated.'
   }
@@ -335,9 +614,10 @@ function applyRouteIntern() {
 
 function syncRoute() {
   routeSearch.value = window.location.search || ''
+  routeActionHandled = false
 }
 
-watch([interns, internsLoading, routeInternId], applyRouteIntern)
+watch([interns, internsLoading, routeInternId, routeAction], applyRouteIntern)
 
 function todayInput() {
   const now = new Date()
@@ -479,6 +759,17 @@ async function loadSignatories() {
   }
 }
 
+async function loadGeneratedCocHistory() {
+  try {
+    const data = await documentsAPI.status('Certificate of Completion')
+    generatedCoc.value = new Map(
+      (Array.isArray(data) ? data : []).map((item) => [Number(item.internId), item])
+    )
+  } catch {
+    generatedCoc.value = new Map()
+  }
+}
+
 function resetForm() {
   selectedInternId.value = null
   internQuery.value = ''
@@ -507,9 +798,11 @@ async function generateCertificate() {
     return
   }
 
-  const message = `Generate the Certificate of Completion for ${intern.fullName} and email it to the intern's registered address?`
+  const message = selectedHasGeneratedCoc.value
+    ? `${intern.fullName} already has a Certificate of Completion on record. Generate and send a new one?`
+    : `Generate the Certificate of Completion for ${intern.fullName} and email it to the intern's registered address?`
   const confirmed = showConfirm
-    ? await showConfirm(message, 'Confirm Generation')
+    ? await showConfirm(message, selectedHasGeneratedCoc.value ? 'Confirm Regeneration' : 'Confirm Generation')
     : window.confirm(message)
   if (!confirmed) return
 
@@ -529,6 +822,7 @@ async function generateCertificate() {
     })
     notice.value =
       result?.message || `Certificate of Completion sent to ${intern.fullName}.`
+    await loadGeneratedCocHistory()
   } catch (e) {
     error.value = getApiErrorMessage(e, 'Could not generate and send the certificate.')
   } finally {
@@ -550,6 +844,92 @@ function printCertificate() {
   window.print()
 }
 
+function openIdModal() {
+  const intern = selectedIntern.value
+  if (!intern) {
+    error.value = 'Select an intern who has completed the required hours.'
+    return
+  }
+
+  idNotice.value = ''
+  idError.value = ''
+  idPhotoError.value = ''
+  idPhotoUrl.value = intern.avatarUrl || ''
+  idForm.idNumber = intern.applicantNo || String(intern.id)
+  idForm.department = intern.applicantOffice || ''
+  idForm.dateStarted = toDateInput(intern.startDate) || ''
+  idForm.validUntil = toDateInput(intern.endDate) || ''
+  idForm.dateIssued = todayInput()
+  idForm.signatoryName = form.signatoryName || ''
+  idModalOpen.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+function closeIdModal() {
+  if (idSending.value) return
+  idModalOpen.value = false
+  document.body.style.overflow = ''
+}
+
+function handleIdPhotoChange(event) {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  idPhotoError.value = ''
+
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    idPhotoError.value = 'Please choose an image file.'
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    idPhotoError.value = 'Photo must be 5 MB or smaller.'
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = () => {
+    idPhotoUrl.value = String(reader.result || '')
+  }
+  reader.onerror = () => {
+    idPhotoError.value = 'Could not read that image.'
+  }
+  reader.readAsDataURL(file)
+}
+
+async function generateId() {
+  const intern = selectedIntern.value
+  if (!intern) {
+    idError.value = 'Select an intern first.'
+    return
+  }
+
+  idSending.value = true
+  idNotice.value = ''
+  idError.value = ''
+  try {
+    const result = await documentsAPI.generateId({
+      internId: intern.id,
+      documentType: 'Intern ID',
+      issuedDate: idForm.dateIssued || null,
+      details: {
+        idNumber: idForm.idNumber || null,
+        office: idForm.department || null,
+        school: form.schoolName || null,
+        email: intern.email || null,
+        dateStarted: idForm.dateStarted || null,
+        validUntil: idForm.validUntil || null
+      },
+      signatoryName: idForm.signatoryName || null
+    })
+    idNotice.value = `Intern ID saved${result?.id ? ` (#${result.id})` : ''} for ${intern.fullName}.`
+  } catch (e) {
+    idError.value = getApiErrorMessage(e, 'Could not save the intern ID.')
+  } finally {
+    idSending.value = false
+  }
+}
+
 function onCertificateIntern(event) {
   const id = Number(event.detail?.internId)
   if (!Number.isFinite(id) || id <= 0) return
@@ -565,12 +945,14 @@ onMounted(() => {
   window.addEventListener('ojt:certificate-intern', onCertificateIntern)
   loadInterns()
   loadSignatories()
+  loadGeneratedCocHistory()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('hashchange', syncRoute)
   window.removeEventListener('popstate', syncRoute)
   window.removeEventListener('ojt:certificate-intern', onCertificateIntern)
+  document.body.style.overflow = ''
 })
 </script>
 
@@ -739,6 +1121,28 @@ onBeforeUnmount(() => {
   padding: 0.5rem 0.6rem;
 }
 
+.cocgen-lookup-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cocgen-lookup-option .badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.cocgen-generated-note {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #f0d58a;
+  border-radius: 0.45rem;
+  background: #fff8e1;
+  color: #7a5600;
+  font-size: 0.72rem;
+}
+
 .cocgen-preview-head {
   display: flex;
   justify-content: space-between;
@@ -869,6 +1273,214 @@ onBeforeUnmount(() => {
   font-size: 13.5pt !important;
   font-weight: 700;
   letter-spacing: 0.03em;
+}
+
+/* ---------- Generate ID modal ---------- */
+.cocgen-id-modal {
+  background: rgba(20, 12, 8, 0.45);
+}
+
+.cocgen-id-modal .modal-content {
+  border: 0;
+  border-radius: 1rem;
+}
+
+.cocgen-id-subtitle {
+  color: #8a7a71;
+  font-size: 0.8rem;
+}
+
+.cocgen-id-form .form-label {
+  margin-bottom: 0.25rem;
+  color: #4a3931;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cocgen-id-photo {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px dashed #e6d7c6;
+  border-radius: 0.75rem;
+  background: #fffaf4;
+}
+
+.cocgen-id-photo-thumb {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  overflow: hidden;
+  border: 1px solid #e6d7c6;
+  border-radius: 0.6rem;
+  background: #fff;
+  color: #b98d68;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.cocgen-id-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cocgen-id-preview-stage {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  padding: 1rem;
+  border: 1px solid #eadccb;
+  border-radius: 1rem;
+  background: #f4f1ea;
+}
+
+.cocgen-idcard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 330px;
+  aspect-ratio: 88 / 125;
+  padding: 0.85rem 0.9rem 0.7rem;
+  overflow: hidden;
+  border: 1.5px solid #201714;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #201714;
+  box-shadow: 0 18px 40px -24px rgba(54, 31, 12, 0.65);
+}
+
+.cocgen-idcard-head {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.cocgen-idcard-head img {
+  width: 2.6rem;
+  height: 2.6rem;
+  object-fit: contain;
+}
+
+.cocgen-idcard-head-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.cocgen-idcard-head-copy span {
+  font-size: 0.42rem;
+}
+
+.cocgen-idcard-head-copy strong {
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+}
+
+.cocgen-idcard-bar {
+  margin: 0.55rem -0.9rem 0.6rem;
+  padding: 0.3rem 0.5rem;
+  background: #201714;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.cocgen-idcard-body {
+  display: grid;
+  grid-template-columns: 5.4rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.cocgen-idcard-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5.4rem;
+  height: 5.4rem;
+  overflow: hidden;
+  border: 1px solid #201714;
+  background: #f4f1ea;
+  color: #8a7a71;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.cocgen-idcard-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cocgen-idcard-details h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.cocgen-idcard-details p {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 0.25rem;
+  line-height: 1.15;
+}
+
+.cocgen-idcard-details p span {
+  color: #8a7a71;
+  font-size: 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cocgen-idcard-details p strong {
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.cocgen-idcard-signature {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 2.4rem;
+  margin-top: auto;
+  border-bottom: 1px solid #201714;
+  color: #8a7a71;
+  font-size: 0.42rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cocgen-idcard-office {
+  margin: 0.45rem -0.9rem 0;
+  padding: 0.28rem 0.5rem;
+  background: #f1e6d7;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.cocgen-idcard-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.35rem;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 @media (max-width: 1100px) {

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -54,9 +55,37 @@ namespace OJTMISApi.Controllers
         /// is omitted the first signatory in the directory is used.
         /// </summary>
         [HttpPost("GenerateAndSend/{internId:int}")]
-        public async Task<ActionResult<object>> GenerateAndSend(
+        public Task<ActionResult<object>> GenerateAndSend(
             int internId,
             [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CertificateSendInput? input)
+            => GenerateAndSendCoreAsync(
+                internId,
+                input,
+                $"{ControllerPath}/GenerateAndSend/{internId}");
+
+        /// <summary>
+        /// POST: api/documents/generate-coc
+        /// Generates and emails the Certificate of Completion, using the intern id
+        /// from the request body. This is the unified document-generation route.
+        /// </summary>
+        [HttpPost("/api/documents/generate-coc")]
+        public async Task<ActionResult<object>> GenerateCoc([FromBody] GenerateCocInput input)
+        {
+            if (input is null || input.InternId <= 0)
+            {
+                return BadRequest(new { message = "InternId is required." });
+            }
+
+            return await GenerateAndSendCoreAsync(
+                input.InternId,
+                input,
+                "/api/documents/generate-coc");
+        }
+
+        private async Task<ActionResult<object>> GenerateAndSendCoreAsync(
+            int internId,
+            CertificateSendInput? input,
+            string logPath)
         {
             var intern = await _context.Interns
                 .FirstOrDefaultAsync(i => i.Id == internId);
@@ -146,13 +175,42 @@ namespace OJTMISApi.Controllers
                     statusCode: StatusCodes.Status502BadGateway);
             }
 
+            var issuedAt = DateTime.Now;
+            var details = JsonSerializer.Serialize(new
+            {
+                internId,
+                internName = name,
+                email = recipient,
+                school = model.School,
+                office = model.Office,
+                hoursRendered = rendered,
+                requiredHours = required,
+                dateStarted = model.DateStarted,
+                dateCompleted = model.DateCompleted,
+                paper = model.A4Paper ? "A4" : "Letter",
+                fileName
+            });
+
             try
             {
+                _context.GeneratedDocuments.Add(new GeneratedDocument
+                {
+                    InternId = internId,
+                    DocumentType = "Certificate of Completion",
+                    IssuedDate = issued,
+                    Details = details,
+                    SignatoryName = signatory.Name,
+                    // The PDF is emailed rather than persisted, so the attachment
+                    // name is kept as the document reference.
+                    FilePath = fileName,
+                    CreatedAt = issuedAt
+                });
+
                 ActivityLogWriter.Add(
                     _context,
                     User,
                     "POST",
-                    $"{ControllerPath}/GenerateAndSend/{internId}",
+                    logPath,
                     "Emailed a Certificate of Completion",
                     $"Sent the Certificate of Completion for {name} to {recipient}.");
                 await _context.SaveChangesAsync(HttpContext.RequestAborted);
@@ -161,7 +219,7 @@ namespace OJTMISApi.Controllers
             {
                 // The email already went out; a failed audit write must not make
                 // HR retry and send the certificate twice.
-                _logger.LogWarning(ex, "Certificate for intern {InternId} was emailed but the activity log was not written.", internId);
+                _logger.LogWarning(ex, "Certificate for intern {InternId} was emailed but the generated document record was not written.", internId);
             }
 
             return Ok(new
@@ -269,7 +327,7 @@ namespace OJTMISApi.Controllers
     /// certificate can also be generated from the stored intern and signatory
     /// records alone (for example from an integration or a notification link).
     /// </summary>
-    public sealed class CertificateSendInput
+    public class CertificateSendInput
     {
         public string? Honorific { get; set; }
 
@@ -288,5 +346,14 @@ namespace OJTMISApi.Controllers
 
         /// <summary>"a4" for A4 landscape; anything else renders Letter landscape.</summary>
         public string? Paper { get; set; }
+    }
+
+    /// <summary>
+    /// Body for POST api/documents/generate-coc. Extends the legacy certificate
+    /// options with the intern id so the unified route can identify the profile.
+    /// </summary>
+    public sealed class GenerateCocInput : CertificateSendInput
+    {
+        public int InternId { get; set; }
     }
 }

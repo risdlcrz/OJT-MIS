@@ -617,6 +617,47 @@ namespace OJTMISApi.Data.Migrations
                     b.ToTable("DocumentRequests");
                 });
 
+            modelBuilder.Entity("OJTMISApi.Models.GeneratedDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("InternId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("IssuedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SignatoryName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InternId", "IssuedDate");
+
+                    b.ToTable("GeneratedDocuments");
+                });
+
             modelBuilder.Entity("OJTMISApi.Models.Intern", b =>
                 {
                     b.Property<int>("Id")
@@ -696,13 +737,13 @@ namespace OJTMISApi.Data.Migrations
                     b.Property<DateTime?>("HireDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<double>("HoursRendered")
+                        .HasColumnType("float");
+
                     b.Property<string>("HouseAddress")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
-
-                    b.Property<double>("HoursRendered")
-                        .HasColumnType("float");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -1076,6 +1117,17 @@ namespace OJTMISApi.Data.Migrations
                     b.Navigation("Intern");
 
                     b.Navigation("Reviewer");
+                });
+
+            modelBuilder.Entity("OJTMISApi.Models.GeneratedDocument", b =>
+                {
+                    b.HasOne("OJTMISApi.Models.Intern", "Intern")
+                        .WithMany()
+                        .HasForeignKey("InternId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Intern");
                 });
 
             modelBuilder.Entity("OJTMISApi.Models.Intern", b =>

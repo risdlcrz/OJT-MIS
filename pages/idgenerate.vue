@@ -13,7 +13,8 @@
           <i class="fas fa-rotate-left me-1"></i> Reset
         </button>
         <button type="button" class="btn btn-primary" @click="printCard">
-          <i class="fas fa-print me-1"></i> Print ID
+          <i class="fas fa-print me-1"></i>
+          {{ selectedHasGeneratedId ? 'Regenerate ID' : 'Print ID' }}
         </button>
       </div>
     </div>
@@ -65,10 +66,18 @@
                         @mousedown.prevent
                         @click="applyIntern(intern)"
                       >
-                        <strong>{{ intern.fullName }}</strong>
+                        <strong class="idgen-lookup-name">
+                          {{ intern.fullName }}
+                          <span
+                            v-if="hasGeneratedId(intern.id)"
+                            class="badge rounded-pill bg-warning text-dark"
+                            :title="generatedIdTitle(intern.id)"
+                          >Already Generated</span>
+                        </strong>
                         <span>
                           {{ intern.applicantNo || `#${intern.id}` }}
                           &middot; {{ intern.applicantOffice || intern.school || '—' }}
+                          <template v-if="hasGeneratedId(intern.id)"> &middot; Regenerate</template>
                         </span>
                       </button>
                     </li>
@@ -76,6 +85,10 @@
                 </ul>
               </div>
               <p class="idgen-hint mb-0">Pick an intern to fill the card details automatically.</p>
+              <p v-if="selectedHasGeneratedId" class="idgen-generated-note mb-0">
+                <i class="fas fa-circle-check me-1"></i>
+                An ID is already on record for this intern. Printing again will create a new record (regenerate).
+              </p>
             </div>
 
             <details class="idgen-form-section" open>
@@ -479,10 +492,10 @@
 </template>
 
 <script setup>
-import { computed, inject, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import officesData from '../assets/json/offices.json'
-import { getApiErrorMessage, hrAttendanceAPI, internsAPI } from '@/services/api'
+import { getApiErrorMessage, documentsAPI, hrAttendanceAPI, internsAPI } from '@/services/api'
 
 /* Same shared office list that feeds the Signatories module dropdown. */
 const officeOptions = [
@@ -541,6 +554,26 @@ const internError = ref('')
 const internQuery = ref('')
 const internSearchOpen = ref(false)
 const selectedInternId = ref(null)
+const generatedIds = ref(new Map())
+
+const selectedHasGeneratedId = computed(() => {
+  const id = selectedInternId.value
+  return id !== null && hasGeneratedId(id)
+})
+
+function hasGeneratedId(internId) {
+  return generatedIds.value.has(Number(internId))
+}
+
+function generatedIdTitle(internId) {
+  const status = generatedIds.value.get(Number(internId))
+  if (!status) return ''
+  const issued = formatDate(status.lastIssuedDate)
+  const count = Number(status.count) || 1
+  return issued
+    ? `Already generated ${count} time${count === 1 ? '' : 's'} · last issued ${issued}`
+    : `Already generated ${count} time${count === 1 ? '' : 's'}`
+}
 
 const internMatches = computed(() => {
   const query = internQuery.value.trim().toLowerCase()
@@ -568,6 +601,17 @@ async function loadInterns() {
     internError.value = getApiErrorMessage(error, 'Could not load interns.')
   } finally {
     internsLoading.value = false
+  }
+}
+
+async function loadGeneratedIdHistory() {
+  try {
+    const data = await documentsAPI.status('Intern ID')
+    generatedIds.value = new Map(
+      (Array.isArray(data) ? data : []).map((item) => [Number(item.internId), item])
+    )
+  } catch {
+    generatedIds.value = new Map()
   }
 }
 
@@ -681,6 +725,10 @@ async function renderQr(value) {
 }
 
 watch(qrPayload, renderQr, { immediate: true })
+
+onMounted(() => {
+  loadGeneratedIdHistory()
+})
 
 onBeforeUnmount(() => {
   qrRequest += 1
@@ -811,7 +859,9 @@ async function printCard() {
       documentType: 'ID',
       internId: selectedInternId.value,
       internName
-    }).catch(() => {})
+    })
+      .then(() => loadGeneratedIdHistory())
+      .catch(() => {})
   }
 
   window.print()
@@ -1064,6 +1114,29 @@ async function printCard() {
   padding: 0.5rem 0.6rem;
   color: #8a7a71;
   font-size: 0.75rem;
+}
+
+.idgen-lookup-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.idgen-lookup-option .badge {
+  color: #201714;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.idgen-generated-note {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #f0d58a;
+  border-radius: 0.45rem;
+  background: #fff8e1;
+  color: #7a5600;
+  font-size: 0.72rem;
 }
 
 .idgen-media {

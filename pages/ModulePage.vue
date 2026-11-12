@@ -412,6 +412,13 @@ const MODULES = {
         icon: 'fas fa-certificate',
         class: 'btn btn-info',
         condition: (row) => row?.status === 'Completed'
+      },
+      {
+        name: 'generate-id',
+        label: 'Generate ID',
+        icon: 'fas fa-id-card',
+        class: 'btn btn-outline-info',
+        condition: (row) => row?.status === 'Completed'
       }
     ]
   },
@@ -843,6 +850,10 @@ function handleAction(actionName, row) {
   } else if (actionName === 'generate-coc') {
     /* Navigate to COC generation page with the intern pre-selected */
     window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  } else if (actionName === 'generate-id') {
+    /* Open the COC page with the ID preview modal already expanded */
+    window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}&action=id`)
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 }

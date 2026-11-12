@@ -245,6 +245,23 @@ export const certificateAPI = {
     (await apiClient.post(`/Certificate/GenerateAndSend/${internId}`, payload, { timeout: 60000 })).data
 }
 
+/**
+ * HR Admin only: finalizes generated documents and reads the permanent
+ * document history from the GeneratedDocuments table.
+ */
+export const documentsAPI = {
+  generateCoc: async (payload) =>
+    (await apiClient.post('/documents/generate-coc', payload, { timeout: 60000 })).data,
+  generateId: async (payload) => (await apiClient.post('/documents/generate-id', payload)).data,
+  status: async (documentType) =>
+    (await apiClient.get('/documents/status', {
+      params: documentType ? { documentType } : {}
+    })).data,
+  history: async (params = {}) => (await apiClient.get('/documents/history', { params })).data,
+  historyByIntern: async (internId) =>
+    (await apiClient.get(`/documents/history/${internId}`)).data
+}
+
 /** HR Admin only: audit trail ng mga aksyon ng bawat user. */
 export const logsAPI = {
   getAll: async ({ category = 'all', search = '', take = 500 } = {}) =>

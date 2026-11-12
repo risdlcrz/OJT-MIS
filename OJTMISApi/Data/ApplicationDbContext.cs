@@ -24,6 +24,7 @@ namespace OJTMISApi.Data
         public DbSet<DailyTimeRecord> DailyTimeRecords { get; set; } = null!;
         public DbSet<DocumentRequest> DocumentRequests { get; set; } = null!;
         public DbSet<AttendanceAdjustmentRequest> AttendanceAdjustmentRequests { get; set; } = null!;
+        public DbSet<GeneratedDocument> GeneratedDocuments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -206,6 +207,25 @@ namespace OJTMISApi.Data
                       .WithMany()
                       .HasForeignKey(r => r.ReviewedBy)
                       .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<GeneratedDocument>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+
+                entity.Property(d => d.DocumentType).IsRequired().HasMaxLength(100);
+                entity.Property(d => d.IssuedDate).ValueGeneratedNever();
+                entity.Property(d => d.Details).HasMaxLength(4000);
+                entity.Property(d => d.SignatoryName).HasMaxLength(200);
+                entity.Property(d => d.FilePath).HasMaxLength(1000);
+                entity.Property(d => d.CreatedAt).ValueGeneratedNever();
+
+                entity.HasIndex(d => new { d.InternId, d.IssuedDate });
+
+                entity.HasOne(d => d.Intern)
+                      .WithMany()
+                      .HasForeignKey(d => d.InternId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
