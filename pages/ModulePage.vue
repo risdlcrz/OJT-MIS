@@ -26,6 +26,7 @@
             <thead class="table-light">
               <tr>
                 <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
+                <th v-if="config.clickableRows" scope="col" class="intern-chevron-col" aria-label="Open profile"></th>
               </tr>
             </thead>
             <tbody>
@@ -34,17 +35,20 @@
               <tr
                 v-for="(row, index) in rows"
                 :key="row.id"
-                :style="config.clickableRows ? 'cursor: pointer;' : ''"
-                @click="rowClick(row)"
+                :class="{ 'intern-row': config.clickableRows }"
+                @click="viewInternDetails(row.id)"
               >
                 <td v-for="col in displayColumns" :key="col.prop">
-                  <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#ff6b00'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
+                  <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click.stop="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#d97706'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
                   <span v-else-if="col.prop === 'status' && row[col.prop]" class="badge" :class="statusBadge(row[col.prop])">{{ statusLabel(row[col.prop]) }}</span>
                   <span v-else class="text-dark">{{ cell(row, col) }}</span>
                 </td>
+                <td v-if="config.clickableRows" class="intern-chevron-col">
+                  <i class="fas fa-chevron-right intern-chevron" aria-hidden="true"></i>
+                </td>
               </tr>
               <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length" class="text-center text-muted py-4">
+                <td :colspan="displayColumns.length + (config.clickableRows ? 1 : 0)" class="text-center text-muted py-4">
                   No {{ (config.title || 'module').toLowerCase() }} yet.
                 </td>
               </tr>
@@ -285,66 +289,70 @@
     <!-- ================= View Intern Modal ================= -->
     <Teleport to="body">
       <div v-if="viewIntern"
-           style="position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1055; overflow: hidden; background: rgba(26, 26, 46, 0.55); display: flex; align-items: center; justify-content: center; padding: 0.75rem;"
+           class="intern-modal-backdrop"
            role="dialog" aria-modal="true" aria-label="Intern Details" @click.self="closeView">
-        <div class="modal-content shadow-lg border-0" style="background: linear-gradient(135deg, #f97316 0%, #ffffff 100%); border-radius: 12px; width: 720px; max-width: 100%; max-height: calc(100vh - 1.5rem); display: flex; flex-direction: column; box-shadow: 0 1rem 3rem rgba(0,0,0,0.175);">
-          <div class="modal-header bg-transparent border-0 px-4 pt-4 pb-2">
-            <h5 class="modal-title fw-bold" style="color: #1E0F0C;">Intern Details</h5>
+        <div class="intern-modal-card">
+          <div class="intern-modal-head">
+            <div>
+              <span class="intern-modal-eyebrow">Intern profile</span>
+              <h5 class="intern-modal-title">Intern Details</h5>
+            </div>
             <button type="button" class="btn-close" aria-label="Close" :disabled="isSaving" @click="closeView"></button>
           </div>
-          <div class="modal-body p-4 overflow-auto">
-            <div class="bg-white rounded-3 shadow-sm p-4 border mb-3" style="border-color: rgba(33,37,41,0.08) !important;">
-              <div class="row g-3">
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Applicant No.</label>
-                <div class="fw-bold fs-5" style="color: #1E0F0C;">{{ viewIntern.applicantNo || '-' }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Full Name</label>
-                <div class="fw-bold fs-5" style="color: #1E0F0C;">{{ viewIntern.fullName || '-' }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">School</label>
-                <div style="color: #1E0F0C;">{{ viewIntern.SchoolAbbreviation || viewIntern.school || '-' }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Program</label>
-                <div style="color: #1E0F0C;">{{ viewIntern.program || '-' }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Contact No.</label>
-                <div style="color: #1E0F0C;">{{ viewIntern.contactNumber || '-' }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Department</label>
-                <div style="color: #1E0F0C;">{{ viewIntern.requestOffice || (viewIntern.requestId ? `#${viewIntern.requestId}` : '-') }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Hours Rendered</label>
-                <div class="fw-bold" style="color: #1E0F0C;">{{ internHours(viewIntern) }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">OJT Period</label>
-                <div style="color: #1E0F0C;">{{ formatOJTPeriod(viewIntern) }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Fridays</label>
-                <div style="color: #1E0F0C;">{{ viewIntern.excludeFriday ? 'Excluded' : 'Included' }}</div>
-              </div>
-              <div class="col-md-6">
-                <label class="text-secondary small text-uppercase fw-semibold">Status</label>
-                <div>
-                  <span class="badge" :class="statusBadge(viewIntern.status)">{{ statusLabel(viewIntern.status) || '-' }}</span>
+
+          <div class="intern-modal-body">
+            <div class="intern-section">
+              <div class="intern-fields">
+                <div class="intern-field">
+                  <span class="intern-field-label">Applicant No.</span>
+                  <div class="intern-field-value intern-field-value--strong">{{ viewIntern.applicantNo || '-' }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Full Name</span>
+                  <div class="intern-field-value intern-field-value--strong">{{ viewIntern.fullName || '-' }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">School</span>
+                  <div class="intern-field-value">{{ viewIntern.SchoolAbbreviation || viewIntern.school || '-' }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Program</span>
+                  <div class="intern-field-value">{{ viewIntern.program || '-' }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Contact No.</span>
+                  <div class="intern-field-value">{{ viewIntern.contactNumber || '-' }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Department</span>
+                  <div class="intern-field-value">{{ viewIntern.requestOffice || (viewIntern.requestId ? `#${viewIntern.requestId}` : '-') }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Hours Rendered</span>
+                  <div class="intern-field-value intern-field-value--strong">{{ internHours(viewIntern) }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">OJT Period</span>
+                  <div class="intern-field-value">{{ formatOJTPeriod(viewIntern) }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Fridays</span>
+                  <div class="intern-field-value">{{ viewIntern.excludeFriday ? 'Excluded' : 'Included' }}</div>
+                </div>
+                <div class="intern-field">
+                  <span class="intern-field-label">Status</span>
+                  <div class="intern-field-value">
+                    <span class="badge" :class="statusBadge(viewIntern.status)">{{ statusLabel(viewIntern.status) || '-' }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-            </div>
 
             <!-- Permanent issuance history: mga dokumentong na-issue sa intern. -->
-            <div class="bg-white rounded-3 shadow-sm p-4 border" style="border-color: rgba(33,37,41,0.08) !important;">
-              <div class="d-flex align-items-center justify-content-between mb-3">
-                <h6 class="mb-0 fw-bold" style="color: #1E0F0C;">
-                  <i class="fas fa-file-alt me-2" style="color: #ff6b00;"></i>Generated Documents
+            <div class="intern-section">
+              <div class="intern-section-head">
+                <h6 class="intern-section-title">
+                  <i class="fas fa-file-alt"></i> Generated Documents
                 </h6>
                 <span v-if="viewDocumentsLoading" class="spinner-border spinner-border-sm text-secondary" role="status"></span>
               </div>
@@ -379,26 +387,27 @@
                   </tbody>
                 </table>
               </div>
-              <div v-else-if="!viewDocumentsLoading" class="text-muted small mb-0">
+              <div v-else-if="!viewDocumentsLoading" class="intern-empty">
                 No documents have been generated for this intern yet.
               </div>
             </div>
           </div>
-          <div class="modal-footer bg-transparent border-0 px-4 pt-2 pb-4 d-flex justify-content-end gap-3">
-            <button v-if="viewIntern.status === 'Completed'" type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #0dcaf0; color: #1E0F0C; border: none;" :disabled="isSaving" @click="generateCocFromView">
-              <i class="fas fa-certificate me-1"></i> Generate COC
+
+          <div class="intern-modal-foot">
+            <button v-if="viewIntern.status === 'Completed'" type="button" class="intern-btn intern-btn--maroon" :disabled="isSaving" @click="generateCocFromView">
+              <i class="fas fa-certificate"></i> Generate COC
             </button>
-            <button v-if="viewIntern.status === 'Hired' || viewIntern.status === 'Completed'" type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #0d6efd; color: #fff; border: none;" :disabled="isSaving" @click="generateIdFromView">
-              <i class="far fa-id-card me-1"></i> Generate ID
+            <button v-if="viewIntern.status === 'Hired' || viewIntern.status === 'Completed'" type="button" class="intern-btn intern-btn--amber" :disabled="isSaving" @click="generateIdFromView">
+              <i class="far fa-id-card"></i> Generate ID
             </button>
-            <button type="button" class="btn px-4 py-2 rounded-pill shadow-sm" style="background: #ff6b00; color: #fff; border: none;" :disabled="isSaving" @click="editFromView">
-              <i class="fas fa-pen me-1"></i> Edit
+            <button type="button" class="intern-btn intern-btn--edit" :disabled="isSaving" @click="editFromView">
+              <i class="fas fa-pen"></i> Edit
             </button>
-            <button type="button" class="btn btn-outline-danger px-4 py-2 rounded-pill shadow-sm" :disabled="isSaving" @click="deleteFromView">
-              <i class="fas fa-trash me-1"></i> Delete
+            <button type="button" class="intern-btn intern-btn--danger-ghost" :disabled="isSaving" @click="deleteFromView">
+              <i class="fas fa-trash"></i> Delete
             </button>
-            <button type="button" class="btn btn-outline-secondary px-4 py-2 rounded-pill shadow-sm" @click="closeView">
-              <i class="fas fa-times me-1"></i> Close
+            <button type="button" class="intern-btn intern-btn--ghost" @click="closeView">
+              <i class="fas fa-times"></i> Close
             </button>
           </div>
         </div>
@@ -818,9 +827,11 @@ function confirmDelete(row) {
 }
 function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = { id: null, name: '' } } }
 
-function rowClick(row) {
+/* Buksan ang intern profile kapag ni-click ang buong row sa Intern List. */
+function viewInternDetails(id) {
   if (!config.value?.clickableRows) return
-  openView(row)
+  const row = rows.value.find((item) => Number(item.id) === Number(id))
+  if (row) openView(row)
 }
 
 function openView(row) {
@@ -983,4 +994,280 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ''
 })
 </script>
+
+<style scoped>
+/* Buong row sa Intern List ay clickable at may subtle elevation hover. */
+tr.intern-row {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+tr.intern-row:hover {
+  background-color: #fffbeb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Ina-apply din sa cells dahil ang Bootstrap table ay may sariling
+   background paint sa bawat td, kaya hindi lumalabas ang row background. */
+tr.intern-row:hover > td {
+  --bs-table-bg-state: #fffbeb;
+}
+
+/* Trailing chevron: muted by default, orange at mas kita kapag hover. */
+.intern-chevron-col {
+  width: 2.5rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.intern-chevron {
+  color: #b8a99f;
+  opacity: 0.45;
+  transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+tr.intern-row:hover .intern-chevron {
+  color: #d97706;
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* ===== Intern Details modal ===== */
+.intern-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1055;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0.75rem;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.intern-modal-card {
+  display: flex;
+  flex-direction: column;
+  width: 720px;
+  max-width: 100%;
+  max-height: calc(100vh - 1.5rem);
+  overflow: hidden;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.intern-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.intern-modal-eyebrow {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: #b45309;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intern-modal-title {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.intern-modal-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  background-color: #f8fafc;
+}
+
+.intern-section {
+  padding: 1.1rem 1.25rem;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+}
+
+.intern-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.intern-field {
+  min-width: 0;
+}
+
+.intern-field-label {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.intern-field-value {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.intern-field-value--strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.intern-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.intern-section-title {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.intern-section-title > i {
+  margin-right: 0.5rem;
+  color: #d97706;
+}
+
+.intern-empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.intern-modal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f1f5f9;
+  background-color: #fff;
+}
+
+.intern-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.intern-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.intern-btn:focus-visible {
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+}
+
+/* Primary action: warm amber solid. */
+.intern-btn--amber {
+  color: #fff;
+  background-color: #d97706;
+  box-shadow: 0 6px 14px rgba(217, 119, 6, 0.28);
+}
+
+.intern-btn--amber:hover:not(:disabled) {
+  background-color: #b45309;
+}
+
+/* Certificate action: deep maroon solid. */
+.intern-btn--maroon {
+  color: #fff;
+  background-color: #7f1d1d;
+}
+
+.intern-btn--maroon:hover:not(:disabled) {
+  background-color: #6b1515;
+}
+
+/* Edit: warm amber accent, lighter than the primary action. */
+.intern-btn--edit {
+  color: #92400e;
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.intern-btn--edit:hover:not(:disabled) {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+}
+
+/* Secondary / muted outline actions. */
+.intern-btn--ghost {
+  color: #475569;
+  background-color: #fff;
+  border-color: #e2e8f0;
+}
+
+.intern-btn--ghost:hover:not(:disabled) {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.intern-btn--danger-ghost {
+  color: #7f1d1d;
+  background-color: #fff;
+  border-color: #e2e8f0;
+}
+
+.intern-btn--danger-ghost:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #f5c2c2;
+}
+
+@media (max-width: 575.98px) {
+  .intern-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .intern-modal-head,
+  .intern-modal-body,
+  .intern-modal-foot {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+}
+</style>
+
 
