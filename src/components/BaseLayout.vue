@@ -272,6 +272,7 @@ import menuConfig from '../../assets/json/menu.json'
 import internMenuConfig from '../../assets/json/intern-menu.json'
 import supervisorMenuConfig from '../../assets/json/supervisor-menu.json'
 import { currentUser, isIntern, isSupervisor, notificationsAPI } from '../services/api'
+import { ALL_PAGES, canOpen } from '../utils/access'
 
 const props = defineProps({
   currentPage: {
@@ -282,35 +283,8 @@ const props = defineProps({
 
 const emit = defineEmits(['navigate'])
 
-/* Mga page na hawak ng App.vue. Ang iba ay normal na link. */
-const ALLOWED_PAGES = [
-  'login.html',
-  'dashboard.html',
-  'requests.html',
-  'time-adjustments.html',
-  'applicants.html',
-  'schools.html',
-  'internlist.html',
-  'forms.html',
-  'dtr.html',
-  'attendance.html',
-  'logs.html',
-  'idgenerate.html',
-  'coc-generate.html',
-  'documents-history.html',
-  'utility.html',
-  'signatories.html',
-  'account.html',
-  'contact.html',
-  'intern-dtr.html',
-  'intern-attendance.html',
-  'intern-documents.html',
-  'supervisor-interns.html',
-  'supervisor-dtr.html',
-  'supervisor-time-adjustments.html',
-  'supervisor-orientations.html',
-  'supervisor-requests.html'
-]
+/* Every page App.vue can render; anything else is a normal link. */
+const ALLOWED_PAGES = ['login.html', ...ALL_PAGES]
 
 /* ---- Global Dialog state ---- */
 const isAlertOpen = ref(false)
@@ -403,8 +377,7 @@ const pageMeta = computed(() => {
 const menu = ref([])
 
 /* Ang hero (dashboard) ay buong background ang ipinapakita. */
-/* The supervisor dashboard is a regular padded page, not a hero. */
-const isHeroPage = computed(() => props.currentPage === 'dashboard.html' && !isSupervisor())
+const isHeroPage = computed(() => props.currentPage === 'dashboard.html')
 
 function logout() {
   window.history.pushState({}, '', '/login.html')
@@ -470,26 +443,31 @@ function notificationDestination(item) {
   const completion = item?.type === 'InternCompleted'
     || link === '/requests/certificate-completion'
     || link.endsWith('/certificate-completion')
-  if (completion) {
-    return hasIntern ? `/coc-generate.html?internId=${internId}` : '/coc-generate.html'
-  }
+  if (completion) link = '/coc-generate.html'
 
   /* Lahat ng item ay dapat clickable: kung walang nakaimbak na link
-     (hal. lumang notifications), hulaan ang destinasyon mula sa type/module. */
-  if (!link) link = notificationFallback(item)
+     (hal. lumang notifications), o hindi ito mabubuksan ng role ng user
+     (hal. HR link sa notification ng supervisor), hulaan ang destinasyon
+     mula sa type/module. */
+  if (!link || !canOpen(pageOf(link))) link = notificationFallback(item)
+  if (!link || !canOpen(pageOf(link))) return ''
 
   /* Ang internId ay idinadagdag lamang sa mga page na nakaka-entindi
      nito, para hindi magkalat ang query sa ibang module. */
-  const page = (link.split('?')[0] || '').replace(/^\//, '').toLowerCase()
-  if (hasIntern && INTERN_ID_PAGES.includes(page) && !/[?&]internId=/.test(link)) {
+  if (hasIntern && INTERN_ID_PAGES.includes(pageOf(link)) && !/[?&]internId=/.test(link)) {
     link += `${link.includes('?') ? '&' : '?'}internId=${internId}`
   }
 
   return link
 }
 
+/* "/coc-generate.html?internId=3#x" -> "coc-generate.html" */
+function pageOf(link) {
+  return (String(link).split(/[?#]/)[0] || '').replace(/^\//, '').toLowerCase()
+}
+
 /* Mga page na kayang mag-deep link sa isang specific na intern. */
-const INTERN_ID_PAGES = ['internlist.html', 'coc-generate.html', 'idgenerate.html']
+const INTERN_ID_PAGES = ['internlist.html', 'coc-generate.html', 'idgenerate.html', 'supervisor-dtr.html']
 
 /* Fallback na destinasyon batay sa notification type o module — para
    clickable pa rin ang mga notification na walang Link na nakaimbak. */
@@ -499,7 +477,9 @@ function notificationFallback(item) {
 
   if (isSupervisor()) {
     if (type === 'AttendanceAdjustment' || module === 'attendance') return '/supervisor-time-adjustments.html'
-    if (type === 'Intern' || module === 'interns') return '/supervisor-interns.html'
+    if (type === 'InternCompleted' || type === 'Intern' || module === 'interns') {
+      return Number(item?.internId) > 0 ? '/supervisor-dtr.html' : '/supervisor-interns.html'
+    }
     if (type === 'Applicant' || module === 'applicants') return '/supervisor-orientations.html'
     if (type === 'InternRequest' || module === 'applicant requests') return '/supervisor-requests.html'
     return ''
@@ -799,17 +779,17 @@ body {
 
 @media (min-width: 768px) {
   .app-shell > .main-header {
-    width: calc(100% - 232px);
-    margin-left: 232px !important;
+    width: calc(100% - var(--sidebar-w));
+    margin-left: var(--sidebar-w) !important;
   }
 
   .app-shell > .main-sidebar {
     top: 0;
-    width: 232px;
+    width: var(--sidebar-w);
   }
 
   .app-shell > .content-wrapper {
-    margin-left: 232px !important;
+    margin-left: var(--sidebar-w) !important;
   }
 
   .app-shell .main-header-logo {
@@ -898,7 +878,7 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 232px;
+  width: var(--sidebar-w);
   z-index: 1030;
   display: flex;
   flex-direction: column;
@@ -1072,6 +1052,11 @@ body {
   transform: translateY(-6px) rotate(-45deg);
 }
 
+/* Sidebar width: one value drives the sidebar, header, and content offset. */
+.app-shell {
+  --sidebar-w: 248px;
+}
+
 /* ---------- Sidebar navigation (photo reference) ---------- */
 .main-sidebar .sidebar {
   flex: 1 1 auto;
@@ -1103,6 +1088,27 @@ body {
   flex: 0 0 22px;
   font-size: 1.05rem;
   margin: 0;
+}
+
+/* The label fills the row so the submenu chevron sits at the right edge
+   instead of crowding the text, and long labels wrap cleanly. */
+.main-sidebar .nav-sidebar .nav-link p {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.main-sidebar .nav-sidebar .nav-link p .right {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* Breathing room between top-level items. */
+.main-sidebar .nav-sidebar > .nav-item + .nav-item {
+  margin-top: 2px;
 }
 
 .main-sidebar .nav-sidebar .nav-link .right {
@@ -1160,9 +1166,9 @@ body {
 .main-sidebar .nav-treeview > .nav-item > .nav-link {
   display: flex;
   align-items: center;
-  min-height: 40px;
-  margin: 0 0 0.25rem !important;
-  padding: 0.7rem 0.85rem 0.7rem 1.85rem !important;
+  min-height: 42px;
+  margin: 0 0 0.15rem !important;
+  padding: 0.65rem 1rem 0.65rem 2.85rem !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: #ffe9d2 !important;
@@ -1186,9 +1192,9 @@ body {
 .main-sidebar .nav-treeview > .nav-item > .nav-link.active {
   background: rgba(0, 0, 0, 0.35) !important;
   color: #ffffff !important;
-  box-shadow: none !important;
-  margin-bottom: 0.25rem !important;
-  padding: 0.7rem 0.85rem 0.7rem 1.85rem !important;
+  box-shadow: inset 3px 0 0 #f0a43a !important;
+  margin-bottom: 0.15rem !important;
+  padding: 0.65rem 1rem 0.65rem 2.85rem !important;
 }
 
 .main-sidebar .nav-treeview > .nav-item:last-child > .nav-link.active {
@@ -1503,7 +1509,7 @@ body {
 }
 
 .app-shell > .content-wrapper {
-  margin-left: 232px;
+  margin-left: var(--sidebar-w);
   min-height: 100vh;
   padding: 64px 0 0;
   background: transparent !important;

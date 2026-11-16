@@ -83,6 +83,7 @@ builder.Services.AddScoped<IEmailService, MailtrapEmailService>();
 builder.Services.AddSingleton<AttendanceQrService>();
 builder.Services.AddScoped<AttendanceLogService>();
 builder.Services.AddScoped<InternCompletionService>();
+builder.Services.AddScoped<AttendanceAdjustmentReviewService>();
 
 // ---------------------------------------------------------------------
 // Services

@@ -88,9 +88,13 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { internsAPI, internRequestsAPI, applicantsAPI, schoolsAPI } from '@/services/api'
+import { useHeroDashboard } from '@/utils/dashboard'
+import { go } from '@/utils/navigation'
 import '../assets/css/Dashboard.css'
+
+const { scrollY, summaryEl, scrollToSummary } = useHeroDashboard()
 
 const activeInterns = ref(0)
 const internRequests = ref(0)
@@ -99,33 +103,12 @@ const openRequests = ref(0)
 const activeMoa = ref(0)
 const lastRequest = ref(null)
 const moaList = ref([])
-const scrollY = ref(0)
-const summaryEl = ref(null)
-
-function onScroll() {
-  if (raf) return
-  raf = requestAnimationFrame(() => {
-    scrollY.value = window.scrollY
-    raf = 0
-  })
-}
-
-function scrollToSummary() {
-  summaryEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
 
 function formatDate(v) {
   const d = v ? new Date(v) : null
   return d && !Number.isNaN(d.getTime())
     ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '-'
-}
-
-/* Parehong paraan ng pag-navigate ng BaseLayout: baguhin ang URL tapos
-   ipaalam sa App na muli itong buksan. */
-function go(page) {
-  window.history.pushState({}, '', `/${page}`)
-  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 async function loadStats() {
@@ -159,32 +142,7 @@ async function loadStats() {
   }
 }
 
-let observer = null
-let raf = 0
-
-onMounted(() => {
-  loadStats()
-  window.addEventListener('scroll', onScroll, { passive: true })
-
-  const items = document.querySelectorAll('.ojt-summary .reveal')
-  if (!('IntersectionObserver' in window)) {
-    items.forEach(el => el.classList.add('reveal-in'))
-    return
-  }
-  observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return
-      entry.target.classList.add('reveal-in')
-      observer.unobserve(entry.target)
-    })
-  }, { threshold: 0.15 })
-  items.forEach(el => observer.observe(el))
-})
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-  window.removeEventListener('scroll', onScroll)
-})
+onMounted(loadStats)
 </script>
 
 

@@ -473,3 +473,43 @@ a.ojt-stat:hover {
 .ojt-stat--alert .ojt-stat-value {
   color: #c2410c;
 }
+
+/* ---------- Harmonizing older tables ----------
+   Pages that still render Bootstrap badges and cards around an .ojt-table
+   get the same pill shape and card frame as the shared table card. */
+
+.ojt-table .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.card:has(.ojt-table),
+.modern-card:has(.ojt-table) {
+  border: 1px solid #ece7e2;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(30, 15, 12, 0.06);
+  overflow: hidden;
+}
+
+.card:has(.ojt-table) > .card-header {
+  padding: 1.1rem 1.25rem 0.9rem;
+  background: #fff;
+  border-bottom: 1px solid #f3eee9;
+}
+
+.card:has(.ojt-table) > .card-header .card-title {
+  color: #1E0F0C;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.card:has(.ojt-table) > .card-body:has(> .table-responsive:only-child) {
+  padding: 0;
+}

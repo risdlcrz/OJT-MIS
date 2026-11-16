@@ -91,9 +91,7 @@
                         <span v-if="idHistoryFor(intern)" class="idgen-lookup-badge">
                           <i class="fas fa-check-circle me-1"></i>
                           Already generated
-                          <template v-if="formatHistoryDate(idHistoryFor(intern).dateIssued || idHistoryFor(intern).createdAt)">
-                            &middot; {{ formatHistoryDate(idHistoryFor(intern).dateIssued || idHistoryFor(intern).createdAt) }}
-                          </template>
+                          <template v-if="issuedOn(idHistoryFor(intern))">&middot; {{ issuedOn(idHistoryFor(intern)) }}</template>
                           &middot; Regenerate
                         </span>
                       </button>
@@ -109,7 +107,7 @@
               <p v-if="selectedIdHistory" class="idgen-generated-hint mb-0">
                 <i class="fas fa-circle-check me-1"></i>
                 An ID was already generated for this intern on
-                {{ formatHistoryDate(selectedIdHistory.dateIssued || selectedIdHistory.createdAt) || 'a previous date' }}.
+                {{ issuedOn(selectedIdHistory) || 'a previous date' }}.
                 Generating again adds a new issuance record.
               </p>
             </div>
@@ -519,6 +517,7 @@ import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } fr
 import QRCode from 'qrcode'
 import officesData from '../assets/json/offices.json'
 import { getApiErrorMessage, hrAttendanceAPI, internsAPI } from '@/services/api'
+import { DOC_TYPES, issuedOn, useIssuanceHistory } from '@/utils/documents'
 
 /* Same shared office list that feeds the Signatories module dropdown. */
 const officeOptions = [
@@ -556,10 +555,6 @@ const saving = ref(false)
 const notice = ref('')
 const error = ref('')
 
-/* Issuance history for the "Already generated / Regenerate" labels. */
-const generatedDocuments = ref([])
-const generatedLoading = ref(false)
-
 const dialog = inject('dialog', null)
 
 function formatDate(value) {
@@ -577,36 +572,6 @@ const formattedDates = computed(() => ({
   issued: formatDate(form.dateIssued)
 }))
 
-const idHistoryByIntern = computed(() => {
-  const history = new Map()
-  for (const doc of generatedDocuments.value) {
-    if (doc.documentType !== 'ID') continue
-    const internId = Number(doc.internId)
-    if (!Number.isFinite(internId) || internId <= 0) continue
-
-    const current = history.get(internId)
-    const currentDate = current ? new Date(current.createdAt).getTime() : 0
-    const nextDate = new Date(doc.createdAt).getTime()
-    if (!current || nextDate >= currentDate) history.set(internId, doc)
-  }
-  return history
-})
-
-const selectedIdHistory = computed(
-  () => idHistoryByIntern.value.get(Number(selectedInternId.value)) || null
-)
-
-function idHistoryFor(intern) {
-  return idHistoryByIntern.value.get(Number(intern?.id)) || null
-}
-
-function formatHistoryDate(value) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 /* ---------------- Intern autocomplete ---------------- */
 const interns = ref([])
 const internsLoading = ref(false)
@@ -614,6 +579,13 @@ const internError = ref('')
 const internQuery = ref('')
 const internSearchOpen = ref(false)
 const selectedInternId = ref(null)
+
+/* Issuance history for the "Already generated / Regenerate" labels. */
+const {
+  historyFor: idHistoryFor,
+  selected: selectedIdHistory,
+  load: loadGeneratedDocuments
+} = useIssuanceHistory(DOC_TYPES.ID, selectedInternId)
 
 const internMatches = computed(() => {
   const query = internQuery.value.trim().toLowerCase()
@@ -656,19 +628,6 @@ function openInternSearch() {
   internSearchOpen.value = true
   loadInterns()
   loadGeneratedDocuments()
-}
-
-async function loadGeneratedDocuments() {
-  if (generatedLoading.value) return
-  generatedLoading.value = true
-  try {
-    const data = await hrAttendanceAPI.getGeneratedDocuments()
-    generatedDocuments.value = Array.isArray(data) ? data : []
-  } catch {
-    generatedDocuments.value = []
-  } finally {
-    generatedLoading.value = false
-  }
 }
 
 function onInternInput() {

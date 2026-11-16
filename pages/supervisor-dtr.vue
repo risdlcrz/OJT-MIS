@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import StatusPill from '@/components/StatusPill.vue'
 import TableState from '@/components/TableState.vue'
 import { getApiErrorMessage, supervisorAPI } from '@/services/api'
@@ -165,7 +165,22 @@ async function loadRecords() {
   }
 }
 
+/* A notification deep link (?internId=) while this page is already open. */
+function onRouteChange() {
+  const id = routeInternId()
+  if (id === internId.value) return
+  internId.value = id
+  loadRecords()
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('hashchange', onRouteChange)
+  window.removeEventListener('popstate', onRouteChange)
+})
+
 onMounted(async () => {
+  window.addEventListener('hashchange', onRouteChange)
+  window.addEventListener('popstate', onRouteChange)
   await loadDepartment()
   if (scopeError.value) {
     isLoading.value = false

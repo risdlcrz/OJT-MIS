@@ -27,31 +27,7 @@ import SupervisorTimeAdjustmentsPage from '../pages/supervisor-time-adjustments.
 import SupervisorOrientationsPage from '../pages/supervisor-orientations.vue'
 import SupervisorRequestsPage from '../pages/supervisor-requests.vue'
 import { clearSession, isHRAdmin, isIntern, isSupervisor } from './services/api'
-
-/* Lahat ng page na kayang buksan ng app. Kailangan ding nakasaad
-   sa assets/json/menu.json at ALLOWED_PAGES (BaseLayout.vue). */
-const APP_PAGES = [
-  'requests.html',
-  'time-adjustments.html',
-  'applicants.html',
-  'dashboard.html',
-  'schools.html',
-  'internlist.html',
-  'forms.html',
-  'coc-generate.html',
-  'documents-history.html',
-  'dtr.html',
-  'attendance.html',
-  'logs.html',
-  'idgenerate.html',
-  'utility.html',
-  'signatories.html',
-  'account.html',
-  'contact.html',
-  'intern-dtr.html',
-  'intern-attendance.html',
-  'intern-documents.html'
-]
+import { canOpen } from './utils/access'
 
 const pageComponents = {
   'login.html': LoginPage,
@@ -83,31 +59,11 @@ const pageComponents = {
   'forbidden.html': ForbiddenPage
 }
 
-/* Department supervisor / signatory portal. Data is scoped server-side to
-   the supervisor's department (api/supervisor/*). */
-const SUPERVISOR_PAGES = [
-  'dashboard.html',
-  'account.html',
-  'supervisor-interns.html',
-  'supervisor-dtr.html',
-  'supervisor-time-adjustments.html',
-  'supervisor-orientations.html',
-  'supervisor-requests.html'
-]
-
-const INTERN_PAGES = [
-  'dashboard.html',
-  'account.html',
-  'intern-dtr.html',
-  'intern-attendance.html',
-  'intern-documents.html'
-]
-
 function isLoggedIn() {
   return Boolean(localStorage.getItem('authToken'))
 }
 
-/* Ang lahat ng current view ay para sa HR Admin lamang. */
+/* Role-based routing: allowed pages come from src/utils/access.js. */
 function resolvePage() {
   const page = window.location.pathname.split('/').pop()?.toLowerCase() || ''
 
@@ -120,28 +76,11 @@ function resolvePage() {
     return 'login.html'
   }
 
-  if (isIntern()) {
-    return INTERN_PAGES.includes(page) ? page : 'forbidden.html'
-  }
+  if (canOpen(page)) return page
 
-  if (isSupervisor()) {
-    return SUPERVISOR_PAGES.includes(page) ? page : 'forbidden.html'
-  }
-
-  if (!isHRAdmin()) {
-    return 'forbidden.html'
-  }
-
-  // Supervisor screens call api/supervisor/*, which HR accounts cannot use.
-  if (page.startsWith('supervisor-')) {
-    return 'forbidden.html'
-  }
-
-  if (page in pageComponents) {
-    return page
-  }
-
-  return 'dashboard.html'
+  // HR typing an unknown address lands on the dashboard; every other case
+  // (another role's page, or no recognized role) is forbidden.
+  return isHRAdmin() && !(page in pageComponents) ? 'dashboard.html' : 'forbidden.html'
 }
 
 const currentPage = ref(resolvePage())

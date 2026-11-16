@@ -90,7 +90,11 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getApiErrorMessage, internPortalAPI } from '@/services/api'
+import { useHeroDashboard } from '@/utils/dashboard'
+import { go } from '@/utils/navigation'
 import '../assets/css/Dashboard.css'
+
+const { scrollY, summaryEl, scrollToSummary, revealCards } = useHeroDashboard()
 
 const intern = ref({})
 const hoursRendered = ref(0)
@@ -99,9 +103,6 @@ const today = ref(null)
 const clockedIn = ref(false)
 const isLoading = ref(true)
 const error = ref('')
-const scrollY = ref(0)
-const summaryEl = ref(null)
-let raf = 0
 
 const progress = computed(() => {
   const required = Number(intern.value.requiredHours) || 0
@@ -124,23 +125,6 @@ const todayLabel = computed(() => {
   if (!today.value) return 'No time in yet'
   return `AM ${shiftSpan(today.value.morning)} · PM ${shiftSpan(today.value.afternoon)}`
 })
-
-function onScroll() {
-  if (raf) return
-  raf = requestAnimationFrame(() => {
-    scrollY.value = window.scrollY
-    raf = 0
-  })
-}
-
-function scrollToSummary() {
-  summaryEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function go(page) {
-  window.history.pushState({}, '', `/${page}`)
-  window.dispatchEvent(new PopStateEvent('popstate'))
-}
 
 function formatDate(v) {
   const d = v ? new Date(v) : null
@@ -182,55 +166,13 @@ function onDtrUpdated(event) {
   clockedIn.value = Boolean(detail.clockedIn)
 }
 
-let observer = null
-
-function revealCards() {
-  observer?.disconnect()
-  const items = document.querySelectorAll('.ojt-summary .reveal')
-  if (!('IntersectionObserver' in window)) {
-    items.forEach((el) => el.classList.add('reveal-in'))
-    return
-  }
-  observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return
-      entry.target.classList.add('reveal-in')
-      observer.unobserve(entry.target)
-    })
-  }, { threshold: 0.15 })
-  items.forEach((el) => observer.observe(el))
-}
-
 onMounted(() => {
   load()
-  window.addEventListener('scroll', onScroll, { passive: true })
   window.addEventListener('ojt:dtr-updated', onDtrUpdated)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('scroll', onScroll)
   window.removeEventListener('ojt:dtr-updated', onDtrUpdated)
-  observer?.disconnect()
 })
 </script>
 
-<style scoped>
-.ojt-hero-kicker {
-  margin: 0;
-  color: #ffe7c2;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.ojt-hero-title-name {
-  font-size: clamp(2.4rem, 7vw, 5.5rem);
-  max-width: 16ch;
-}
-
-.stat-number-text {
-  font-size: 1.35rem;
-  line-height: 1.2;
-}
-</style>

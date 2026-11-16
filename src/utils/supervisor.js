@@ -37,11 +37,7 @@ export function useDepartment() {
   return { department, signatory, scopeError, loadDepartment }
 }
 
-/** Navigate inside the single-page app without a full reload. */
-export function go(path) {
-  window.history.pushState({}, '', path.startsWith('/') ? path : `/${path}`)
-  window.dispatchEvent(new PopStateEvent('popstate'))
-}
+export { go } from './navigation'
 
 /** True when a value has something worth showing in a table cell. */
 export function present(value) {

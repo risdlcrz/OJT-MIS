@@ -1,170 +1,138 @@
 <template>
-  <section class="docsh-page">
-    <div class="docsh-toolbar">
-      <div>
-        <h2 class="docsh-title">Documents History</h2>
-        <p class="docsh-subtitle">
-          Every ID card and Certificate of Completion that HR has generated and finalized,
-          with the exact details recorded on the intern's profile.
-        </p>
+  <section class="content">
+    <div class="ojt-stat-grid">
+      <div class="ojt-stat">
+        <span class="ojt-stat-label">Total generated</span>
+        <span class="ojt-stat-value">{{ loading ? '…' : documents.length }}</span>
       </div>
-
-      <div class="d-flex flex-wrap gap-2">
-        <button type="button" class="btn btn-outline-secondary" :disabled="loading" @click="load">
-          <i class="fas fa-rotate me-1" :class="{ 'fa-spin': loading }"></i>
-          Refresh
-        </button>
-        <button type="button" class="btn btn-outline-primary" @click="openGenerator('coc-generate.html')">
-          <i class="fas fa-certificate me-1"></i> Generate COC
-        </button>
-        <button type="button" class="btn btn-primary" @click="openGenerator('idgenerate.html')">
-          <i class="far fa-id-card me-1"></i> Generate ID
-        </button>
+      <div class="ojt-stat">
+        <span class="ojt-stat-label">ID cards</span>
+        <span class="ojt-stat-value">{{ loading ? '…' : idCount }}</span>
+      </div>
+      <div class="ojt-stat">
+        <span class="ojt-stat-label">Certificates</span>
+        <span class="ojt-stat-value">{{ loading ? '…' : cocCount }}</span>
+      </div>
+      <div class="ojt-stat">
+        <span class="ojt-stat-label">Interns served</span>
+        <span class="ojt-stat-value">{{ loading ? '…' : internCount }}</span>
       </div>
     </div>
 
-    <div v-if="notice" class="alert alert-success mb-0">{{ notice }}</div>
-    <div v-if="error" class="alert alert-danger mb-0 d-flex justify-content-between align-items-center">
-      <span>{{ error }}</span>
-      <button type="button" class="btn btn-sm btn-outline-danger" :disabled="loading" @click="load">
-        Retry
-      </button>
-    </div>
-
-    <div v-if="loading" class="docsh-loading">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading documents…</span>
-      </div>
-    </div>
-
-    <template v-else>
-      <div class="docsh-stats">
-        <article class="docsh-stat">
-          <span class="docsh-stat-label">Total generated</span>
-          <strong class="docsh-stat-value">{{ documents.length }}</strong>
-        </article>
-        <article class="docsh-stat">
-          <span class="docsh-stat-label">ID cards</span>
-          <strong class="docsh-stat-value">{{ idCount }}</strong>
-        </article>
-        <article class="docsh-stat">
-          <span class="docsh-stat-label">Certificates</span>
-          <strong class="docsh-stat-value">{{ cocCount }}</strong>
-        </article>
-        <article class="docsh-stat">
-          <span class="docsh-stat-label">Interns served</span>
-          <strong class="docsh-stat-value">{{ internCount }}</strong>
-        </article>
-      </div>
-
-      <div class="card shadow-sm">
-        <div class="card-header docsh-filterbar">
-          <div class="docsh-search">
-            <i class="fas fa-search" aria-hidden="true"></i>
-            <input
-              id="docshSearch"
-              v-model="query"
-              type="search"
-              class="form-control"
-              placeholder="Search by intern, ID number, office, school, or signatory"
-              autocomplete="off"
-            />
-          </div>
-
-          <select v-model="typeFilter" class="form-select docsh-type-filter" aria-label="Filter by document type">
-            <option value="all">All documents</option>
-            <option value="ID">ID cards</option>
-            <option value="Certificate of Completion">Certificates of Completion</option>
-          </select>
-
-          <span class="docsh-count">
-            {{ filteredDocuments.length }}
-            {{ filteredDocuments.length === 1 ? 'record' : 'records' }}
-          </span>
+    <div class="ojt-table-card">
+      <div class="ojt-table-head">
+        <div>
+          <h3 class="ojt-table-title">Documents History</h3>
+          <p class="ojt-table-subtitle">
+            Every ID card and Certificate of Completion HR has generated, with the exact details recorded on the intern's profile.
+          </p>
         </div>
+        <div class="ojt-table-tools">
+          <button type="button" class="btn btn-outline-primary btn-sm" :disabled="loading" @click="load">
+            <i class="fas fa-rotate me-1"></i> Refresh
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm" @click="openGenerator('coc-generate.html')">
+            <i class="fas fa-certificate me-1"></i> Generate COC
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" @click="openGenerator('idgenerate.html')">
+            <i class="far fa-id-card me-1"></i> Generate ID
+          </button>
+        </div>
+      </div>
 
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th scope="col">Document</th>
-                  <th scope="col">Intern</th>
-                  <th scope="col">Date Issued</th>
-                  <th scope="col">Finalized Details</th>
-                  <th scope="col">Signatory</th>
-                  <th scope="col">Generated</th>
-                  <th scope="col" class="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="doc in filteredDocuments" :key="doc.id">
-                  <td>
-                    <span class="badge docsh-badge" :class="doc.documentType === 'ID' ? 'docsh-badge--id' : 'docsh-badge--coc'">
-                      {{ doc.documentType === 'ID' ? 'ID' : 'COC' }}
+      <div v-if="error" class="alert alert-danger d-flex justify-content-between align-items-center gap-2">
+        <span><i class="fas fa-exclamation-triangle me-2"></i>{{ error }}</span>
+        <button type="button" class="btn btn-sm btn-outline-danger" :disabled="loading" @click="load">Retry</button>
+      </div>
+
+      <div class="ojt-toolbar">
+        <div class="ojt-search">
+          <i class="fas fa-search"></i>
+          <input v-model="query" type="search" class="form-control form-control-sm" autocomplete="off"
+                 placeholder="Search intern, ID no., office, signatory" aria-label="Search documents" />
+        </div>
+        <div class="ojt-segment" role="tablist" aria-label="Filter by document type">
+          <button v-for="tab in typeTabs" :key="tab.value" type="button" role="tab"
+                  :class="{ active: typeFilter === tab.value }" :aria-selected="typeFilter === tab.value"
+                  @click="typeFilter = tab.value">
+            {{ tab.label }}
+          </button>
+        </div>
+        <span class="ojt-toolbar-count">{{ filteredDocuments.length }} of {{ documents.length }} record(s)</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover ojt-table">
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Intern</th>
+              <th class="col-date">Date Issued</th>
+              <th>Finalized Details</th>
+              <th>Signatory</th>
+              <th class="col-date">Generated</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <TableState :colspan="7" :loading="loading" :empty="!loading && filteredDocuments.length === 0"
+                        icon="far fa-file-alt"
+                        :title="documents.length ? 'No documents match your filters' : 'No documents generated yet'"
+                        :text="documents.length ? 'Try a different search or document type.' : 'Generate an ID or Certificate of Completion to start the history.'" />
+            <template v-if="!loading">
+              <tr v-for="doc in filteredDocuments" :key="doc.id" class="ojt-row-link" tabindex="0"
+                  @click="selected = doc" @keydown.enter="selected = doc">
+                <td>
+                  <StatusPill :status="doc.documentType" :label="doc.documentType === 'ID' ? 'ID Card' : 'COC'"
+                              :tone="doc.documentType === 'ID' ? 'brand' : 'info'" />
+                </td>
+                <td>
+                  <span class="ojt-cell-primary">{{ doc.internName || (doc.internId ? `Intern #${doc.internId}` : 'Unlinked intern') }}</span>
+                  <span class="ojt-cell-secondary">{{ doc.school || doc.office || 'No school on record' }}</span>
+                </td>
+                <td class="col-date">
+                  <span v-if="formatDateOnly(doc.dateIssued)">{{ formatDateOnly(doc.dateIssued) }}</span>
+                  <span v-else class="ojt-na">Not set</span>
+                </td>
+                <td>
+                  <template v-if="doc.documentType === 'ID'">
+                    <span class="ojt-cell-primary">ID No. {{ doc.idNumber || 'not set' }}</span>
+                    <span class="ojt-cell-secondary">
+                      {{ doc.office || 'No office' }}<template v-if="doc.validUntil"> &middot; valid until {{ formatDateOnly(doc.validUntil) }}</template>
                     </span>
-                    <span class="docsh-type-label">{{ doc.documentType }}</span>
-                  </td>
-                  <td>
-                    <button
-                      v-if="doc.internId"
-                      type="button"
-                      class="docsh-intern-link"
-                      @click="openProfile(doc)"
-                    >
-                      {{ doc.internName || `Intern #${doc.internId}` }}
-                    </button>
-                    <span v-else class="docsh-intern-name">{{ doc.internName || 'Unlinked intern' }}</span>
-                  </td>
-                  <td class="text-nowrap">{{ formatDateOnly(doc.dateIssued) || '—' }}</td>
-                  <td class="small">
-                    <template v-if="doc.documentType === 'ID'">
-                      <span class="docsh-detail-strong">ID No. {{ doc.idNumber || '—' }}</span>
-                      <span v-if="doc.office"> &middot; {{ doc.office }}</span>
-                      <span v-if="doc.validUntil"> &middot; valid until {{ formatDateOnly(doc.validUntil) }}</span>
-                    </template>
-                    <template v-else>
-                      <span class="docsh-detail-strong">{{ formatHours(doc.hoursRendered) }} of {{ doc.requiredHours || 0 }} hrs</span>
-                      <span v-if="doc.recipientEmail"> &middot; emailed to {{ doc.recipientEmail }}</span>
-                    </template>
-                  </td>
-                  <td class="small">{{ doc.signatoryName || '—' }}</td>
-                  <td class="small text-nowrap">
-                    {{ formatDateTime(doc.createdAt) }}
-                    <span v-if="doc.generatedBy" class="docsh-generated-by">by {{ doc.generatedBy }}</span>
-                  </td>
-                  <td class="text-end text-nowrap">
-                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" @click="selected = doc">
-                      <i class="fas fa-eye me-1"></i> View
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-primary"
-                      :title="doc.internId ? 'Open the generator with this intern selected' : 'Open the generator'"
-                      @click="regenerate(doc)"
-                    >
-                      <i class="fas fa-rotate-right me-1"></i>
-                      {{ doc.internId ? 'Regenerate' : 'Generate' }}
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="filteredDocuments.length === 0">
-                  <td colspan="7" class="text-center text-muted py-5">
-                    <i class="fas fa-folder-open fa-2x d-block mb-2"></i>
-                    <template v-if="documents.length">
-                      No documents match the current search or filter.
-                    </template>
-                    <template v-else>
-                      No documents have been generated yet. Generate an ID or Certificate of Completion to start the history.
-                    </template>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </template>
+                  <template v-else>
+                    <span class="ojt-cell-primary">{{ formatHours(doc.hoursRendered) }} of {{ doc.requiredHours || 0 }} hrs</span>
+                    <span class="ojt-cell-secondary">{{ doc.recipientEmail ? `Emailed to ${doc.recipientEmail}` : 'Not emailed' }}</span>
+                  </template>
+                </td>
+                <td>
+                  <template v-if="doc.signatoryName">
+                    <span class="d-block">{{ doc.signatoryName }}</span>
+                    <span v-if="doc.signatoryPosition" class="ojt-cell-secondary text-capitalize">{{ doc.signatoryPosition }}</span>
+                  </template>
+                  <span v-else class="ojt-na">No signatory</span>
+                </td>
+                <td class="col-date">
+                  <span class="d-block">{{ formatDateTime(doc.createdAt) }}</span>
+                  <span v-if="doc.generatedBy" class="ojt-cell-secondary">by {{ doc.generatedBy }}</span>
+                </td>
+                <td class="col-actions">
+                  <button type="button" class="ojt-icon-btn" title="View details" :aria-label="`View ${doc.documentType} details`"
+                          @click.stop="selected = doc">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button type="button" class="ojt-icon-btn" :title="doc.internId ? 'Regenerate for this intern' : 'Open generator'"
+                          :aria-label="`Regenerate ${doc.documentType}`" @click.stop="regenerate(doc)">
+                    <i class="fas fa-rotate-right"></i>
+                  </button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
       </div>
-    </template>
+    </div>
 
     <Teleport to="body">
       <div
@@ -286,14 +254,21 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import StatusPill from '@/components/StatusPill.vue'
+import TableState from '@/components/TableState.vue'
 import { getApiErrorMessage, hrAttendanceAPI } from '@/services/api'
+import { DOC_TYPES } from '@/utils/documents'
 
 const documents = ref([])
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
-const notice = ref('')
 const query = ref('')
 const typeFilter = ref('all')
+const typeTabs = [
+  { value: 'all', label: 'All' },
+  { value: DOC_TYPES.ID, label: 'ID Cards' },
+  { value: DOC_TYPES.COC, label: 'Certificates' }
+]
 const selected = ref(null)
 
 const filteredDocuments = computed(() => {
@@ -333,7 +308,7 @@ const internCount = computed(
 async function load() {
   loading.value = true
   error.value = ''
-  notice.value = ''
+
   try {
     const data = await hrAttendanceAPI.getGeneratedDocuments()
     documents.value = Array.isArray(data) ? data : []
@@ -397,169 +372,6 @@ onMounted(load)
 </script>
 
 <style>
-.docsh-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.docsh-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.docsh-title {
-  margin: 0;
-  color: #1e0f0c;
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.docsh-subtitle {
-  margin: 0.25rem 0 0;
-  max-width: 72ch;
-  color: #74655d;
-  font-size: 0.88rem;
-}
-
-.docsh-loading {
-  display: flex;
-  justify-content: center;
-  padding: 3rem 0;
-}
-
-.docsh-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem;
-}
-
-.docsh-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid #efe1d0;
-  border-radius: 0.85rem;
-  background: linear-gradient(145deg, #fffdf9, #fff7ec);
-}
-
-.docsh-stat-label {
-  color: #8a7a71;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.docsh-stat-value {
-  color: #1e0f0c;
-  font-size: 1.45rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.docsh-filterbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem;
-  background: #fff7ec;
-  border-bottom: 1px solid #f3e4d3;
-}
-
-.docsh-search {
-  position: relative;
-  flex: 1 1 260px;
-}
-
-.docsh-search > i {
-  position: absolute;
-  top: 50%;
-  left: 0.65rem;
-  color: #b98d68;
-  font-size: 0.75rem;
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.docsh-search .form-control {
-  padding-left: 1.75rem;
-}
-
-.docsh-type-filter {
-  flex: 0 0 auto;
-  width: auto;
-  min-width: 190px;
-}
-
-.docsh-count {
-  margin-left: auto;
-  color: #8a7a71;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.docsh-badge {
-  padding: 0.3rem 0.5rem;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.docsh-badge--id {
-  background: #0d6efd;
-  color: #fff;
-}
-
-.docsh-badge--coc {
-  background: #0dcaf0;
-  color: #1e0f0c;
-}
-
-.docsh-type-label {
-  display: inline-block;
-  margin-left: 0.45rem;
-  color: #6b5b52;
-  font-size: 0.78rem;
-}
-
-.docsh-intern-link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #b85f00;
-  font-weight: 700;
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.docsh-intern-link:hover,
-.docsh-intern-link:focus-visible {
-  color: #7d3d00;
-}
-
-.docsh-intern-name {
-  color: #3a2a22;
-  font-weight: 600;
-}
-
-.docsh-detail-strong {
-  color: #3a2a22;
-  font-weight: 700;
-}
-
-.docsh-generated-by {
-  display: block;
-  color: #8a7a71;
-  font-size: 0.7rem;
-}
-
 .docsh-modal-layer {
   position: fixed;
   inset: 0;
@@ -661,25 +473,7 @@ onMounted(load)
   border-top: 1px solid #f1e7d8;
 }
 
-@media (max-width: 900px) {
-  .docsh-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 575.98px) {
-  .docsh-stats {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .docsh-type-filter {
-    width: 100%;
-  }
-
-  .docsh-count {
-    margin-left: 0;
-  }
-
   .docsh-detail-grid {
     grid-template-columns: minmax(0, 1fr);
   }

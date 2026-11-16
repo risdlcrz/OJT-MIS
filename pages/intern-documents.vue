@@ -14,8 +14,8 @@
           </button>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+          <table class="table table-hover ojt-table">
+            <thead>
               <tr>
                 <th>Document</th>
                 <th>Status</th>
@@ -45,8 +45,8 @@
       <div class="card-body">
         <p class="text-muted">Documents HR has already generated and released to you, with the details as issued.</p>
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+          <table class="table table-hover ojt-table">
+            <thead>
               <tr>
                 <th>Document</th>
                 <th>Issued</th>

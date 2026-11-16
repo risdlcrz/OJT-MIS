@@ -105,9 +105,7 @@
                         <span v-if="cocHistoryFor(intern)" class="cocgen-lookup-badge">
                           <i class="fas fa-check-circle me-1"></i>
                           Already generated
-                          <template v-if="formatGeneratedDate(cocHistoryFor(intern).dateIssued || cocHistoryFor(intern).createdAt)">
-                            &middot; {{ formatGeneratedDate(cocHistoryFor(intern).dateIssued || cocHistoryFor(intern).createdAt) }}
-                          </template>
+                          <template v-if="issuedOn(cocHistoryFor(intern))">&middot; {{ issuedOn(cocHistoryFor(intern)) }}</template>
                           &middot; Regenerate
                         </span>
                       </button>
@@ -119,7 +117,7 @@
               <p v-if="selectedCocHistory" class="cocgen-generated-hint mb-0">
                 <i class="fas fa-circle-check me-1"></i>
                 A Certificate of Completion was already generated for this intern on
-                {{ formatGeneratedDate(selectedCocHistory.dateIssued || selectedCocHistory.createdAt) || 'a previous date' }}.
+                {{ issuedOn(selectedCocHistory) || 'a previous date' }}.
                 Generating again adds a new issuance record.
               </p>
             </div>
@@ -280,6 +278,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import coaLogo from '../assets/images/logo.png'
 import { getApiErrorMessage, certificateAPI, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
+import { DOC_TYPES, issuedOn, useIssuanceHistory } from '@/utils/documents'
 
 const dialog = inject('dialog', null)
 const { showConfirm } = dialog || {}
@@ -314,27 +313,11 @@ const error = ref('')
 
 /* Issuance history: marks interns whose Certificate of Completion already
    exists and powers the "Already generated / Regenerate" labels. */
-const generatedDocuments = ref([])
-const generatedLoading = ref(false)
-
-const cocHistoryByIntern = computed(() => {
-  const history = new Map()
-  for (const doc of generatedDocuments.value) {
-    if (doc.documentType !== 'Certificate of Completion') continue
-    const internId = Number(doc.internId)
-    if (!Number.isFinite(internId) || internId <= 0) continue
-
-    const current = history.get(internId)
-    const currentDate = current ? new Date(current.createdAt).getTime() : 0
-    const nextDate = new Date(doc.createdAt).getTime()
-    if (!current || nextDate >= currentDate) history.set(internId, doc)
-  }
-  return history
-})
-
-const selectedCocHistory = computed(
-  () => cocHistoryByIntern.value.get(Number(selectedInternId.value)) || null
-)
+const {
+  historyFor: cocHistoryFor,
+  selected: selectedCocHistory,
+  load: loadGeneratedDocuments
+} = useIssuanceHistory(DOC_TYPES.COC, selectedInternId)
 
 const filteredInterns = computed(() => {
   const query = internQuery.value.trim().toLowerCase()
@@ -441,17 +424,6 @@ function formatHours(value) {
   return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0$/, '').replace(/\.0$/, '')
 }
 
-function formatGeneratedDate(value) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function cocHistoryFor(intern) {
-  return cocHistoryByIntern.value.get(Number(intern?.id)) || null
-}
-
 function certificateName(intern) {
   const first = (intern.firstName || '').trim()
   const middle = (intern.middleName || '').trim()
@@ -534,18 +506,6 @@ async function loadSignatories() {
     }
   } catch {
     signatories.value = []
-  }
-}
-
-async function loadGeneratedDocuments() {
-  generatedLoading.value = true
-  try {
-    const data = await hrAttendanceAPI.getGeneratedDocuments()
-    generatedDocuments.value = Array.isArray(data) ? data : []
-  } catch {
-    generatedDocuments.value = []
-  } finally {
-    generatedLoading.value = false
   }
 }
 

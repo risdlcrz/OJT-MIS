@@ -49,8 +49,8 @@
         </div>
 
         <div v-else class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+          <table class="table table-hover ojt-table">
+            <thead>
               <tr>
                 <th scope="col" class="text-center" style="width: 70px;">#</th>
                 <th scope="col" style="width: 170px;">Date &amp; Time</th>

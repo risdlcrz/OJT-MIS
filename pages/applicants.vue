@@ -50,7 +50,7 @@
                 <!-- Card Body -->
                 <div class="card-body">
                     <div class="applicant-table-scroll" role="region" aria-label="Applicants list">
-                        <table id="example1" class="table table-hover modern-table">
+                        <table id="example1" class="table table-hover modern-table ojt-table">
                             <thead class="text-center">
                                 <tr>
                                     <th>APPLICANT NO.</th>
@@ -187,7 +187,7 @@
 
                 <div class="card-body">
                     <div class="applicant-table-scroll" role="region" aria-label="Schedule orientation list">
-                        <table id="example2" class="table table-hover modern-table">
+                        <table id="example2" class="table table-hover modern-table ojt-table">
                             <thead class="text-center">
                                 <tr>
                                     <th>OJT NO.</th>

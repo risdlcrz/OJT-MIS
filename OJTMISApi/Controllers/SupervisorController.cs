@@ -22,18 +22,18 @@ namespace OJTMISApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly InternCompletionService _completion;
+        private readonly AttendanceAdjustmentReviewService _review;
         private readonly ILogger<SupervisorController> _logger;
 
         public SupervisorController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            InternCompletionService completion,
+            AttendanceAdjustmentReviewService review,
             ILogger<SupervisorController> logger)
         {
             _context = context;
             _userManager = userManager;
-            _completion = completion;
+            _review = review;
             _logger = logger;
         }
 
@@ -301,158 +301,21 @@ namespace OJTMISApi.Controllers
             var scope = await ResolveDepartmentScopeAsync();
             if (scope is null) return MissingDepartment();
 
-            var decision = (input?.Decision ?? input?.Status ?? string.Empty).Trim();
-            var approve = decision.Equals("approve", StringComparison.OrdinalIgnoreCase) ||
-                          decision.Equals("approved", StringComparison.OrdinalIgnoreCase);
-            var reject = decision.Equals("reject", StringComparison.OrdinalIgnoreCase) ||
-                         decision.Equals("rejected", StringComparison.OrdinalIgnoreCase);
-
-            if (!approve && !reject)
+            var decision = (input?.Decision ?? input?.Status ?? string.Empty).Trim().ToLowerInvariant();
+            var approve = decision is "approve" or "approved";
+            if (!approve && decision is not ("reject" or "rejected"))
             {
                 return BadRequest(new { message = "Decision must be Approve or Reject." });
             }
 
-            var adjustment = await _context.AttendanceAdjustmentRequests
-                .Include(r => r.Intern)
-                .Include(r => r.AttendanceLog)
-                .FirstOrDefaultAsync(r => r.Id == id);
-
-            if (adjustment is null)
-            {
-                return NotFound(new { message = $"Time adjustment request {id} was not found." });
-            }
-
-            var intern = adjustment.Intern
-                ?? (adjustment.AttendanceLog?.InternId is int logInternId
-                    ? await _context.Interns.FirstOrDefaultAsync(i => i.Id == logInternId)
-                    : null);
-
-            if (!IsInternInScope(intern, scope))
-            {
-                // Do not reveal that a request exists outside the supervisor's
-                // department.
-                return NotFound(new { message = $"Time adjustment request {id} was not found." });
-            }
-
-            if (!string.Equals(adjustment.Status, AttendanceAdjustmentStatus.Pending, StringComparison.OrdinalIgnoreCase))
-            {
-                return Conflict(new { message = $"This request has already been {adjustment.Status.ToLowerInvariant()}." });
-            }
-
-            var log = adjustment.AttendanceLog;
-            var now = DateTime.Now;
-            var reviewerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var label = AttendanceAdjustmentField.Label(adjustment.TargetField);
-            double? dailyHours = null;
-            var completed = false;
-
-            if (approve)
-            {
-                if (log is null)
-                {
-                    return BadRequest(new { message = "The linked attendance log no longer exists." });
-                }
-
-                var field = AttendanceAdjustmentField.Normalize(adjustment.TargetField);
-                if (field is null)
-                {
-                    return BadRequest(new { message = "The request target field is not valid." });
-                }
-
-                var logIsMorning = !string.Equals(log.ShiftType, AttendanceShift.Afternoon, StringComparison.OrdinalIgnoreCase);
-                if (AttendanceAdjustmentField.IsMorning(field) != logIsMorning)
-                {
-                    return BadRequest(new { message = "The request's target field no longer matches the attendance log." });
-                }
-
-                label = AttendanceAdjustmentField.Label(field);
-                var approvedTime = log.Date.Date.Add(adjustment.RequestedTime.TimeOfDay);
-
-                if (AttendanceAdjustmentField.IsTimeIn(field))
-                {
-                    if (log.TimeOut is not null && approvedTime >= log.TimeOut.Value)
-                    {
-                        return BadRequest(new { message = $"The requested {label} must be before the time out." });
-                    }
-
-                    log.TimeIn = approvedTime;
-                    log.Status = AttendanceShift.TimeInStatus(log.ShiftType, approvedTime);
-                }
-                else
-                {
-                    if (approvedTime <= log.TimeIn)
-                    {
-                        return BadRequest(new { message = $"The requested {label} must be after the time in." });
-                    }
-
-                    log.TimeOut = approvedTime;
-                }
-
-                log.UpdatedAt = now;
-                adjustment.Status = AttendanceAdjustmentStatus.Approved;
-            }
-            else
-            {
-                adjustment.Status = AttendanceAdjustmentStatus.Rejected;
-            }
-
-            adjustment.ReviewedBy = reviewerId;
-            adjustment.ApproverSignatoryId = await ResolveApproverSignatoryIdAsync(reviewerId);
-            adjustment.ReviewedAt = now;
-
-            await NotifyInternAsync(
-                intern,
-                approve ? "Time adjustment approved" : "Time adjustment rejected",
-                approve
-                    ? $"Your {label} adjustment for {log!.Date:MMM d, yyyy} was approved by your department supervisor."
-                    : $"Your {label} adjustment for {log?.Date.ToString("MMM d, yyyy") ?? "the selected day"} was rejected by your department supervisor.",
-                now);
-
-            var internName = intern?.FullName ?? log?.InternName ?? "an intern";
-            ActivityLogWriter.Add(
-                _context,
+            var outcome = await _review.ReviewAsync(
+                id,
+                approve,
                 User,
-                "POST",
                 $"/api/supervisor/time-adjustments/{id}/review",
-                approve ? "Approved a time adjustment request" : "Rejected a time adjustment request",
-                $"{(approve ? "Approved" : "Rejected")} {internName}'s {label} adjustment for " +
-                $"{log?.Date.ToString("MMM d, yyyy") ?? "the selected day"}.");
-
-            await _context.SaveChangesAsync();
-
-            if (approve && log is not null)
-            {
-                dailyHours = await CalculateDailyHoursAsync(adjustment.InternId, log.Date);
-                completed = await _completion.CheckAsync(adjustment.InternId);
-            }
-
-            return Ok(new
-            {
-                message = approve
-                    ? "Time adjustment approved."
-                    : "Time adjustment rejected.",
-                completed,
-                request = new
-                {
-                    adjustment.Id,
-                    adjustment.Status,
-                    adjustment.ReviewedAt,
-                    adjustment.TargetField,
-                    adjustment.ApproverSignatoryId
-                },
-                attendanceLog = log is null
-                    ? null
-                    : new
-                    {
-                        log.Id,
-                        log.Date,
-                        log.ShiftType,
-                        log.TimeIn,
-                        log.TimeOut,
-                        log.Status
-                    },
-                dailyHours
-            });
+                inScope: intern => IsInternInScope(intern, scope),
+                reviewedBySuffix: " by your department supervisor");
+            return StatusCode(outcome.StatusCode, outcome.Body);
         }
 
         /// <summary>
@@ -1031,54 +894,6 @@ namespace OJTMISApi.Controllers
             }
 
             return intern.RequestId is int requestId && scope.RequestIds.Contains(requestId);
-        }
-
-        private async Task<int?> ResolveApproverSignatoryIdAsync(string? userId)
-        {
-            if (string.IsNullOrWhiteSpace(userId)) return null;
-
-            return await _context.Signatories
-                .AsNoTracking()
-                .Where(s => s.UserId == userId &&
-                            (s.ApprovalScope == SignatoryApprovalScope.Dtr ||
-                             s.ApprovalScope == SignatoryApprovalScope.Both))
-                .OrderBy(s => s.Id)
-                .Select(s => (int?)s.Id)
-                .FirstOrDefaultAsync();
-        }
-
-        private async Task NotifyInternAsync(Intern? intern, string title, string message, DateTime now)
-        {
-            if (string.IsNullOrWhiteSpace(intern?.Email)) return;
-
-            var user = await _userManager.FindByEmailAsync(intern.Email);
-            if (user is null) return;
-
-            _context.Notifications.Add(new Notification
-            {
-                UserId = user.Id,
-                Title = title,
-                Message = message,
-                Module = "Attendance",
-                Link = "/intern-attendance.html",
-                InternId = intern.Id,
-                Type = "AttendanceAdjustment",
-                IsRead = false,
-                CreatedAt = now
-            });
-        }
-
-        private async Task<double> CalculateDailyHoursAsync(int internId, DateTime date)
-        {
-            var dayStart = date.Date;
-            var dayEnd = dayStart.AddDays(1);
-
-            var records = await _context.DailyTimeRecords
-                .AsNoTracking()
-                .Where(x => x.InternId == internId && x.Date >= dayStart && x.Date < dayEnd)
-                .ToListAsync();
-
-            return Math.Round(records.Sum(x => AttendanceShift.Hours(x)), 2);
         }
 
         private ObjectResult MissingDepartment() =>

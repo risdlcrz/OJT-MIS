@@ -26,8 +26,8 @@
         <button type="button" class="btn btn-sm btn-outline-danger ms-2" @click="load">Retry</button>
       </div>
       <div v-else class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
+        <table class="table table-hover ojt-table">
+          <thead>
             <tr>
               <th>Intern Name</th>
               <th>Date</th>

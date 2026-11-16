@@ -668,3 +668,31 @@ body {
         gap: 1.5rem;
     }
 }
+
+/* ---------- Role dashboards (intern, supervisor) ---------- */
+.ojt-hero-kicker {
+    margin: 0;
+    color: #ffe7c2;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.ojt-hero-title-name {
+    font-size: clamp(2.4rem, 7vw, 5.5rem);
+    max-width: 16ch;
+}
+
+.ojt-hero-sub {
+    margin: -1rem 0 0;
+    color: #fff3e0;
+    font-size: 1rem;
+    font-weight: 500;
+    text-shadow: 0 2px 10px rgba(40, 15, 0, 0.35);
+}
+
+.stat-number-text {
+    font-size: 1.35rem;
+    line-height: 1.2;
+}

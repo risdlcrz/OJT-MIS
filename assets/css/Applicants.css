@@ -47,13 +47,6 @@ body {
     margin-bottom: 0;
 }
 
-#example1 thead th,
-#example1 tbody td,
-#example2 thead th,
-#example2 tbody td {
-    text-align: center;
-    vertical-align: middle;
-}
 
 .modern-table thead th {
     color: #1E0F0C;
