@@ -1,0 +1,475 @@
+/* =====================================================================
+   Shared data-table styling (Signatories, Intern List, Requests,
+   Time Adjustments, and the Supervisor portal).
+
+   Usage:
+     <div class="ojt-table-card">
+       <div class="ojt-table-head"> title + .ojt-table-tools </div>
+       <div class="ojt-toolbar"> search / filters </div>
+       <div class="table-responsive">
+         <table class="table ojt-table"> ... </table>
+       </div>
+     </div>
+   ===================================================================== */
+
+.ojt-table-card {
+  background: #fff;
+  border: 1px solid #ece7e2;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(30, 15, 12, 0.06);
+  overflow: hidden;
+}
+
+.ojt-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1.1rem 1.25rem 0.9rem;
+  border-bottom: 1px solid #f3eee9;
+}
+
+.ojt-table-title {
+  margin: 0;
+  color: #1E0F0C;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ojt-table-subtitle {
+  margin: 0.15rem 0 0;
+  color: #6b625d;
+  font-size: 0.85rem;
+}
+
+.ojt-table-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---------- Toolbar: search + filters ---------- */
+
+.ojt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: #fcfaf8;
+  border-bottom: 1px solid #f3eee9;
+}
+
+.ojt-search {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.ojt-search > i {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: #a0958e;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.ojt-search > input {
+  padding-left: 2rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+
+.ojt-toolbar .form-select {
+  width: auto;
+  min-width: 140px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+}
+
+.ojt-toolbar-count {
+  margin-left: auto;
+  color: #8a7f78;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* Segmented filter (status tabs). */
+.ojt-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  background: #f3eee9;
+  border-radius: 999px;
+}
+
+.ojt-segment > button {
+  padding: 0.3rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6b625d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ojt-segment > button:hover {
+  color: #1E0F0C;
+}
+
+.ojt-segment > button.active {
+  background: #fff;
+  color: #c2410c;
+  box-shadow: 0 1px 3px rgba(30, 15, 12, 0.12);
+}
+
+.ojt-segment .ojt-segment-count {
+  margin-left: 0.35rem;
+  color: #a0958e;
+  font-weight: 500;
+}
+
+/* ---------- Table ---------- */
+
+.ojt-table {
+  margin-bottom: 0;
+  --bs-table-hover-bg: #fff7ed;
+  font-size: 0.875rem;
+}
+
+.ojt-table > thead > tr > th {
+  padding: 0.7rem 1rem;
+  background: #faf7f4;
+  border-bottom: 1px solid #ece7e2;
+  color: #6b625d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ojt-table > tbody > tr > td {
+  padding: 0.8rem 1rem;
+  border-color: #f3eee9;
+  color: #1E0F0C;
+  vertical-align: middle;
+}
+
+.ojt-table > tbody > tr {
+  transition: background-color 0.15s ease;
+}
+
+.ojt-table > tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+
+.ojt-table.table-hover > tbody > tr:hover > td {
+  --bs-table-bg-state: #fff7ed;
+}
+
+/* Clickable rows: pointer + subtle chevron. */
+.ojt-table tr.ojt-row-link {
+  cursor: pointer;
+}
+
+.ojt-table tr.ojt-row-link:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: -2px;
+}
+
+/* Column alignment helpers. Use the same class on <th> and <td>. */
+.ojt-table .col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ojt-table .col-center {
+  text-align: center;
+}
+
+.ojt-table .col-date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ojt-table .col-actions {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ojt-table .col-wrap {
+  min-width: 220px;
+  max-width: 420px;
+  white-space: normal;
+}
+
+.ojt-cell-primary {
+  display: block;
+  font-weight: 600;
+  color: #1E0F0C;
+}
+
+.ojt-cell-secondary {
+  display: block;
+  margin-top: 0.1rem;
+  color: #8a7f78;
+  font-size: 0.78rem;
+}
+
+/* Empty value fallback: replaces raw em dashes in table cells. */
+.ojt-na {
+  color: #b3a9a2;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* ---------- Status pills ---------- */
+
+.ojt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ojt-pill::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.ojt-pill--success { background: #ecfdf3; border-color: #abefc6; color: #067647; }
+.ojt-pill--warning { background: #fffaeb; border-color: #fedf89; color: #b54708; }
+.ojt-pill--danger  { background: #fef3f2; border-color: #fecdca; color: #b42318; }
+.ojt-pill--info    { background: #eff8ff; border-color: #b2ddff; color: #175cd3; }
+.ojt-pill--brand   { background: #fff4ed; border-color: #fed7aa; color: #c2410c; }
+.ojt-pill--neutral { background: #f5f3f1; border-color: #e7e2dd; color: #57504b; }
+
+/* ---------- Progress bar (hours rendered) ---------- */
+
+.ojt-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 130px;
+}
+
+.ojt-progress-track {
+  flex: 1 1 auto;
+  height: 6px;
+  background: #f3eee9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ojt-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fb923c, #ea580c);
+  border-radius: 999px;
+}
+
+.ojt-progress-label {
+  color: #6b625d;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Icon action buttons ---------- */
+
+.ojt-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #ece7e2;
+  border-radius: 8px;
+  background: #fff;
+  color: #6b625d;
+  font-size: 0.8rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ojt-icon-btn + .ojt-icon-btn {
+  margin-left: 0.35rem;
+}
+
+.ojt-icon-btn:hover:not(:disabled) {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
+.ojt-icon-btn--approve:hover:not(:disabled) {
+  background: #ecfdf3;
+  border-color: #75e0a7;
+  color: #067647;
+}
+
+.ojt-icon-btn--danger:hover:not(:disabled) {
+  background: #fef3f2;
+  border-color: #fda29b;
+  color: #b42318;
+}
+
+.ojt-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Empty / loading states ---------- */
+
+.ojt-empty {
+  padding: 2.75rem 1rem !important;
+  text-align: center;
+}
+
+.ojt-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: #fff4ed;
+  color: #ea580c;
+  font-size: 1.1rem;
+}
+
+.ojt-empty-title {
+  margin: 0;
+  color: #1E0F0C;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.ojt-empty-text {
+  margin: 0.25rem 0 0;
+  color: #8a7f78;
+  font-size: 0.82rem;
+}
+
+.ojt-skeleton {
+  display: block;
+  height: 0.8rem;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f3eee9 25%, #faf7f4 50%, #f3eee9 75%);
+  background-size: 200% 100%;
+  animation: ojt-shimmer 1.2s infinite linear;
+}
+
+@keyframes ojt-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ojt-skeleton { animation: none; }
+}
+
+/* ---------- Alerts inside the card ---------- */
+
+.ojt-table-card > .alert {
+  margin: 0.75rem 1.25rem 0;
+}
+
+/* ---------- Responsive padding ---------- */
+
+@media (max-width: 767.98px) {
+  .ojt-table-head,
+  .ojt-toolbar {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .ojt-search {
+    max-width: none;
+  }
+
+  .ojt-toolbar-count {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ojt-table > thead > tr > th,
+  .ojt-table > tbody > tr > td {
+    padding: 0.65rem 0.75rem;
+  }
+}
+
+/* ---------- Stat tiles (above a table) ---------- */
+
+.ojt-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ojt-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1.1rem;
+  background: #fff;
+  border: 1px solid #ece7e2;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.ojt-stat {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+a.ojt-stat:hover {
+  border-color: #fdba74;
+  box-shadow: 0 6px 16px rgba(234, 88, 12, 0.08);
+}
+
+.ojt-stat-label {
+  color: #6b625d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ojt-stat-value {
+  color: #1E0F0C;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ojt-stat-hint {
+  color: #8a7f78;
+  font-size: 0.78rem;
+}
+
+.ojt-stat--alert .ojt-stat-value {
+  color: #c2410c;
+}

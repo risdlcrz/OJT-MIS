@@ -148,6 +148,26 @@ namespace OJTMISApi.Controllers
                 });
             }
 
+            // Department supervisors (linked signatories) can also review
+            // the request from their portal.
+            var hrIds = hrUsers.Select(h => h.Id).ToHashSet();
+            foreach (var supervisorId in await FindDepartmentSupervisorIdsAsync(intern))
+            {
+                if (supervisorId == internUserId || hrIds.Contains(supervisorId)) continue;
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = supervisorId,
+                    Title = "Time adjustment pending review",
+                    Message = $"{intern.FullName} requested a {fieldLabel} adjustment for {log.Date:MMM d, yyyy}.",
+                    Module = "Attendance",
+                    Link = "/supervisor-time-adjustments.html",
+                    InternId = intern.Id,
+                    Type = "AttendanceAdjustment",
+                    IsRead = false,
+                    CreatedAt = now
+                });
+            }
+
             await _context.SaveChangesAsync();
 
             return StatusCode(StatusCodes.Status201Created, new
@@ -165,6 +185,57 @@ namespace OJTMISApi.Controllers
                     entity.RequestedAt
                 }
             });
+        }
+
+        /// <summary>
+        /// User ids of the supervisors responsible for an intern: the signatory
+        /// assigned to the intern's request, plus signatories whose department
+        /// matches the intern's office or the request's office code/name.
+        /// </summary>
+        private async Task<List<string>> FindDepartmentSupervisorIdsAsync(Intern intern)
+        {
+            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrWhiteSpace(intern.ApplicantOffice)) keys.Add(intern.ApplicantOffice.Trim());
+
+            int? assignedSignatoryId = null;
+            if (intern.RequestId is int requestId)
+            {
+                var request = await _context.InternRequests
+                    .AsNoTracking()
+                    .Where(r => r.Id == requestId)
+                    .Select(r => new { r.OfficeCode, r.OfficeName, r.SignatoryId })
+                    .FirstOrDefaultAsync();
+
+                if (request is not null)
+                {
+                    if (!string.IsNullOrWhiteSpace(request.OfficeCode)) keys.Add(request.OfficeCode.Trim());
+                    if (!string.IsNullOrWhiteSpace(request.OfficeName)) keys.Add(request.OfficeName.Trim());
+                    assignedSignatoryId = request.SignatoryId;
+                }
+            }
+
+            var lowered = keys.Select(k => k.ToLower()).ToList();
+
+            var userIds = await _context.Signatories
+                .AsNoTracking()
+                .Where(s => s.UserId != null &&
+                            (s.Id == assignedSignatoryId ||
+                             (s.Department != null && lowered.Contains(s.Department.Trim().ToLower()))))
+                .Select(s => s.UserId!)
+                .Distinct()
+                .ToListAsync();
+
+            var supervisors = new List<string>();
+            foreach (var id in userIds)
+            {
+                var user = await _userManager.FindByIdAsync(id);
+                if (user is not null && await _userManager.IsInRoleAsync(user, UserRoles.Supervisor))
+                {
+                    supervisors.Add(id);
+                }
+            }
+
+            return supervisors;
         }
 
         private static bool TryParseRequestedTime(string? value, DateTime logDate, out DateTime result)

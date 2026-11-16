@@ -19,77 +19,78 @@
         <button type="button" class="btn btn-sm btn-outline-danger" @click="loadAdjustmentRequests">Retry</button>
       </div>
 
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table id="adjustmentRequestsTable" class="table table-hover modern-table mb-0">
-            <thead>
-              <tr class="text-center">
-                <th>#</th>
-                <th>Intern</th>
-                <th>Date</th>
-                <th>Target Field</th>
-                <th>Current Time</th>
-                <th>Requested Time</th>
-                <th>Reason</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="isLoading">
-                <td colspan="9" class="text-center text-muted py-4">Loading requests...</td>
-              </tr>
-              <tr v-else-if="adjustmentRequests.length === 0">
-                <td colspan="9" class="text-center text-muted py-4">No pending adjustment requests.</td>
-              </tr>
-              <tr v-for="req in adjustmentRequests" :key="req.id" class="text-center">
-                <td>{{ req.id }}</td>
+      <div class="ojt-toolbar">
+        <div class="ojt-search">
+          <i class="fas fa-search"></i>
+          <input v-model="search" type="search" class="form-control form-control-sm"
+                 placeholder="Search intern or reason" aria-label="Search requests" />
+        </div>
+        <span class="ojt-toolbar-count">{{ visibleRequests.length }} pending request(s)</span>
+      </div>
+
+      <div class="table-responsive">
+        <table id="adjustmentRequestsTable" class="table table-hover ojt-table">
+          <thead>
+            <tr>
+              <th>Intern</th>
+              <th class="col-date">Log Date</th>
+              <th>Field</th>
+              <th class="col-center">Current</th>
+              <th class="col-center">Requested</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <TableState :colspan="8" :loading="isLoading" :empty="!isLoading && visibleRequests.length === 0"
+                        icon="fas fa-user-clock"
+                        :title="adjustmentRequests.length ? 'No requests match your search' : 'You\'re all caught up'"
+                        :text="adjustmentRequests.length ? 'Try a different search.' : 'No time adjustments are waiting for review.'" />
+            <template v-if="!isLoading">
+              <tr v-for="req in visibleRequests" :key="req.id">
                 <td>
-                  <div v-if="req.internName">{{ req.internName }}</div>
-                  <div v-else>{{ req.internEmail || 'N/A' }}</div>
+                  <span class="ojt-cell-primary">{{ req.internName || req.internEmail || 'Unknown intern' }}</span>
+                  <span class="ojt-cell-secondary">Request #{{ req.id }}</span>
                 </td>
-                <td>{{ formatDate(req.date) }}</td>
+                <td class="col-date">{{ formatDate(req.date) }}</td>
                 <td>{{ shiftLabel(req) }}</td>
-                <td>{{ formatTime(currentTimeOf(req)) }}</td>
-                <td>{{ formatTime(requestedTimeOf(req)) }}</td>
-                <td class="text-start">{{ req.reason || '—' }}</td>
-                <td>
-                  <span v-if="req.status === 'Approved'" class="badge bg-success">Approved</span>
-                  <span v-else-if="req.status === 'Rejected'" class="badge bg-danger">Rejected</span>
-                  <span v-else class="badge bg-warning text-dark">Pending</span>
+                <td class="col-center">
+                  <span v-if="currentTimeOf(req)" class="font-monospace">{{ formatTime(currentTimeOf(req)) }}</span>
+                  <span v-else class="ojt-na">No punch</span>
                 </td>
-                <td>
-                  <template v-if="req.status === 'Pending'">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-primary"
-                      title="Approve adjustment"
-                      @click="approveRequest(req.id)"
-                    >
+                <td class="col-center"><strong class="font-monospace">{{ formatTime(requestedTimeOf(req)) }}</strong></td>
+                <td class="col-wrap">
+                  <span v-if="req.reason">{{ req.reason }}</span>
+                  <span v-else class="ojt-na">No reason given</span>
+                </td>
+                <td><StatusPill :status="req.status || 'Pending'" /></td>
+                <td class="col-actions">
+                  <template v-if="!req.status || req.status === 'Pending'">
+                    <button type="button" class="ojt-icon-btn ojt-icon-btn--approve" title="Approve adjustment"
+                            :aria-label="`Approve request ${req.id}`" @click="approveRequest(req.id)">
                       <i class="fas fa-check"></i>
                     </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-danger ms-1"
-                      title="Reject adjustment"
-                      @click="rejectRequest(req.id)"
-                    >
+                    <button type="button" class="ojt-icon-btn ojt-icon-btn--danger" title="Reject adjustment"
+                            :aria-label="`Reject request ${req.id}`" @click="rejectRequest(req.id)">
                       <i class="fas fa-times"></i>
                     </button>
                   </template>
-                  <span v-else class="text-muted">&mdash;</span>
+                  <span v-else class="ojt-na">Reviewed</span>
                 </td>
               </tr>
-            </tbody>
-          </table>
-        </div>
+            </template>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { inject, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
+import StatusPill from '@/components/StatusPill.vue'
+import TableState from '@/components/TableState.vue'
 import { getApiErrorMessage, hrAttendanceAPI } from '@/services/api'
 import { formatClock, formatDisplayDate } from '@/utils/datetime'
 import '../assets/css/Request.css'
@@ -98,6 +99,13 @@ const dialog = inject('dialog')
 const { showConfirm } = dialog || {}
 
 const adjustmentRequests = ref([])
+const search = ref('')
+const visibleRequests = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  if (!term) return adjustmentRequests.value
+  return adjustmentRequests.value.filter((r) =>
+    [r.internName, r.internEmail, r.reason].some((v) => String(v || '').toLowerCase().includes(term)))
+})
 const isLoading = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -148,7 +156,7 @@ function shiftLabel(req) {
   if (field === 'AM_Out') return 'AM Time Out'
   if (field === 'PM_In') return 'PM Time In'
   if (field === 'PM_Out') return 'PM Time Out'
-  return req.shiftType || '—'
+  return req.shiftType || 'Unspecified'
 }
 
 function isTimeInField(req) {

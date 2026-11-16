@@ -1,60 +1,92 @@
 ﻿<template>
   <section class="content">
     <!-- ================= API-backed module ================= -->
-    <div v-if="config" class="card shadow-sm">
-      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h3 class="card-title mb-0">{{ config.title }}</h3>
-        <button v-if="!config.hiring" type="button" class="btn btn-primary btn-sm" :disabled="isLoading" @click="openCreate">
-          <i class="fas fa-plus me-1"></i> Add {{ config.singular }}
-        </button>
+    <div v-if="config.api" class="ojt-table-card">
+      <div class="ojt-table-head">
+        <div>
+          <h3 class="ojt-table-title">{{ config.title }}</h3>
+          <p v-if="config.subtitle" class="ojt-table-subtitle">{{ config.subtitle }}</p>
+        </div>
+        <div class="ojt-table-tools">
+          <button type="button" class="btn btn-outline-primary btn-sm" :disabled="isLoading" @click="load">
+            <i class="fas fa-rotate me-1"></i> Refresh
+          </button>
+          <button v-if="!config.hiring" type="button" class="btn btn-primary btn-sm" :disabled="isLoading" @click="openCreate">
+            <i class="fas fa-plus me-1"></i> Add {{ config.singular }}
+          </button>
+        </div>
       </div>
 
-      <div class="card-body">
-        <div v-if="isLoading" class="text-center my-4">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-        </div>
+      <div v-if="loadError" class="alert alert-danger d-flex justify-content-between align-items-center gap-2">
+        <span><i class="fas fa-exclamation-triangle me-2"></i>{{ loadError }}</span>
+        <button type="button" class="btn btn-sm btn-outline-danger" @click="load">Retry</button>
+      </div>
 
-        <div v-else-if="loadError" class="alert alert-danger d-flex justify-content-between align-items-center">
-          <span><i class="fas fa-exclamation-triangle me-2"></i>{{ loadError }}</span>
-          <button type="button" class="btn btn-sm btn-outline-danger" @click="load">Retry</button>
+      <div class="ojt-toolbar">
+        <div class="ojt-search">
+          <i class="fas fa-search"></i>
+          <input v-model="search" type="search" class="form-control form-control-sm"
+                 :placeholder="`Search ${(config.title || '').toLowerCase()}`" :aria-label="`Search ${config.title}`" />
         </div>
+        <select v-if="statusOptions.length > 1" v-model="statusFilter" class="form-select form-select-sm" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option v-for="s in statusOptions" :key="s" :value="s">{{ statusLabel(s) }}</option>
+        </select>
+        <span class="ojt-toolbar-count">{{ visibleRows.length }} of {{ rows.length }} {{ (config.title || '').toLowerCase() }}</span>
+      </div>
 
-        <div v-else class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th v-for="col in displayColumns" :key="col.prop" scope="col">{{ col.label }}</th>
-                <th v-if="config.clickableRows" scope="col" class="intern-chevron-col" aria-label="Open profile"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Ang buong row ay clickable sa Intern List: binubuksan nito
-                   ang intern profile. -->
+      <div class="table-responsive">
+        <table class="table table-hover ojt-table">
+          <thead>
+            <tr>
+              <th v-for="col in displayColumns" :key="col.prop" scope="col" :class="col.cls">{{ col.label }}</th>
+              <th v-if="config.hasActions" scope="col" class="col-actions">Actions</th>
+              <th v-if="config.clickableRows" scope="col" class="col-actions" aria-label="Open profile"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <TableState :colspan="tableColspan" :loading="isLoading" :empty="!isLoading && visibleRows.length === 0"
+                        :icon="config.emptyIcon || 'far fa-folder-open'"
+                        :title="rows.length ? `No ${(config.title || '').toLowerCase()} match your filters` : `No ${(config.title || '').toLowerCase()} yet`"
+                        :text="rows.length ? 'Try a different search or status.' : (config.emptyText || '')" />
+            <!-- Ang buong row ay clickable sa Intern List: binubuksan nito
+                 ang intern profile. -->
+            <template v-if="!isLoading">
               <tr
-                v-for="(row, index) in rows"
+                v-for="row in visibleRows"
                 :key="row.id"
-                :class="{ 'intern-row': config.clickableRows }"
+                :class="{ 'ojt-row-link': config.clickableRows }"
+                :tabindex="config.clickableRows ? 0 : undefined"
                 @click="viewInternDetails(row.id)"
+                @keydown.enter="viewInternDetails(row.id)"
               >
-                <td v-for="col in displayColumns" :key="col.prop">
-                  <span v-if="col.clickable" class="text-dark" style="cursor: pointer; transition: all 0.2s ease; user-select: none;" @click.stop="openView(row)" @mouseenter="$event.target.style.fontWeight='600'; $event.target.style.color='#d97706'" @mouseleave="$event.target.style.fontWeight='normal'; $event.target.style.color=''">{{ cell(row, col) }}</span>
-                  <span v-else-if="col.prop === 'status' && row[col.prop]" class="badge" :class="statusBadge(row[col.prop])">{{ statusLabel(row[col.prop]) }}</span>
-                  <span v-else class="text-dark">{{ cell(row, col) }}</span>
+                <td v-for="col in displayColumns" :key="col.prop" :class="col.cls">
+                  <StatusPill v-if="col.pill" :status="row[col.prop] || ''" :label="col.pillLabel ? col.pillLabel(row) : ''" />
+                  <template v-else-if="isBlank(cell(row, col))">
+                    <span class="ojt-na">{{ col.fallback || 'Not set' }}</span>
+                  </template>
+                  <template v-else>
+                    <span :class="col.secondary || col.clickable ? 'ojt-cell-primary' : ''">{{ cell(row, col) }}</span>
+                    <span v-if="col.secondary" class="ojt-cell-secondary">{{ secondaryText(row, col) }}</span>
+                  </template>
                 </td>
-                <td v-if="config.clickableRows" class="intern-chevron-col">
+                <td v-if="config.hasActions" class="col-actions">
+                  <button type="button" class="ojt-icon-btn" title="Edit" :aria-label="`Edit ${row.name || row.id}`"
+                          :disabled="isSaving" @click.stop="openEdit(row)">
+                    <i class="fas fa-pen"></i>
+                  </button>
+                  <button type="button" class="ojt-icon-btn ojt-icon-btn--danger" title="Delete" :aria-label="`Delete ${row.name || row.id}`"
+                          :disabled="isSaving" @click.stop="confirmDelete(row)">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+                <td v-if="config.clickableRows" class="col-actions">
                   <i class="fas fa-chevron-right intern-chevron" aria-hidden="true"></i>
                 </td>
               </tr>
-              <tr v-if="rows.length === 0">
-                <td :colspan="displayColumns.length + (config.clickableRows ? 1 : 0)" class="text-center text-muted py-4">
-                  No {{ (config.title || 'module').toLowerCase() }} yet.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            </template>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -196,7 +228,7 @@
                       {{ name }}
                     </option>
                   </select>
-                  <div class="form-text text-muted">Optional</div>
+                  <div class="form-text text-muted">Optional, but the supervisor portal only shows interns, applicants, and slots for this department.</div>
                 </template>
 
                 <template v-else-if="col.prop === 'position'">
@@ -215,6 +247,24 @@
                          :class="{ 'is-invalid': submitted && !form[col.prop] }" :maxlength="col.max"
                          :placeholder="`Input ${col.label}`" :disabled="isSaving" />
                   <div class="invalid-feedback">{{ col.label }} is required.</div>
+                </template>
+
+                <template v-else-if="col.prop === 'approvalScope'">
+                  <select :id="`m-${col.prop}`" v-model="form.approvalScope" class="form-select" :disabled="isSaving">
+                    <option value="Both">Certificates of Completion and DTRs</option>
+                    <option value="Certificate">Certificates of Completion only</option>
+                    <option value="DTR">DTRs only</option>
+                  </select>
+                  <div class="form-text">Which documents this officer can approve and sign.</div>
+                </template>
+
+                <!-- Plain text/email fields (e.g. signatory Name and Email). -->
+                <template v-else-if="!(config?.fromApplicants && !isEditing) && ['name', 'email', 'programCode', 'programName'].includes(col.prop)">
+                  <input :id="`m-${col.prop}`" v-model.trim="form[col.prop]" :type="col.type === 'email' ? 'email' : 'text'"
+                         class="form-control" :class="{ 'is-invalid': submitted && !col.optional && !form[col.prop] }"
+                         :maxlength="col.max" :placeholder="col.placeholder || `Input ${col.label}`" :disabled="isSaving" />
+                  <div class="invalid-feedback">{{ col.label }} is required.</div>
+                  <div v-if="col.help" class="form-text">{{ col.help }}</div>
                 </template>
               </div>
 
@@ -429,12 +479,18 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, Toast } from 'bootstrap'
+import StatusPill from '@/components/StatusPill.vue'
+import TableState from '@/components/TableState.vue'
 import { getApiErrorMessage, hrAttendanceAPI, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI, dtrAPI } from '@/services/api'
 
 /* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
 const MODULES = {
   'internlist.html': {
     title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true, needsSchools: true, fromApplicants: true,
+    subtitle: 'All hired interns. Select a row to open the intern profile.',
+    emptyIcon: 'fas fa-user-graduate',
+    emptyText: 'Hire an applicant to add them to this list.',
+    searchProps: ['fullName', 'email', 'schoolAbbreviation', 'school', 'requestOffice', 'applicantNo'],
     /* Ang row mismo ang clickable papunta sa intern profile. */
     clickableRows: true,
     columns: [
@@ -446,15 +502,15 @@ const MODULES = {
     ],
     /* Karagdagang column na hango sa profile: hindi ito lumalabas sa form. */
     display: [
-      { prop: 'fullName', label: 'Full Name', clickable: true },
-      { prop: 'schoolAbbreviation', label: 'School' },
-      { prop: 'requiredHours', label: 'Required Hours' },
-      { prop: 'requestOffice', label: 'Department' },
-      { prop: 'startDate', label: 'Estimated Start', format: (_v, row) => row.startDate ? new Date(row.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
-      { prop: 'endDate', label: 'Estimated End', format: (_v, row) => row.endDate ? new Date(row.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+      { prop: 'fullName', label: 'Intern', clickable: true, secondary: (row) => row.email || 'No email on file' },
+      { prop: 'schoolAbbreviation', label: 'School', format: (v, row) => v || row.school || '' },
+      { prop: 'requiredHours', label: 'Required Hours', cls: 'col-num', fallback: '0' },
+      { prop: 'requestOffice', label: 'Department', fallback: 'Unassigned' },
+      { prop: 'startDate', label: 'Estimated Start', cls: 'col-date', fallback: 'TBD', format: (v) => shortDate(v) },
+      { prop: 'endDate', label: 'Estimated End', cls: 'col-date', fallback: 'TBD', format: (v) => shortDate(v) },
       /* Huling column: ang status ng intern (Active / Completed / atbp.).
          Ang row mismo ang clickable na papunta sa profile. */
-      { prop: 'status', label: 'Status' }
+      { prop: 'status', label: 'Status', pill: true }
     ]
   },
   'programs.html': {
@@ -463,11 +519,32 @@ const MODULES = {
   },
   'signatories.html': {
     title: 'Signatories', singular: 'Signatory', api: signatoriesAPI, needsDepartment: true, hasActions: true,
+    subtitle: 'Approving officers. Each signatory gets a supervisor portal account scoped to their department.',
+    emptyIcon: 'fas fa-signature',
+    emptyText: 'Add a signatory to give a department supervisor portal access.',
+    searchProps: ['name', 'position', 'department', 'email'],
+    statusProp: 'accountStatus',
+    /* Reload after saving so the linked-account status is refreshed. */
+    reloadAfterSave: true,
     columns: [
       { prop: 'name', label: 'Name', max: 200 },
       { prop: 'position', label: 'Position', max: 150 },
       { prop: 'department', label: 'Department', max: 200 },
-      { prop: 'email', label: 'Email', type: 'email', max: 200 }
+      {
+        prop: 'email', label: 'Email', type: 'email', max: 200,
+        help: 'A portal account is created for this email (or linked, if one exists) and the temporary password is emailed.'
+      },
+      { prop: 'approvalScope', label: 'Approves', default: 'Both' }
+    ],
+    display: [
+      { prop: 'name', label: 'Signatory', secondary: (row) => row.email || 'No email on file' },
+      { prop: 'position', label: 'Position', format: (v) => titleCase(v) },
+      { prop: 'department', label: 'Department', fallback: 'No department' },
+      { prop: 'approvalScope', label: 'Approves', format: (v) => APPROVAL_LABELS[v] || APPROVAL_LABELS.Both },
+      {
+        prop: 'accountStatus', label: 'Portal Account', pill: true,
+        pillLabel: (row) => ({ Active: 'Active', Invited: 'Invited', Unlinked: 'No account' })[row.accountStatus] || ''
+      }
     ]
   },
   'forms.html': { title: 'Issuance of COC' },
@@ -507,11 +584,60 @@ const displayColumns = computed(() => entry.value.display || entry.value.columns
 function cell(row, col) {
   const value = row[col.prop]
   if (col.format) return col.format(value, row)
-  if (value === null || value === undefined || value === '') return '\u2014'
   return value
 }
 
+/* Blank cells render a muted fallback (col.fallback) instead of a dash. */
+function isBlank(value) {
+  return value === null || value === undefined || String(value).trim() === ''
+}
+
+function secondaryText(row, col) {
+  return typeof col.secondary === 'function' ? col.secondary(row) : row[col.secondary]
+}
+
+const APPROVAL_LABELS = {
+  Both: 'COC & DTR',
+  Certificate: 'COC only',
+  DTR: 'DTR only'
+}
+
+function titleCase(value) {
+  return String(value || '').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function shortDate(value) {
+  const d = value ? new Date(value) : null
+  return d && !Number.isNaN(d.getTime())
+    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : ''
+}
+
 const rows = ref([])
+const search = ref('')
+const statusFilter = ref('')
+
+/* Prop used by the status dropdown: the module's statusProp, else "status". */
+const statusProp = computed(() => config.value.statusProp || 'status')
+
+const statusOptions = computed(() => {
+  const hasStatusColumn = displayColumns.value.some((c) => c.prop === statusProp.value)
+  if (!hasStatusColumn) return []
+  return [...new Set(rows.value.map((r) => r[statusProp.value]).filter(Boolean))].sort()
+})
+
+const visibleRows = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  const props = config.value.searchProps || displayColumns.value.map((c) => c.prop)
+  return rows.value.filter((row) => {
+    if (statusFilter.value && row[statusProp.value] !== statusFilter.value) return false
+    if (!term) return true
+    return props.some((p) => String(row[p] ?? '').toLowerCase().includes(term))
+  })
+})
+
+const tableColspan = computed(() =>
+  displayColumns.value.length + (config.value.hasActions ? 1 : 0) + (config.value.clickableRows ? 1 : 0))
 const availableRequests = ref([])
 const departments = ref([])
 const schools = ref([])
@@ -550,7 +676,7 @@ function blankForm() {
   form.id = 0
   form.requestId = ''
   form.updatedAt = null
-  if (config.value) config.value.columns.forEach((c) => { form[c.prop] = '' })
+  if (config.value?.columns) config.value.columns.forEach((c) => { form[c.prop] = c.default ?? '' })
   applicantQuery.value = ''
   applicantSearchOpen.value = false
   selectedApplicantId.value = null
@@ -588,7 +714,7 @@ async function load() {
   isLoading.value = true
   loadError.value = ''
   try {
-    if (!config.value) {
+    if (!config.value?.api) {
       // No config for this module; render empty state and hide loader
       rows.value = []
       return
@@ -726,6 +852,7 @@ function applyApplicant(app) {
   form.school = app.schoolName || app.school || form.school
   form.program = app.program || form.program
   form.applicantNo = formatApplicantNo(app.applicantNo) || form.applicantNo
+  form.email = app.email || form.email
 
   const hours = app.requiredHours ?? app.hoursRequired ?? app.totalHours ?? app.required_hours ?? app.hours_required
   if (hours !== null && hours !== undefined && hours !== '') {
@@ -747,7 +874,7 @@ function openCreate() {
 function openEdit(row) {
   blankForm()
   form.id = row.id
-  config.value.columns.forEach((c) => { form[c.prop] = row[c.prop] ?? '' })
+  config.value.columns.forEach((c) => { form[c.prop] = row[c.prop] ?? c.default ?? '' })
   // Copy updatedAt for display in the modal (not in config.columns)
   form.updatedAt = row.updatedAt
   formModal.show()
@@ -768,7 +895,7 @@ async function save() {
     return
   }
 
-  const requiredColumns = config.value.columns.filter(c => c.prop !== 'department')
+  const requiredColumns = config.value.columns.filter(c => c.prop !== 'department' && !c.optional && c.default === undefined)
   const missing = requiredColumns.some((c) => !form[c.prop])
   if (missing) { formError.value = 'Please fill in all required fields.'; return }
 
@@ -799,10 +926,13 @@ async function save() {
     } else {
       const created = await api.create(payload)
       rows.value.unshift(created)
-      notify('Record created.')
+      notify(config.value.reloadAfterSave && payload.email
+        ? 'Signatory saved. Their portal account is linked and login details were emailed if the account is new.'
+        : 'Record created.')
     }
     formModal.hide()
     removeModalBackdrops()
+    if (config.value.reloadAfterSave) load()
   } catch (e) {
     const msg = getApiErrorMessage(e, 'Failed to save.')
     // 409 Conflict - duplicate record. Gamitin ang mensahe ng API kung mayroon,
@@ -958,6 +1088,8 @@ onMounted(() => {
 })
 
 watch(() => props.modulePage, () => {
+  search.value = ''
+  statusFilter.value = ''
   load().then(openInternFromRoute)
 })
 
@@ -996,38 +1128,15 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Buong row sa Intern List ay clickable at may subtle elevation hover. */
-tr.intern-row {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-tr.intern-row:hover {
-  background-color: #fffbeb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-/* Ina-apply din sa cells dahil ang Bootstrap table ay may sariling
-   background paint sa bawat td, kaya hindi lumalabas ang row background. */
-tr.intern-row:hover > td {
-  --bs-table-bg-state: #fffbeb;
-}
-
-/* Trailing chevron: muted by default, orange at mas kita kapag hover. */
-.intern-chevron-col {
-  width: 2.5rem;
-  white-space: nowrap;
-  text-align: center;
-}
-
+/* Trailing chevron on clickable Intern List rows: muted by default,
+   orange at mas kita kapag hover. Row hover comes from data-table.css. */
 .intern-chevron {
   color: #b8a99f;
   opacity: 0.45;
   transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
 }
 
-tr.intern-row:hover .intern-chevron {
+tr.ojt-row-link:hover .intern-chevron {
   color: #d97706;
   opacity: 1;
   transform: translateX(2px);

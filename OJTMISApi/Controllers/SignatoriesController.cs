@@ -31,9 +31,13 @@ namespace OJTMISApi.Controllers
             _email = email;
         }
 
-        /// <summary>GET: api/signatories</summary>
+        /// <summary>
+        /// GET: api/signatories
+        /// Each row includes the state of its linked login account so HR can
+        /// see whether the officer can already use the supervisor portal.
+        /// </summary>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Signatory>>> GetAll()
+        public async Task<ActionResult<IEnumerable<object>>> GetAll()
         {
             try
             {
@@ -41,7 +45,46 @@ namespace OJTMISApi.Controllers
                     .AsNoTracking()
                     .OrderBy(x => x.Name)
                     .ToListAsync();
-                return Ok(items);
+
+                var userIds = items
+                    .Where(x => !string.IsNullOrWhiteSpace(x.UserId))
+                    .Select(x => x.UserId!)
+                    .Distinct()
+                    .ToList();
+
+                var accounts = await _context.Users
+                    .AsNoTracking()
+                    .Where(u => userIds.Contains(u.Id))
+                    .Select(u => new { u.Id, u.Email, u.EmailConfirmed })
+                    .ToDictionaryAsync(u => u.Id);
+
+                var roles = (await (from ur in _context.UserRoles.AsNoTracking()
+                                    join r in _context.Roles.AsNoTracking() on ur.RoleId equals r.Id
+                                    where userIds.Contains(ur.UserId)
+                                    select new { ur.UserId, r.Name })
+                                   .ToListAsync())
+                    .GroupBy(x => x.UserId)
+                    .ToDictionary(g => g.Key, g => g.Select(x => x.Name ?? string.Empty).ToArray());
+
+                return Ok(items.Select(x =>
+                {
+                    var account = x.UserId is not null && accounts.TryGetValue(x.UserId, out var a) ? a : null;
+                    return new
+                    {
+                        x.Id,
+                        x.UserId,
+                        x.Name,
+                        x.Position,
+                        x.Department,
+                        x.Email,
+                        x.ApprovalScope,
+                        x.CreatedAt,
+                        x.UpdatedAt,
+                        accountStatus = account is null ? "Unlinked" : account.EmailConfirmed ? "Active" : "Invited",
+                        accountEmail = account?.Email,
+                        accountRoles = account is not null && roles.TryGetValue(account.Id, out var r) ? r : Array.Empty<string>()
+                    };
+                }).ToList());
             }
             catch (Exception ex)
             {
@@ -87,7 +130,14 @@ namespace OJTMISApi.Controllers
 
             if (await _context.Signatories.AnyAsync(x => x.Name != null && x.Name.ToLower() == f1.ToLower()))
             {
-                return Conflict(new { message = "A record with the same first field already exists." });
+                return Conflict(new { message = "A signatory with this name already exists." });
+            }
+
+            var resolvedUserId = await ResolveUserIdAsync(item.UserId, email);
+            if (resolvedUserId is not null &&
+                await _context.Signatories.AnyAsync(x => x.UserId == resolvedUserId))
+            {
+                return Conflict(new { message = "That user account is already linked to another signatory." });
             }
 
             var now = DateTime.Now;
@@ -97,7 +147,7 @@ namespace OJTMISApi.Controllers
                 Position = f2,
                 Department = f3,
                 Email = email,
-                UserId = await ResolveUserIdAsync(item.UserId, email),
+                UserId = resolvedUserId,
                 ApprovalScope = scope,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -148,7 +198,7 @@ namespace OJTMISApi.Controllers
 
                 if (await _context.Signatories.AnyAsync(x => x.Id != id && x.Name != null && x.Name.ToLower() == f1.ToLower()))
                 {
-                    return Conflict(new { message = "A record with the same first field already exists." });
+                    return Conflict(new { message = "A signatory with this name already exists." });
                 }
 
                 var userId = await ResolveUserIdAsync(item.UserId, email);
@@ -271,6 +321,16 @@ namespace OJTMISApi.Controllers
             // Bind the directory entry to the credential so the officer can be
             // resolved in the certificate and DTR approval workflows.
             signatory.UserId = user.Id;
+
+            // An existing account linked by email may have no portal role yet.
+            // Give it supervisor access, but never touch HR or intern accounts.
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            if (!currentRoles.Contains(UserRoles.HRAdmin) &&
+                !currentRoles.Contains(UserRoles.Supervisor) &&
+                !currentRoles.Contains(UserRoles.Intern))
+            {
+                await _userManager.AddToRoleAsync(user, UserRoles.Supervisor);
+            }
 
             if (string.IsNullOrWhiteSpace(user.Office) && !string.IsNullOrWhiteSpace(signatory.Department))
             {

@@ -168,6 +168,12 @@ export function isIntern() {
   return roles.includes('Intern') && !roles.includes('HRAdmin')
 }
 
+/** True for department supervisors / signatories who are not HR Admin. */
+export function isSupervisor() {
+  const roles = currentUser()?.roles || []
+  return roles.includes('Supervisor') && !roles.includes('HRAdmin')
+}
+
 export const schoolsAPI = crud('schools')
 export const internsAPI = {
   ...crud('interns'),
@@ -183,7 +189,29 @@ export const applicantsAPI = {
 export const internRequestsAPI = {
   ...crud('internrequests'),
   /* Ang mga request na may natitirang slot lamang. */
-  available: async () => (await apiClient.get('/internrequests/available')).data
+  available: async () => (await apiClient.get('/internrequests/available')).data,
+  /* Change only the status (e.g. open a supervisor's Pending request). */
+  setStatus: async (request, status) =>
+    (await apiClient.put(`/internrequests/${request.id}`, { ...request, status })).data
+}
+
+/**
+ * Supervisor / signatory portal. Every endpoint is scoped server-side to the
+ * department of the signed-in supervisor.
+ */
+export const supervisorAPI = {
+  department: async () => (await apiClient.get('/supervisor/department')).data,
+  interns: async (params = {}) => (await apiClient.get('/supervisor/interns', { params })).data,
+  dtr: async (params = {}) => (await apiClient.get('/supervisor/dtr', { params })).data,
+  timeAdjustments: async (status = 'Pending') =>
+    (await apiClient.get('/supervisor/time-adjustments', { params: { status } })).data,
+  reviewTimeAdjustment: async (id, decision) =>
+    (await apiClient.post(`/supervisor/time-adjustments/${id}/review`, { decision })).data,
+  applicants: async (params = {}) => (await apiClient.get('/supervisor/applicants', { params })).data,
+  orientations: async (params = {}) => (await apiClient.get('/supervisor/orientations', { params })).data,
+  slots: async () => (await apiClient.get('/supervisor/slots')).data,
+  requestSlots: async (payload) => (await apiClient.post('/supervisor/slots', payload)).data,
+  updateSlots: async (id, payload) => (await apiClient.put(`/supervisor/slots/${id}`, payload)).data
 }
 export const programsAPI = crud('programs')
 export const signatoriesAPI = crud('signatories')

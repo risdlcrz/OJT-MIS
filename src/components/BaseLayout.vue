@@ -270,7 +270,8 @@ import '../../assets/css/navigation.css'
 import '../../assets/css/Dashboard.css'
 import menuConfig from '../../assets/json/menu.json'
 import internMenuConfig from '../../assets/json/intern-menu.json'
-import { currentUser, isIntern, notificationsAPI } from '../services/api'
+import supervisorMenuConfig from '../../assets/json/supervisor-menu.json'
+import { currentUser, isIntern, isSupervisor, notificationsAPI } from '../services/api'
 
 const props = defineProps({
   currentPage: {
@@ -303,7 +304,12 @@ const ALLOWED_PAGES = [
   'contact.html',
   'intern-dtr.html',
   'intern-attendance.html',
-  'intern-documents.html'
+  'intern-documents.html',
+  'supervisor-interns.html',
+  'supervisor-dtr.html',
+  'supervisor-time-adjustments.html',
+  'supervisor-orientations.html',
+  'supervisor-requests.html'
 ]
 
 /* ---- Global Dialog state ---- */
@@ -397,7 +403,8 @@ const pageMeta = computed(() => {
 const menu = ref([])
 
 /* Ang hero (dashboard) ay buong background ang ipinapakita. */
-const isHeroPage = computed(() => props.currentPage === 'dashboard.html')
+/* The supervisor dashboard is a regular padded page, not a hero. */
+const isHeroPage = computed(() => props.currentPage === 'dashboard.html' && !isSupervisor())
 
 function logout() {
   window.history.pushState({}, '', '/login.html')
@@ -489,6 +496,14 @@ const INTERN_ID_PAGES = ['internlist.html', 'coc-generate.html', 'idgenerate.htm
 function notificationFallback(item) {
   const type = String(item?.type || '').trim()
   const module = String(item?.module || '').trim().toLowerCase()
+
+  if (isSupervisor()) {
+    if (type === 'AttendanceAdjustment' || module === 'attendance') return '/supervisor-time-adjustments.html'
+    if (type === 'Intern' || module === 'interns') return '/supervisor-interns.html'
+    if (type === 'Applicant' || module === 'applicants') return '/supervisor-orientations.html'
+    if (type === 'InternRequest' || module === 'applicant requests') return '/supervisor-requests.html'
+    return ''
+  }
 
   const byType = {
     Intern: '/internlist.html',
@@ -721,7 +736,11 @@ onMounted(() => {
   loadNotifications()
   notificationPoll = window.setInterval(loadNotifications, 30000)
 
-  menu.value = isIntern() ? (internMenuConfig.menu || []) : (menuConfig.menu || [])
+  menu.value = isIntern()
+    ? (internMenuConfig.menu || [])
+    : isSupervisor()
+      ? (supervisorMenuConfig.menu || [])
+      : (menuConfig.menu || [])
 
   openMenus.value = new Set(menu.value.filter(hasActiveChild).map((item) => item.name))
 

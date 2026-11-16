@@ -16,4 +16,7 @@ import '../assets/css/ojt-modals.css'
 // Orange accent + dark text color para sa buong app.
 import '../assets/css/theme.css'
 
+// Shared data-table look: toolbar, status pills, empty states.
+import '../assets/css/data-table.css'
+
 createApp(App).mount('#app')

@@ -48,11 +48,20 @@ namespace OJTMISApi.Controllers
             var scope = await ResolveDepartmentScopeAsync();
             if (scope is null) return MissingDepartment();
 
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var signatory = await _context.Signatories
+                .AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .OrderBy(s => s.Id)
+                .Select(s => new { s.Id, s.Name, s.Position, s.Department, s.ApprovalScope })
+                .FirstOrDefaultAsync();
+
             return Ok(new
             {
                 department = scope.Department,
                 officeKeys = scope.OfficeKeys,
-                requestIds = scope.RequestIds
+                requestIds = scope.RequestIds,
+                signatory
             });
         }
 
@@ -720,6 +729,196 @@ namespace OJTMISApi.Controllers
             }).ToList());
         }
 
+        /// <summary>
+        /// POST: api/supervisor/slots
+        /// Requests additional intern slots for the supervisor's department.
+        /// The request starts as Pending; HR opens it before interns can be
+        /// hired against it.
+        /// </summary>
+        [HttpPost("slots")]
+        public async Task<ActionResult<object>> RequestSlots([FromBody] SlotRequestInput? input)
+        {
+            var scope = await ResolveDepartmentScopeAsync();
+            if (scope is null) return MissingDepartment();
+
+            if (input is null || input.Count < 1 || input.Count > 9999)
+            {
+                return BadRequest(new { message = "Slots must be between 1 and 9999." });
+            }
+
+            var skills = (input.Skills ?? string.Empty).Trim();
+            if (skills.Length == 0)
+            {
+                return BadRequest(new { message = "Skills needed / workplan is required." });
+            }
+
+            var (officeCode, officeName) = await ResolveOfficeAsync(scope);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var signatoryId = await _context.Signatories
+                .AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .OrderBy(s => s.Id)
+                .Select(s => (int?)s.Id)
+                .FirstOrDefaultAsync();
+
+            var now = DateTime.Now;
+            var entity = new InternRequest
+            {
+                OfficeCode = officeCode,
+                OfficeName = officeName,
+                Count = input.Count,
+                Filled = 0,
+                Skills = Truncate(skills, 500),
+                Description = Truncate((input.Description ?? string.Empty).Trim(), 1000),
+                Status = SlotStatusPending,
+                SignatoryId = signatoryId,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _context.InternRequests.Add(entity);
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                "/api/supervisor/slots",
+                "Requested intern slots",
+                $"Requested {entity.Count} intern slot(s) for {officeName}.");
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Slot request submitted. HR will review it before it opens for hiring.",
+                request = ToSlotDto(entity, 0, 0)
+            });
+        }
+
+        /// <summary>
+        /// PUT: api/supervisor/slots/{id}
+        /// Adjusts slot count, skills, and description of a request in the
+        /// supervisor's department. The count cannot drop below filled slots.
+        /// Supervisors may close a request or reopen one they closed, but only
+        /// HR can open a Pending request.
+        /// </summary>
+        [HttpPut("slots/{id:int}")]
+        public async Task<ActionResult<object>> UpdateSlots(int id, [FromBody] SlotRequestInput? input)
+        {
+            var scope = await ResolveDepartmentScopeAsync();
+            if (scope is null) return MissingDepartment();
+
+            if (input is null || input.Count < 1 || input.Count > 9999)
+            {
+                return BadRequest(new { message = "Slots must be between 1 and 9999." });
+            }
+
+            var request = await _context.InternRequests.FirstOrDefaultAsync(r => r.Id == id);
+            if (request is null || !scope.RequestIds.Contains(request.Id))
+            {
+                return NotFound(new { message = $"Slot request {id} was not found in your department." });
+            }
+
+            if (input.Count < request.Filled)
+            {
+                return BadRequest(new { message = $"Cannot set slots to {input.Count} because {request.Filled} intern(s) are already hired from this request." });
+            }
+
+            var status = (input.Status ?? string.Empty).Trim();
+            if (status.Length > 0 && !status.Equals(request.Status, StringComparison.OrdinalIgnoreCase))
+            {
+                var closing = status.Equals("Closed", StringComparison.OrdinalIgnoreCase);
+                var reopening = status.Equals("Open", StringComparison.OrdinalIgnoreCase) &&
+                                request.Status.Equals("Closed", StringComparison.OrdinalIgnoreCase);
+
+                if (!closing && !reopening)
+                {
+                    return BadRequest(new { message = "Supervisors can only close a request or reopen a closed one." });
+                }
+
+                request.Status = closing ? "Closed" : "Open";
+            }
+
+            if (!string.IsNullOrWhiteSpace(input.Skills))
+            {
+                request.Skills = Truncate(input.Skills.Trim(), 500);
+            }
+
+            request.Description = Truncate((input.Description ?? string.Empty).Trim(), 1000);
+            request.Count = input.Count;
+            request.UpdatedAt = DateTime.Now;
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "PUT",
+                $"/api/supervisor/slots/{id}",
+                "Updated intern slot request",
+                $"Set request #{id} ({request.OfficeName}) to {request.Count} slot(s), status {request.Status}.");
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Slot request updated.",
+                request = ToSlotDto(request, 0, 0)
+            });
+        }
+
+        private const string SlotStatusPending = "Pending";
+
+        private static object ToSlotDto(InternRequest r, int assigned, int hired) => new
+        {
+            r.Id,
+            r.OfficeCode,
+            r.OfficeName,
+            r.Count,
+            r.Filled,
+            remainingSlots = Math.Max(0, r.Count - r.Filled),
+            r.Status,
+            r.Skills,
+            r.Description,
+            assignedApplicants = assigned,
+            hiredInterns = hired,
+            r.SignatoryId,
+            r.CreatedAt,
+            r.UpdatedAt
+        };
+
+        /// <summary>
+        /// Picks the office code/name for a new request: an existing request
+        /// for the department first, then the "CODE - Name" naming used by the
+        /// office directory, then the department text itself.
+        /// </summary>
+        private async Task<(string Code, string Name)> ResolveOfficeAsync(DepartmentScope scope)
+        {
+            if (scope.RequestIds.Count > 0)
+            {
+                var existing = await _context.InternRequests
+                    .AsNoTracking()
+                    .Where(r => scope.RequestIds.Contains(r.Id))
+                    .OrderByDescending(r => r.UpdatedAt)
+                    .Select(r => new { r.OfficeCode, r.OfficeName })
+                    .FirstOrDefaultAsync();
+
+                if (existing is not null &&
+                    !string.IsNullOrWhiteSpace(existing.OfficeCode) &&
+                    !string.IsNullOrWhiteSpace(existing.OfficeName))
+                {
+                    return (existing.OfficeCode.Trim(), existing.OfficeName.Trim());
+                }
+            }
+
+            var department = scope.Department.Trim();
+            var dash = department.IndexOf(" - ", StringComparison.Ordinal);
+            var code = dash > 0 ? department[..dash].Trim() : department;
+
+            return (Truncate(code, 50), Truncate(department, 200));
+        }
+
+        private static string Truncate(string value, int max) =>
+            value.Length <= max ? value : value[..max];
+
         /* ------------------------------------------------------------------
          * Department scope
          * ---------------------------------------------------------------- */
@@ -914,6 +1113,19 @@ namespace OJTMISApi.Controllers
     {
         public string? Decision { get; set; }
 
+        public string? Status { get; set; }
+    }
+
+    /// <summary>Body for supervisor slot requests and slot adjustments.</summary>
+    public sealed class SlotRequestInput
+    {
+        public int Count { get; set; }
+
+        public string? Skills { get; set; }
+
+        public string? Description { get; set; }
+
+        /// <summary>Optional on update: "Closed", or "Open" to reopen a closed request.</summary>
         public string? Status { get; set; }
     }
 }

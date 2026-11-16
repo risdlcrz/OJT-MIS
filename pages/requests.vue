@@ -84,62 +84,149 @@
     </div>
 </div>
         <div v-if="isRequestModalOpen" class="modal-backdrop fade show" @click="isRequestModalOpen = false"></div>
-    <div class="card-body"> 
+    <div v-if="loadError" class="alert alert-danger d-flex justify-content-between align-items-center gap-2 m-3 mb-0">
+        <span><i class="fas fa-exclamation-triangle me-2"></i>{{ loadError }}</span>
+        <button type="button" class="btn btn-sm btn-outline-danger" @click="loadRequests">Retry</button>
+    </div>
+
+    <div class="ojt-toolbar">
+        <div class="ojt-search">
+            <i class="fas fa-search"></i>
+            <input v-model="search" type="search" class="form-control form-control-sm"
+                   placeholder="Search department or skills" aria-label="Search requests" />
+        </div>
+        <div class="ojt-segment" role="tablist" aria-label="Filter by status">
+            <button v-for="tab in statusTabs" :key="tab" type="button" role="tab"
+                    :class="{ active: statusFilter === tab }" :aria-selected="statusFilter === tab"
+                    @click="statusFilter = tab">
+                {{ tab }}<span class="ojt-segment-count">{{ countFor(tab) }}</span>
+            </button>
+        </div>
+        <span class="ojt-toolbar-count">{{ visibleRequests.length }} of {{ requests.length }} request(s)</span>
+    </div>
+
     <div class="table-responsive">
-        <table id="example1" class="table table-hover modern-table"> 
-            <thead> 
-                <tr class="text-center"> 
-                    <th>REQUEST NO.</th> 
-                    <th>REQUESTING DEPARTMENT</th> 
-                    <th>NO. OF OJT NEEDED</th> 
-                    <th>SKILLS AND DESCRIPTION</th> 
-                    <th>STATUS</th> 
-                    <th>ACTIONS</th> 
-                </tr> 
-           </thead> 
-    <tbody id="requestsTbody">
-        <tr v-for="request in requests" :key="request.id">
-            <td class="text-dark">{{ request.id }}</td>
-            <td class="text-dark">{{ request.officeName }}</td>
-            <td class="text-dark">{{ request.count }} <span class="text-muted small">({{ request.remaining }} left)</span></td>
-            <td class="text-dark">{{ request.skills }}<span v-if="request.description"> - {{ request.description }}</span></td>
-            <td>
-                <span class="badge badge-info">{{ request.status }}</span>
-                <span v-if="request.hasSlots" class="badge badge-success">Has slots</span>
-                <span v-else class="badge badge-secondary">Full</span>
-            </td>
-            <td>
-                <button type="button" class="btn btn-danger btn-sm" title="Remove" :disabled="isLoading" @click="removeRequest(request.id)">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-        <tr v-if="requests.length === 0">
-            <td colspan="6" class="text-center text-muted py-4">{{ isLoading ? 'Loading requests...' : 'No requests saved yet.' }}</td>
-        </tr>
-        <tr v-if="loadError">
-            <td colspan="6" class="text-center py-3"><span class="text-danger">{{ loadError }}</span></td>
-        </tr>
-</tbody>
-</table>
+        <table id="example1" class="table table-hover ojt-table">
+            <thead>
+                <tr>
+                    <th>Request</th>
+                    <th>Requesting Department</th>
+                    <th>Slot Usage</th>
+                    <th>Skills &amp; Description</th>
+                    <th>Status</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="requestsTbody">
+                <TableState :colspan="6" :loading="isLoading" :empty="!isLoading && visibleRequests.length === 0"
+                            icon="far fa-file-alt"
+                            :title="requests.length ? 'No requests match your filters' : 'No intern requests yet'"
+                            :text="requests.length ? 'Try a different search or status.' : 'Create a request or wait for a department supervisor to submit one.'" />
+                <template v-if="!isLoading">
+                    <tr v-for="request in visibleRequests" :key="request.id">
+                        <td>
+                            <span class="ojt-cell-primary">#{{ request.id }}</span>
+                            <span class="ojt-cell-secondary">{{ formatDisplayDate(request.createdAt) }}</span>
+                        </td>
+                        <td>
+                            <span v-if="request.officeName" class="ojt-cell-primary">{{ request.officeName }}</span>
+                            <span v-else class="ojt-na">No department</span>
+                        </td>
+                        <td>
+                            <div class="ojt-progress">
+                                <div class="ojt-progress-track">
+                                    <div class="ojt-progress-fill" :style="{ width: `${usage(request)}%` }"></div>
+                                </div>
+                                <span class="ojt-progress-label">{{ request.filled || 0 }} / {{ request.count }}</span>
+                            </div>
+                            <span class="ojt-cell-secondary">{{ request.remaining }} available</span>
+                        </td>
+                        <td class="col-wrap">
+                            <span v-if="request.skills" class="d-block">{{ request.skills }}</span>
+                            <span v-else class="ojt-na d-block">No skills listed</span>
+                            <span v-if="request.description" class="ojt-cell-secondary">{{ request.description }}</span>
+                        </td>
+                        <td>
+                            <StatusPill :status="displayStatus(request)" :label="displayStatus(request) === 'Pending' ? 'Awaiting approval' : ''" />
+                        </td>
+                        <td class="col-actions">
+                            <button v-if="request.status === 'Pending'" type="button" class="ojt-icon-btn ojt-icon-btn--approve"
+                                    title="Open for hiring" :aria-label="`Open request ${request.id} for hiring`"
+                                    :disabled="busyId === request.id" @click="openForHiring(request)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button type="button" class="ojt-icon-btn ojt-icon-btn--danger" title="Remove"
+                                    :aria-label="`Remove request ${request.id}`" :disabled="busyId === request.id"
+                                    @click="removeRequest(request.id)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
 </div>
-</div> 
-</div> 
-</section> 
+</section>
 
 
 </template>
 
 <script setup>
 import { onMounted, ref, inject, computed, watch } from 'vue'
+import StatusPill from '@/components/StatusPill.vue'
+import TableState from '@/components/TableState.vue'
 import { getApiErrorMessage, internRequestsAPI, signatoriesAPI } from '@/services/api'
+import { formatDisplayDate } from '@/utils/datetime'
 import '../assets/css/Request.css'
 
 const dialog = inject('dialog')
-const { showAlert, showConfirm } = dialog || {}
+const { showConfirm } = dialog || {}
 
 const isRequestModalOpen = ref(false)
 const requests = ref([])
+const search = ref('')
+const statusTabs = ['All', 'Pending', 'Open', 'Full', 'Closed']
+const statusFilter = ref('All')
+const busyId = ref(null)
+
+/* "Full" is derived: an Open request with no remaining slots. */
+function displayStatus(request) {
+  if ((request.status || '') === 'Open' && !request.hasSlots) return 'Full'
+  return request.status || 'Open'
+}
+
+function countFor(tab) {
+  return tab === 'All' ? requests.value.length : requests.value.filter((r) => displayStatus(r) === tab).length
+}
+
+const visibleRequests = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return requests.value
+    .filter((r) => statusFilter.value === 'All' || displayStatus(r) === statusFilter.value)
+    .filter((r) => !term || [r.officeName, r.officeCode, r.skills, r.description, String(r.id)]
+      .some((v) => String(v || '').toLowerCase().includes(term)))
+})
+
+function usage(r) {
+  return r.count > 0 ? Math.min(100, Math.round(((r.filled || 0) / r.count) * 100)) : 0
+}
+
+/* Supervisors submit slot requests as Pending; HR opens them for hiring. */
+async function openForHiring(request) {
+  const ok = await showConfirm(`Open request #${request.id} (${request.officeName}, ${request.count} slot(s)) for hiring?`, 'Open Request')
+  if (!ok) return
+  busyId.value = request.id
+  loadError.value = ''
+  try {
+    await internRequestsAPI.setStatus(request, 'Open')
+    await loadRequests()
+  } catch (e) {
+    loadError.value = getApiErrorMessage(e, 'Failed to open the request.')
+  } finally {
+    busyId.value = null
+  }
+}
 const offices = ref([])
 const signatories = ref([])
 const isLoading = ref(false)

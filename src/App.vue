@@ -20,7 +20,13 @@ import InternDocumentsPage from '../pages/intern-documents.vue'
 import CocGeneratePage from '../pages/coc-generate.vue'
 import DocumentsHistoryPage from '../pages/documents-history.vue'
 import DtrMonitoringPage from '../pages/dtr.vue'
-import { clearSession, isHRAdmin, isIntern } from './services/api'
+import SupervisorDashboardPage from '../pages/supervisor-dashboard.vue'
+import SupervisorInternsPage from '../pages/supervisor-interns.vue'
+import SupervisorDtrPage from '../pages/supervisor-dtr.vue'
+import SupervisorTimeAdjustmentsPage from '../pages/supervisor-time-adjustments.vue'
+import SupervisorOrientationsPage from '../pages/supervisor-orientations.vue'
+import SupervisorRequestsPage from '../pages/supervisor-requests.vue'
+import { clearSession, isHRAdmin, isIntern, isSupervisor } from './services/api'
 
 /* Lahat ng page na kayang buksan ng app. Kailangan ding nakasaad
    sa assets/json/menu.json at ALLOWED_PAGES (BaseLayout.vue). */
@@ -69,8 +75,25 @@ const pageComponents = {
   'intern-dtr.html': InternDtrPage,
   'intern-attendance.html': InternAttendancePage,
   'intern-documents.html': InternDocumentsPage,
+  'supervisor-interns.html': SupervisorInternsPage,
+  'supervisor-dtr.html': SupervisorDtrPage,
+  'supervisor-time-adjustments.html': SupervisorTimeAdjustmentsPage,
+  'supervisor-orientations.html': SupervisorOrientationsPage,
+  'supervisor-requests.html': SupervisorRequestsPage,
   'forbidden.html': ForbiddenPage
 }
+
+/* Department supervisor / signatory portal. Data is scoped server-side to
+   the supervisor's department (api/supervisor/*). */
+const SUPERVISOR_PAGES = [
+  'dashboard.html',
+  'account.html',
+  'supervisor-interns.html',
+  'supervisor-dtr.html',
+  'supervisor-time-adjustments.html',
+  'supervisor-orientations.html',
+  'supervisor-requests.html'
+]
 
 const INTERN_PAGES = [
   'dashboard.html',
@@ -101,7 +124,16 @@ function resolvePage() {
     return INTERN_PAGES.includes(page) ? page : 'forbidden.html'
   }
 
+  if (isSupervisor()) {
+    return SUPERVISOR_PAGES.includes(page) ? page : 'forbidden.html'
+  }
+
   if (!isHRAdmin()) {
+    return 'forbidden.html'
+  }
+
+  // Supervisor screens call api/supervisor/*, which HR accounts cannot use.
+  if (page.startsWith('supervisor-')) {
     return 'forbidden.html'
   }
 
@@ -123,6 +155,13 @@ function changePage(page) {
   currentPage.value = page === 'login.html' ? resolvePage() : resolvePage()
 }
 
+/* Each role has its own dashboard; other pages map one-to-one. */
+function componentFor(page) {
+  if (page === 'dashboard.html' && isIntern()) return InternDashboardPage
+  if (page === 'dashboard.html' && isSupervisor()) return SupervisorDashboardPage
+  return pageComponents[page]
+}
+
 onMounted(() => {
   window.addEventListener('popstate', () => {
     currentPage.value = resolvePage()
@@ -134,7 +173,7 @@ onMounted(() => {
   <component v-if="currentPage === 'login.html'" :is="pageComponents[currentPage]" />
   <BaseLayout v-else :current-page="currentPage" @navigate="changePage">
     <component
-      :is="currentPage === 'dashboard.html' && isIntern() ? InternDashboardPage : pageComponents[currentPage]"
+      :is="componentFor(currentPage)"
       :module-page="currentPage"
     />
   </BaseLayout>
