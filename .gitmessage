@@ -1,0 +1,10 @@
+
+# <type>: <what changed, in plain words>   (keep under ~70 characters)
+#
+# Types: feat | fix | refactor | style | test | docs | chore
+# Example: fix: mark AM time in after 8:00 as Late
+#
+# Optional body (leave a blank line above): why the change was needed,
+# and anything a reviewer should know.
+#
+# Lines starting with # are ignored. See CONTRIBUTING.md.

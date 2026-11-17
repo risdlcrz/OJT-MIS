@@ -1,0 +1,52 @@
+# Checks every push and pull request: the API builds and its tests pass,
+# and the Vue frontend lints and builds. No database or secrets are needed:
+# the tests use an in-memory database.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API build + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore OJTMISApi.Tests/OJTMISApi.Tests.csproj
+
+      - name: Build
+        run: dotnet build OJTMISApi.Tests/OJTMISApi.Tests.csproj --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test OJTMISApi.Tests/OJTMISApi.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+
+  web:
+    name: Frontend lint + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

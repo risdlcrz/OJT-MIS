@@ -1791,12 +1791,6 @@ function closeHireModal() {
 }
 
 
-function onHireDatePicked(e) {
-    hireDate.value = e.target.value
-    refreshHireEstimate()
-}
-
-
 /**
  * Asks the backend for the estimated start and end date.
  * This shows how "Exclude Fridays" changes the count.

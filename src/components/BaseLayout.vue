@@ -293,34 +293,6 @@ provide('dialog', {
    It tells whether List of Applicants or Schedule Orientation is open. */
 const currentHash = ref(window.location.hash.toLowerCase())
 
-const pageMeta = computed(() => {
-  if (props.currentPage === 'applicants.html' && currentHash.value === '#schedule') {
-    return { title: 'Schedule Orientation', section: 'Applicants', sectionIcon: 'far fa-file' }
-  }
-
-  return ({
-    'dashboard.html': { title: 'Dashboard' },
-    'requests.html': { title: 'List of Requests', section: 'Request', sectionIcon: 'fas fa-table' },
-    'time-adjustments.html': { title: 'Time Adjustment Requests', section: 'Request', sectionIcon: 'fas fa-table' },
-    'applicants.html': { title: 'List of Applicants', section: 'Applicants', sectionIcon: 'far fa-file' },
-    'schools.html': { title: 'List of Schools', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
-    'internlist.html': { title: 'Intern List' },
-    'forms.html': { title: 'Issuance of COC', section: 'Forms', sectionIcon: 'fas fa-file' },
-    'dtr.html': { title: 'Daily Time Record', section: 'Monitoring', sectionIcon: 'fas fa-users' },
-    'coc-generate.html': { title: 'Certificate of Completion', section: 'Forms', sectionIcon: 'fas fa-file' },
-    'documents-history.html': { title: 'Documents History', section: 'Forms', sectionIcon: 'fas fa-file' },
-    'attendance.html': { title: 'Attendance Report', section: 'Monitoring', sectionIcon: 'fas fa-chart-bar' },
-    'logs.html': { title: 'Activity Logs', section: 'Monitoring', sectionIcon: 'fas fa-users' },
-    'idgenerate.html': { title: 'ID Generation', section: 'Forms', sectionIcon: 'fas fa-file' },
-    'utility.html': { title: 'Utility' },
-    'signatories.html': { title: 'Signatories', section: 'System Settings', sectionIcon: 'fas fa-cogs' },
-    'account.html': { title: 'Account Information', section: 'Account', sectionIcon: 'far fa-user-circle' },
-    'intern-dtr.html': { title: 'Daily Time Record', section: 'Intern', sectionIcon: 'fas fa-id-card' },
-    'intern-attendance.html': { title: 'Attendance', section: 'Intern', sectionIcon: 'fas fa-calendar-check' },
-    'intern-documents.html': { title: 'Document Requests', section: 'Intern', sectionIcon: 'far fa-folder' }
-  }[props.currentPage] || { title: 'OJTMIS' })
-})
-
 const menu = ref([])
 
 /* The dashboard shows a full-page background. */

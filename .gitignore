@@ -21,6 +21,10 @@ obj/
 # Local mailbox used when SMTP is not configured
 OJTMISApi/App_Data/
 
+# Design reference material (theme demo, Bootstrap 4 dist). Not used by the
+# app; keep a local copy if you need it, but do not commit it.
+references/
+
 # Editor directories and files
 .vs/
 .vscode/*
