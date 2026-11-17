@@ -172,28 +172,56 @@ namespace OJTMISApi.Services
             string email,
             string name,
             string temporaryPassword,
+            string confirmationToken,
             CancellationToken cancellationToken = default)
         {
-            var appBaseUrl = AppBaseUrl();
             var greeting = string.IsNullOrWhiteSpace(name) ? "Hello" : $"Hello {name}";
-            var signIn = $"{appBaseUrl}/login.html";
+            var link = ConfirmLink(email, confirmationToken);
 
             var textBody =
                 $"{greeting},\r\n\r\n" +
-                "Your OJT-MIS account is ready. Use the temporary password below to activate it and sign in.\r\n\r\n" +
-                $"Sign in at {signIn}\r\n" +
+                "Your OJT-MIS account is ready. First verify that this email address is yours, then sign in with the temporary password below.\r\n\r\n" +
+                $"Verify your email: {link}\r\n" +
                 $"Temporary password: {temporaryPassword}\r\n\r\n" +
-                "After you sign in, change this password from Account > Security.\r\n";
+                "You cannot sign in until your email is verified. After you sign in, change this password from Account > Security.\r\n";
 
             return SendAsync(new EmailRequest
             {
                 To = new List<string> { email },
                 Subject = "Activate your OJT-MIS account",
                 Category = "Account Activation",
-                HtmlBody = EmailTemplates.TemporaryPassword(appBaseUrl, name, temporaryPassword),
+                HtmlBody = EmailTemplates.TemporaryPassword(link, name, temporaryPassword),
                 TextBody = textBody
             }, cancellationToken);
         }
+
+        public Task SendEmailConfirmationAsync(
+            string email,
+            string name,
+            string confirmationToken,
+            CancellationToken cancellationToken = default)
+        {
+            var greeting = string.IsNullOrWhiteSpace(name) ? "Hello" : $"Hello {name}";
+            var link = ConfirmLink(email, confirmationToken);
+
+            var textBody =
+                $"{greeting},\r\n\r\n" +
+                "Confirm that this email address belongs to you to finish setting up your OJT-MIS account.\r\n\r\n" +
+                $"Verify your email: {link}\r\n\r\n" +
+                "If you did not create an OJT-MIS account, you can ignore this message.\r\n";
+
+            return SendAsync(new EmailRequest
+            {
+                To = new List<string> { email },
+                Subject = "Verify your OJT-MIS email",
+                Category = "Email Verification",
+                HtmlBody = EmailTemplates.EmailConfirmation(name, link),
+                TextBody = textBody
+            }, cancellationToken);
+        }
+
+        private string ConfirmLink(string email, string token) =>
+            $"{AppBaseUrl()}/login.html?mode=confirm&email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
 
         public Task SendPasswordResetLinkAsync(
             string email,

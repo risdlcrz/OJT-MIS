@@ -30,6 +30,23 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
 
+// Secrets are never stored in appsettings.json. Locally they come from
+// `dotnet user-secrets`; in production from environment variables
+// (Jwt__SigningKey, Mailtrap__ApiToken, Seed__AdminPassword).
+if (string.IsNullOrWhiteSpace(jwt.SigningKey) || Encoding.UTF8.GetByteCount(jwt.SigningKey) < 32)
+{
+    Console.Error.WriteLine();
+    Console.Error.WriteLine("===========================================================");
+    Console.Error.WriteLine(" ERROR: Jwt:SigningKey is missing or shorter than 32 bytes.");
+    Console.Error.WriteLine();
+    Console.Error.WriteLine(" Set it in the local secret store (never in appsettings.json):");
+    Console.Error.WriteLine("     dotnet user-secrets set \"Jwt:SigningKey\" \"<64+ random chars>\" --project OJTMISApi");
+    Console.Error.WriteLine(" or, on a server, the environment variable Jwt__SigningKey.");
+    Console.Error.WriteLine("===========================================================");
+    Console.Error.WriteLine();
+    Environment.Exit(1);
+}
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
@@ -264,15 +281,27 @@ static async Task SeedAsync(WebApplication app)
 
     var config = app.Configuration;
     var email = config["Seed:AdminEmail"] ?? "hradmin@ojtmis.local";
-    var password = config["Seed:AdminPassword"] ?? "Admin@12345";
+    var password = config["Seed:AdminPassword"];
 
     if (await userManager.FindByEmailAsync(email) is null)
     {
+        // No hardcoded fallback: a public default password would let anyone
+        // sign in as HR on a fresh install.
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            app.Logger.LogWarning(
+                "Seed:AdminPassword is not set, so the default HR Admin account ({Email}) was not created. " +
+                "Set it with: dotnet user-secrets set \"Seed:AdminPassword\" \"<password>\" --project OJTMISApi",
+                email);
+            return;
+        }
+
         var admin = new ApplicationUser
         {
             UserName = email,
             Email = email,
             EmailConfirmed = true,
+            IsApproved = true,
             FirstName = "HR",
             LastName = "Administrator",
             Office = "ISDMD"

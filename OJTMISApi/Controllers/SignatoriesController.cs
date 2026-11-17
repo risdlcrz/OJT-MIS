@@ -291,6 +291,7 @@ namespace OJTMISApi.Controllers
                         FirstName = firstName,
                         LastName = lastName,
                         Office = string.IsNullOrWhiteSpace(signatory.Department) ? null : signatory.Department,
+                        IsApproved = true,
                         EmailConfirmed = false
                     };
 
@@ -304,7 +305,7 @@ namespace OJTMISApi.Controllers
                     await _userManager.AddToRoleAsync(user, isHr ? UserRoles.HRAdmin : UserRoles.Supervisor);
                     try
                     {
-                        await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                        await _email.SendActivationAsync(_userManager, user, password);
                     }
                     catch (Exception mailEx)
                     {

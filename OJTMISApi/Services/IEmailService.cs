@@ -82,11 +82,22 @@ namespace OJTMISApi.Services
             string? attachmentName = null,
             CancellationToken cancellationToken = default);
 
-        /// <summary>Sends the account-creation email containing a temporary password.</summary>
+        /// <summary>
+        /// Sends the account-creation email containing a temporary password
+        /// and the email-verification link the user must open before signing in.
+        /// </summary>
         Task SendTemporaryPasswordAsync(
             string email,
             string name,
             string temporaryPassword,
+            string confirmationToken,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Sends (or re-sends) only the email-verification link.</summary>
+        Task SendEmailConfirmationAsync(
+            string email,
+            string name,
+            string confirmationToken,
             CancellationToken cancellationToken = default);
 
         /// <summary>Sends the password-reset link email.</summary>
@@ -101,26 +112,45 @@ namespace OJTMISApi.Services
     /// <summary>Inline HTML templates used by the built-in account emails.</summary>
     internal static class EmailTemplates
     {
-        public static string TemporaryPassword(string appBaseUrl, string name, string temporaryPassword)
+        public static string TemporaryPassword(string confirmLink, string name, string temporaryPassword)
         {
             var greeting = string.IsNullOrWhiteSpace(name)
                 ? "Hello"
                 : $"Hello {WebUtility.HtmlEncode(name)}";
-            var signIn = WebUtility.HtmlEncode($"{appBaseUrl}/login.html");
+            var link = WebUtility.HtmlEncode(confirmLink);
             var password = WebUtility.HtmlEncode(temporaryPassword);
 
             var content = $"""
                 <p style="margin:0 0 16px">{greeting},</p>
-                <p style="margin:0 0 16px">Your OJT-MIS account is ready. Use the temporary password below to activate it and sign in.</p>
+                <p style="margin:0 0 16px">Your OJT-MIS account is ready. First verify that this email address is yours, then sign in with the temporary password below.</p>
                 <p style="margin:0 0 24px">
-                  <a href="{signIn}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600">Sign in to OJT-MIS</a>
+                  <a href="{link}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600">Verify my email</a>
                 </p>
                 <p style="margin:0 0 8px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:.04em">Temporary password</p>
                 <p style="margin:0 0 24px;padding:12px 16px;background:#f3f4f6;border-radius:6px;font-family:Consolas,Menlo,monospace;font-size:16px">{password}</p>
-                <p style="margin:0;color:#4b5563">After you sign in, change this password from Account &gt; Security.</p>
+                <p style="margin:0;color:#4b5563">You cannot sign in until your email is verified. After you sign in, change this password from Account &gt; Security.</p>
                 """;
 
             return Layout("Activate your OJT-MIS account", content);
+        }
+
+        public static string EmailConfirmation(string name, string confirmLink)
+        {
+            var greeting = string.IsNullOrWhiteSpace(name)
+                ? "Hello"
+                : $"Hello {WebUtility.HtmlEncode(name)}";
+            var link = WebUtility.HtmlEncode(confirmLink);
+
+            var content = $"""
+                <p style="margin:0 0 16px">{greeting},</p>
+                <p style="margin:0 0 24px">Confirm that this email address belongs to you to finish setting up your OJT-MIS account.</p>
+                <p style="margin:0 0 24px">
+                  <a href="{link}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600">Verify my email</a>
+                </p>
+                <p style="margin:0;color:#4b5563">If you did not create an OJT-MIS account, you can ignore this message.</p>
+                """;
+
+            return Layout("Verify your OJT-MIS email", content);
         }
 
         public static string PasswordReset(string name, string resetLink)

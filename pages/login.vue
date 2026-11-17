@@ -109,6 +109,11 @@
                 <!-- Error Message -->
                 <p v-if="infoMessage" class="login-info" role="status">{{ infoMessage }}</p>
                 <p v-if="errorMessage" class="login-error" role="alert">{{ errorMessage }}</p>
+                <div v-if="needsVerification && mode === 'login'" class="login-forgot">
+                    <a href="#" class="login-forgot-link" @click.prevent="resendVerification">
+                        Resend verification email
+                    </a>
+                </div>
 
                 <!-- Submit Button -->
                 <button type="submit" class="login-submit" :disabled="isBusy">
@@ -159,6 +164,8 @@ const lastName = ref('')
 const errorMessage = ref('')
 const infoMessage = ref('')
 const isBusy = ref(false)
+/* True after a sign-in was refused because the email is not verified yet. */
+const needsVerification = ref(false)
 
 const heading = computed(() => {
     if (mode.value === 'signup') return 'Create your account'
@@ -192,9 +199,41 @@ function toggleMode() {
     infoMessage.value = ''
 }
 
+async function resendVerification() {
+    if (!email.value || isBusy.value) return
+    isBusy.value = true
+    errorMessage.value = ''
+    try {
+        const result = await authAPI.resendConfirmation(email.value)
+        infoMessage.value = result?.message || 'If that account still needs verification, a new link has been sent.'
+        needsVerification.value = false
+    } catch (error) {
+        errorMessage.value = getApiErrorMessage(error, 'Could not send the verification email. Please try again.')
+    } finally {
+        isBusy.value = false
+    }
+}
+
+/* Opened from the "Verify my email" link: ?mode=confirm&email=...&token=... */
+async function confirmFromLink(confirmEmail, token) {
+    email.value = confirmEmail
+    isBusy.value = true
+    try {
+        const result = await authAPI.confirmEmail({ email: confirmEmail, token })
+        infoMessage.value = result?.message || 'Email verified.'
+    } catch (error) {
+        errorMessage.value = getApiErrorMessage(error, 'This verification link is invalid or has expired.')
+        needsVerification.value = true
+    } finally {
+        isBusy.value = false
+        window.history.replaceState({}, '', '/login.html')
+    }
+}
+
 async function submit() {
     errorMessage.value = ''
     infoMessage.value = ''
+    needsVerification.value = false
 
     if (mode.value === 'signup' && (!firstName.value || !lastName.value)) {
         errorMessage.value = 'Please enter your first and last name.'
@@ -238,19 +277,25 @@ async function submit() {
         }
 
         if (mode.value === 'signup') {
-            await authAPI.register({
+            const result = await authAPI.register({
                 email: email.value,
                 password: password.value,
                 firstName: firstName.value,
                 lastName: lastName.value
             })
-        } else {
-            await authAPI.login(email.value, password.value)
+            mode.value = 'login'
+            password.value = ''
+            infoMessage.value = result?.message ||
+                'Account created. Verify your email, then wait for HR approval before signing in.'
+            return
         }
+
+        await authAPI.login(email.value, password.value)
 
         window.history.pushState({}, '', '/dashboard.html')
         window.dispatchEvent(new PopStateEvent('popstate'))
     } catch (error) {
+        needsVerification.value = error?.response?.data?.code === 'email_unconfirmed'
         errorMessage.value = getApiErrorMessage(error, 'Unable to sign in. Please try again.')
     } finally {
         isBusy.value = false
@@ -266,6 +311,11 @@ onMounted(() => {
         mode.value = 'reset'
         email.value = resetEmail
         resetToken.value = token
+        return
+    }
+
+    if (params.get('mode') === 'confirm' && token && resetEmail) {
+        confirmFromLink(resetEmail, token)
         return
     }
 

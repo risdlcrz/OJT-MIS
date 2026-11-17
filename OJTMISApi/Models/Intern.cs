@@ -78,6 +78,18 @@ namespace OJTMISApi.Models
         /// <summary>Sum of completed attendance punches. Updated on punch and adjustment approval.</summary>
         public double HoursRendered { get; set; }
 
+        /// <summary>
+        /// Opaque attendance code printed on the intern's current ID
+        /// ("OJT2." + 256 random bits). It carries no intern data, is unique
+        /// across all interns, and is replaced each time HR generates a new
+        /// ID, which cancels every previously printed card.
+        /// </summary>
+        [StringLength(64)]
+        public string? AttendanceQrToken { get; set; }
+
+        /// <summary>When the current <see cref="AttendanceQrToken"/> was issued.</summary>
+        public DateTime? AttendanceQrIssuedAt { get; set; }
+
         [StringLength(200)]
         public string GuardianName { get; set; } = string.Empty;
 

@@ -48,7 +48,7 @@ namespace OJTMISApi.Controllers
         // POST: api/auth/register
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
@@ -69,7 +69,10 @@ namespace OJTMISApi.Controllers
                 FirstName = request.FirstName.Trim(),
                 LastName = request.LastName.Trim(),
                 Office = request.Office?.Trim(),
-                EmailConfirmed = true
+                // Knowing a hired intern's email is not proof of identity:
+                // the person must verify the inbox AND HR must approve.
+                EmailConfirmed = false,
+                IsApproved = false
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -84,7 +87,89 @@ namespace OJTMISApi.Controllers
             // Ang bagong account ay Intern lamang. Ang HR Admin ay seed/admin lamang.
             await _userManager.AddToRoleAsync(user, UserRoles.Intern);
 
-            return await IssueTokenAsync(user);
+            try
+            {
+                await _email.SendVerificationAsync(_userManager, user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Self-registered account was created but the verification email failed.");
+            }
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = user.Id,
+                UserName = user.FullName,
+                Email = user.Email ?? string.Empty,
+                Category = ActivityLogWriter.CategoryFor(new[] { UserRoles.Intern }),
+                Method = "POST",
+                Path = "/api/auth/register",
+                Action = "Self-registered an intern account",
+                Details = "Signed up; waiting for email verification and HR approval in User Management.",
+                IsVerified = false,
+                CreatedAt = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+
+            // No session yet: both verification steps must finish first.
+            return Accepted(new
+            {
+                message = "Account created. Open the verification link we emailed you. HR must also approve your account before you can sign in."
+            });
+        }
+
+        /// <summary>
+        /// POST: api/auth/confirm-email
+        /// User side of the two-step verification, from the emailed link.
+        /// </summary>
+        [HttpPost("confirm-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            const string invalid = "This verification link is invalid or has expired. Request a new one from the sign-in page.";
+            var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+            if (user is null) return BadRequest(new { message = invalid });
+
+            // Always validate the token, even for an already-verified account,
+            // so this endpoint never reveals an account's status.
+            var result = await _userManager.ConfirmEmailAsync(user, request.Token);
+            if (!result.Succeeded) return BadRequest(new { message = invalid });
+
+            return Ok(new
+            {
+                approved = user.IsApproved,
+                message = user.IsApproved
+                    ? "Email verified. You can now sign in."
+                    : "Email verified. Your account is waiting for HR approval; you can sign in once HR approves it."
+            });
+        }
+
+        /// <summary>
+        /// POST: api/auth/resend-confirmation
+        /// Always answers the same way so it cannot be used to discover accounts.
+        /// </summary>
+        [HttpPost("resend-confirmation")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResendConfirmation([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+            if (user is not null && !user.EmailConfirmed && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                try
+                {
+                    await _email.SendVerificationAsync(_userManager, user);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not resend a verification email.");
+                }
+            }
+
+            return Ok(new { message = "If that account still needs verification, a new link has been sent." });
         }
 
         // POST: api/auth/login
@@ -104,6 +189,14 @@ namespace OJTMISApi.Controllers
             if (!result.Succeeded)
             {
                 return Unauthorized(new { message = "Invalid email or password." });
+            }
+
+            // Two-step verification: the user verified the email and HR
+            // approved the account. Checked only after the password, so this
+            // reveals nothing to someone guessing emails.
+            if (AccountActivation.Blocker(user) is { } blocker)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = blocker.Code, message = blocker.Message });
             }
 
             // Ang intern access ay nag-expire kapag lumipas na ang EndDate
@@ -186,9 +279,12 @@ namespace OJTMISApi.Controllers
                 });
             }
 
-            if (!string.IsNullOrEmpty(user.TemporaryPassword))
+            // Opening a reset link from the inbox proves the email is theirs,
+            // so it also completes the user's side of verification.
+            if (!string.IsNullOrEmpty(user.TemporaryPassword) || !user.EmailConfirmed)
             {
                 user.TemporaryPassword = null;
+                user.EmailConfirmed = true;
                 await _userManager.UpdateAsync(user);
             }
 
@@ -369,6 +465,15 @@ namespace OJTMISApi.Controllers
 
         [Required, StringLength(100, MinimumLength = 8)]
         public string Password { get; set; } = string.Empty;
+    }
+
+    public class ConfirmEmailRequest
+    {
+        [Required, EmailAddress, StringLength(256)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Token { get; set; } = string.Empty;
     }
 
     public class ForgotPasswordRequest

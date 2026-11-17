@@ -117,11 +117,10 @@ export const authAPI = {
     saveSession(data)
     return data.profile
   },
-  register: async (payload) => {
-    const { data } = await apiClient.post('/auth/register', payload)
-    saveSession(data)
-    return data.profile
-  },
+  /* No session is returned: the email must be verified and HR must approve first. */
+  register: async (payload) => (await apiClient.post('/auth/register', payload)).data,
+  confirmEmail: async (payload) => (await apiClient.post('/auth/confirm-email', payload)).data,
+  resendConfirmation: async (email) => (await apiClient.post('/auth/resend-confirmation', { email })).data,
   me: async () => {
     const { data } = await apiClient.get('/auth/me')
     saveProfile(data)
@@ -177,7 +176,10 @@ export function isSupervisor() {
 export const schoolsAPI = crud('schools')
 export const internsAPI = {
   ...crud('interns'),
-  attendanceQr: async (id) => (await apiClient.get(`/interns/${id}/attendance-qr`)).data
+  /* Current ID code (null until an ID is generated). Reading never changes it. */
+  attendanceQr: async (id) => (await apiClient.get(`/interns/${id}/attendance-qr`)).data,
+  /* Issues a new unique code for a new ID; the previous card stops working. */
+  issueAttendanceQr: async (id) => (await apiClient.post(`/interns/${id}/attendance-qr`)).data
 }
 export const applicantsAPI = {
   ...crud('applicants'),
@@ -251,6 +253,7 @@ export const adminUsersAPI = {
   create: async (payload) => (await apiClient.post('/admin/users', payload)).data,
   update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data,
   sendPasswordReset: async (id) => (await apiClient.post(`/admin/users/${id}/password-reset`)).data,
+  approve: async (id) => (await apiClient.post(`/admin/users/${id}/approve`)).data,
   availablePeople: async () => (await apiClient.get('/admin/users/available-people')).data
 }
 

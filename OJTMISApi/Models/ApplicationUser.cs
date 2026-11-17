@@ -25,6 +25,15 @@ namespace OJTMISApi.Models
         /// </summary>
         public string? TemporaryPassword { get; set; }
 
+        /// <summary>
+        /// HR side of the two-step account verification. Accounts HR creates
+        /// (hiring, User Management, signatories) are approved at creation;
+        /// self-registered accounts wait for HR to approve them. Sign-in needs
+        /// both this flag and <see cref="IdentityUser.EmailConfirmed"/>
+        /// (the user's side, set from the emailed activation link).
+        /// </summary>
+        public bool IsApproved { get; set; }
+
         /// <summary>Pangalan na ipinapakita sa navbar (First + Last).</summary>
         public string FullName => $"{FirstName} {LastName}".Trim();
     }

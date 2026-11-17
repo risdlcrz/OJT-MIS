@@ -8,6 +8,9 @@
     <AssemblyName>OJTMISApi</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- Local secrets (JWT key, Mailtrap token, seed admin password) live in
+         the per-user secret store, never in appsettings.json. -->
+    <UserSecretsId>ojtmis-api-3da320f6-fed6-4c2b-b34e-6ffacbda6dc4</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

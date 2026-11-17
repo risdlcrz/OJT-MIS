@@ -373,6 +373,14 @@ namespace OJTMISApi.Controllers
                     await _userManager.AddToRoleAsync(existing, UserRoles.Intern);
                 }
 
+                // Hiring is HR's approval. The applicant still has to verify
+                // their own email before the account can sign in.
+                if (!existing.IsApproved)
+                {
+                    existing.IsApproved = true;
+                    await _userManager.UpdateAsync(existing);
+                }
+
                 return new(false, email, false,
                     "An account with this email already exists; Intern access was ensured.");
             }
@@ -385,7 +393,10 @@ namespace OJTMISApi.Controllers
                 FirstName = applicant.FirstName,
                 LastName = applicant.LastName,
                 Office = applicant.ApplicantOffice,
-                EmailConfirmed = true
+                // Approved by HR through the hire; the intern verifies the
+                // applicant email from the activation link.
+                IsApproved = true,
+                EmailConfirmed = false
             };
 
             var createResult = await _userManager.CreateAsync(user, password);
@@ -402,14 +413,14 @@ namespace OJTMISApi.Controllers
 
             try
             {
-                await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                await _email.SendActivationAsync(_userManager, user, password);
                 return new(true, email, true, null);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Hired {Email} but the temporary password email failed.", email);
                 return new(true, email, false,
-                    "The account was created, but the temporary password email could not be sent. The intern can use Forgot Password.");
+                    "The account was created, but the activation email could not be sent. The intern can use Forgot Password, which also verifies the email.");
             }
         }
 

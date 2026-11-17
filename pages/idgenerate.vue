@@ -377,7 +377,12 @@
               ></textarea>
               <p v-if="qrError" class="text-danger small mb-0 mt-1">{{ qrError }}</p>
               <p v-else class="idgen-hint mb-0 mt-1">
-                Select a hired intern. The QR stores a signed intern token used by the attendance scanner.
+                <template v-if="selectedInternId && !attendanceToken">
+                  No ID has been generated for this intern yet. A unique attendance QR is issued when you click Generate ID.
+                </template>
+                <template v-else>
+                  Each generated ID gets its own random attendance code. Generating a new ID cancels the previous card.
+                </template>
               </p>
             </details>
           </div>
@@ -666,7 +671,7 @@ async function applyIntern(intern) {
     const qr = await internsAPI.attendanceQr(intern.id)
     attendanceToken.value = qr.payload || ''
   } catch (error) {
-    qrError.value = getApiErrorMessage(error, 'Could not create the attendance QR.')
+    qrError.value = getApiErrorMessage(error, 'Could not load the attendance QR.')
   }
 
   Object.assign(form, defaultForm)
@@ -924,7 +929,7 @@ async function generateId() {
   }
 
   const message = selectedIdHistory.value
-    ? `An ID was already generated for ${internName}. Generate and save a new ID issuance for this intern?`
+    ? `An ID was already generated for ${internName}. Generate a new ID issuance? The QR on the previous card will stop working for attendance.`
     : `Generate the ID for ${internName} and save it to the intern's document history?`
   const confirmed = dialog?.showConfirm
     ? await dialog.showConfirm(message, selectedIdHistory.value ? 'Regenerate ID' : 'Generate ID')
@@ -935,6 +940,14 @@ async function generateId() {
   error.value = ''
   saving.value = true
   try {
+    /* Every generated ID gets a fresh unique attendance code; this cancels
+       any card printed earlier for the same intern. */
+    if (autoQr.value) {
+      const issued = await internsAPI.issueAttendanceQr(internId)
+      attendanceToken.value = issued.payload || ''
+      await renderQr(qrPayload.value)
+    }
+
     await hrAttendanceAPI.logGeneratedDocument(idPayload.value)
     notice.value = `ID for ${internName} was saved to the intern's document history.`
     await loadGeneratedDocuments()

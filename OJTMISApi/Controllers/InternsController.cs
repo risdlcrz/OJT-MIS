@@ -312,6 +312,7 @@ namespace OJTMISApi.Controllers
                     FirstName = string.IsNullOrWhiteSpace(intern.FirstName) ? intern.FullName : intern.FirstName,
                     LastName = intern.LastName ?? string.Empty,
                     Office = intern.ApplicantOffice,
+                    IsApproved = true,
                     EmailConfirmed = false
                 };
 
@@ -322,7 +323,7 @@ namespace OJTMISApi.Controllers
                     await _userManager.AddToRoleAsync(user, UserRoles.Intern);
                     try
                     {
-                        await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                        await _email.SendActivationAsync(_userManager, user, password);
                     }
                     catch (Exception mailEx)
                     {
@@ -336,18 +337,56 @@ namespace OJTMISApi.Controllers
             }
         }
 
-        /// <summary>GET: api/interns/{id}/attendance-qr</summary>
+        /// <summary>
+        /// GET: api/interns/{id}/attendance-qr
+        /// The code on the intern's current ID, or null when no ID has been
+        /// generated yet. Reading it never changes it.
+        /// </summary>
         [HttpGet("{id:int}/attendance-qr")]
-        public async Task<ActionResult<object>> AttendanceQr(int id, [FromServices] AttendanceQrService qr)
+        public async Task<ActionResult<object>> AttendanceQr(int id)
         {
-            var hired = await _context.Interns.AsNoTracking()
-                .AnyAsync(i => i.Id == id && i.Status == "Hired");
-            if (!hired)
+            var intern = await _context.Interns.AsNoTracking()
+                .Where(i => i.Id == id && i.Status == "Hired")
+                .Select(i => new { i.AttendanceQrToken, i.AttendanceQrIssuedAt })
+                .FirstOrDefaultAsync();
+            if (intern is null)
             {
                 return NotFound(new { message = "Hired intern was not found." });
             }
 
-            return Ok(new { internId = id, payload = qr.Create(id) });
+            return Ok(new { internId = id, payload = intern.AttendanceQrToken, issuedAt = intern.AttendanceQrIssuedAt });
+        }
+
+        /// <summary>
+        /// POST: api/interns/{id}/attendance-qr
+        /// Issues a brand-new unique code for a new ID card. The previous code
+        /// (and every card printed with it) stops working immediately.
+        /// </summary>
+        [HttpPost("{id:int}/attendance-qr")]
+        public async Task<ActionResult<object>> IssueAttendanceQr(int id, [FromServices] AttendanceQrService qr)
+        {
+            var intern = await _context.Interns.FirstOrDefaultAsync(i => i.Id == id && i.Status == "Hired");
+            if (intern is null)
+            {
+                return NotFound(new { message = "Hired intern was not found." });
+            }
+
+            var replaced = !string.IsNullOrEmpty(intern.AttendanceQrToken);
+            intern.AttendanceQrToken = qr.NewToken();
+            intern.AttendanceQrIssuedAt = DateTime.Now;
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/interns/{id}/attendance-qr",
+                replaced ? "Replaced an intern ID attendance code" : "Issued an intern ID attendance code",
+                replaced
+                    ? $"Issued a new attendance QR for {intern.FullName}; the previous ID card no longer works."
+                    : $"Issued the first attendance QR for {intern.FullName}.");
+            await _context.SaveChangesAsync();
+
+            return Ok(new { internId = id, payload = intern.AttendanceQrToken, issuedAt = intern.AttendanceQrIssuedAt, replaced });
         }
 
         /// <summary>DELETE: api/interns/{id}</summary>

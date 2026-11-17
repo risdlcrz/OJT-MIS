@@ -351,8 +351,19 @@
                   </td>
                   <td class="text-dark">{{ user.email }}</td>
                   <td>
-                    <span class="badge" :class="user.emailConfirmed ? 'text-bg-success' : 'text-bg-danger'">
+                    <span
+                      class="badge"
+                      :class="user.emailConfirmed ? 'text-bg-success' : 'text-bg-danger'"
+                      :title="user.emailConfirmed ? 'The user verified this email address.' : 'The user has not opened the verification link yet.'"
+                    >
                       {{ user.emailConfirmed ? 'Verified' : 'Unverified' }}
+                    </span>
+                    <span
+                      v-if="user.isApproved === false"
+                      class="badge text-bg-warning ms-1"
+                      title="Self-registered account. HR must approve it before it can sign in."
+                    >
+                      Pending HR approval
                     </span>
                   </td>
                   <td>
@@ -369,6 +380,16 @@
                   <td class="text-dark">{{ user.office || '-' }}</td>
                   <td class="text-muted small">{{ formatDate(user.createdAt) }}</td>
                   <td class="text-center text-nowrap">
+                    <button
+                      v-if="user.isApproved === false"
+                      type="button"
+                      class="btn btn-sm btn-outline-success me-1"
+                      title="Approve this account (the user must also verify their email)"
+                      :disabled="isSavingUser || approvingUserId === user.id"
+                      @click="approveUser(user)"
+                    >
+                      <i class="fas fa-check"></i>
+                    </button>
                     <button
                       type="button"
                       class="btn btn-sm btn-outline-primary"
@@ -977,6 +998,29 @@ const userModalEl = ref(null)
 let userModal = null
 const isSavingUser = ref(false)
 const resettingUserId = ref('')
+const approvingUserId = ref('')
+
+/* HR side of the two-step verification for self-registered accounts. */
+async function approveUser(user) {
+  if (!user?.id || approvingUserId.value) return
+  const message = `Approve the account of ${user.fullName || user.email}? They can sign in once their email is verified.`
+  if (!window.confirm(message)) return
+
+  approvingUserId.value = user.id
+  try {
+    const updated = await adminUsersAPI.approve(user.id)
+    users.value = users.value.map((item) => (item.id === user.id ? { ...item, ...updated } : item))
+    showToast(
+      user.emailConfirmed
+        ? `${user.email} was approved and can now sign in.`
+        : `${user.email} was approved. They can sign in after verifying their email.`
+    )
+  } catch (error) {
+    showToast(getApiErrorMessage(error, 'Could not approve this account.'), 'danger')
+  } finally {
+    approvingUserId.value = ''
+  }
+}
 const userSubmitted = ref(false)
 const userFormError = ref('')
 const availablePeople = ref([])

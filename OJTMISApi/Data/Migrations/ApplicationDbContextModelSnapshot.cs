@@ -407,6 +407,9 @@ namespace OJTMISApi.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -762,6 +765,13 @@ namespace OJTMISApi.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTime?>("AttendanceQrIssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AttendanceQrToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<DateTime?>("CompletionNotifiedAt")
                         .HasColumnType("datetime2");
 
@@ -888,6 +898,10 @@ namespace OJTMISApi.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AttendanceQrToken")
+                        .IsUnique()
+                        .HasFilter("[AttendanceQrToken] IS NOT NULL");
 
                     b.HasIndex("RequestId");
 

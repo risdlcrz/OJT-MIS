@@ -147,7 +147,9 @@ namespace OJTMISApi.Controllers
                 FirstName = request.FirstName.Trim(),
                 LastName = request.LastName.Trim(),
                 Office = string.IsNullOrWhiteSpace(request.Office) ? null : request.Office.Trim(),
-                EmailConfirmed = true
+                // HR created it (approved); the user still has to verify the email.
+                IsApproved = true,
+                EmailConfirmed = false
             };
 
             var createResult = await _userManager.CreateAsync(user, password);
@@ -173,7 +175,7 @@ namespace OJTMISApi.Controllers
 
             try
             {
-                await _email.SendTemporaryPasswordAsync(email, user.FullName, password);
+                await _email.SendActivationAsync(_userManager, user, password);
             }
             catch (Exception)
             {
@@ -273,6 +275,43 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
+        /// POST: api/admin/users/{id}/approve
+        /// HR side of the two-step verification for self-registered accounts.
+        /// The user still has to verify their email before signing in.
+        /// </summary>
+        [HttpPost("{id}/approve")]
+        public async Task<ActionResult<AdminUserDto>> Approve(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user is null)
+            {
+                return NotFound(new { message = $"User with id {id} was not found." });
+            }
+
+            if (!user.IsApproved)
+            {
+                user.IsApproved = true;
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    return BadRequest(new { message = string.Join(" ", result.Errors.Select(e => e.Description)) });
+                }
+
+                ActivityLogWriter.Add(
+                    _context,
+                    User,
+                    "POST",
+                    $"/api/admin/users/{id}/approve",
+                    "Approved a user account",
+                    $"Approved the account of {user.Email}.");
+                await _context.SaveChangesAsync();
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(ToDto(user, roles));
+        }
+
+        /// <summary>
         /// POST: api/admin/users/{id}/password-reset
         /// HR cannot choose the new password. A reset link is emailed instead.
         /// </summary>
@@ -327,6 +366,7 @@ namespace OJTMISApi.Controllers
                 Office = user.Office,
                 AvatarUrl = user.AvatarUrl,
                 EmailConfirmed = user.EmailConfirmed,
+                IsApproved = user.IsApproved,
                 Roles = roles.ToArray(),
                 CreatedAt = user.CreatedAt
             };
@@ -356,6 +396,7 @@ namespace OJTMISApi.Controllers
         public string? Office { get; set; }
         public string? AvatarUrl { get; set; }
         public bool EmailConfirmed { get; set; }
+        public bool IsApproved { get; set; }
         public string[] Roles { get; set; } = Array.Empty<string>();
         public DateTime CreatedAt { get; set; }
     }

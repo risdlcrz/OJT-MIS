@@ -8,6 +8,9 @@ namespace OJTMISApi.Services
 {
     public class AttendanceLogService
     {
+        /// <summary>Shortest allowed time between two punches of the same intern.</summary>
+        public static readonly TimeSpan MinimumPunchGap = TimeSpan.FromMinutes(5);
+
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AttendanceQrService _qr;
@@ -36,11 +39,21 @@ namespace OJTMISApi.Services
                 });
             }
 
-            if (!_qr.TryRead(payload, out var internId) || internId != intern.Id)
+            if (string.IsNullOrEmpty(intern.AttendanceQrToken))
             {
                 return (StatusCodes.Status400BadRequest, new
                 {
-                    message = "This QR code is not valid for your intern record."
+                    message = "No ID has been issued to you yet. Ask HR to generate your intern ID."
+                });
+            }
+
+            if (!_qr.Matches(payload, intern.AttendanceQrToken))
+            {
+                return (StatusCodes.Status400BadRequest, new
+                {
+                    message = AttendanceQrService.IsLegacy(payload)
+                        ? "This ID was replaced. Scan the QR code on your newest intern ID, or ask HR to generate one."
+                        : "This QR code is not valid for your intern record. Scan the QR code on your own, latest intern ID."
                 });
             }
 
@@ -51,6 +64,24 @@ namespace OJTMISApi.Services
                 .Where(x => x.InternId == intern.Id && x.Date >= today && x.Date < tomorrow)
                 .OrderBy(x => x.TimeIn)
                 .ToListAsync();
+
+            // Guard against a double scan turning "Time In" into an instant
+            // "Time Out" (or skipping a whole shift).
+            var lastPunch = dayRecords
+                .SelectMany(x => new[] { (DateTime?)x.TimeIn, x.TimeOut })
+                .Where(x => x.HasValue)
+                .Select(x => x!.Value)
+                .DefaultIfEmpty(DateTime.MinValue)
+                .Max();
+            var sinceLast = now - lastPunch;
+            if (sinceLast >= TimeSpan.Zero && sinceLast < MinimumPunchGap)
+            {
+                var wait = Math.Max(1, (int)Math.Ceiling((MinimumPunchGap - sinceLast).TotalMinutes));
+                return (StatusCodes.Status429TooManyRequests, new
+                {
+                    message = $"Your last punch was recorded at {lastPunch:h:mm tt}. Wait {wait} more minute(s) before scanning again."
+                });
+            }
 
             var morning = dayRecords.FirstOrDefault(x =>
                 !string.Equals(x.ShiftType, AttendanceShift.Afternoon, StringComparison.OrdinalIgnoreCase));

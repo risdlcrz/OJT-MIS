@@ -97,6 +97,11 @@ namespace OJTMISApi.Data
                       .WithMany()
                       .HasForeignKey(i => i.RequestId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                // Every printed ID carries a code no other intern can have.
+                entity.HasIndex(i => i.AttendanceQrToken)
+                      .IsUnique()
+                      .HasFilter("[AttendanceQrToken] IS NOT NULL");
             });
 
             modelBuilder.Entity<Applicant>(entity =>
