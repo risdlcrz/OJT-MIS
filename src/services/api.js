@@ -243,7 +243,15 @@ export const notificationsAPI = {
 export const accountAPI = {
   getProfile: async () => (await apiClient.get('/account/profile')).data,
   updateProfile: async (payload) => (await apiClient.put('/account/profile', payload)).data,
-  changePassword: async (payload) => (await apiClient.post('/account/change-password', payload)).data
+  /* The server signs out other devices and returns a fresh token for this one. */
+  changePassword: async (payload) => {
+    const data = (await apiClient.post('/account/change-password', payload)).data
+    if (data?.token) {
+      localStorage.setItem('authToken', data.token)
+      localStorage.setItem('ojtExpiresAt', data.expiresAt)
+    }
+    return data
+  }
 }
 
 /** HR Admin only: listahan at pamamahala ng user accounts. */

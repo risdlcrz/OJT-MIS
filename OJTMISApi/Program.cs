@@ -75,7 +75,17 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
         ClockSkew = TimeSpan.FromSeconds(30)
     };
+
+    // Re-check the account on every request: a password change/reset,
+    // lockout, or lost approval ends existing sessions immediately.
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = JwtTokenService.ValidateAsync
+    };
 });
+
+builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddAuthRateLimits();
 
 builder.Services.AddAuthorization();
 
@@ -97,6 +107,8 @@ builder.Services.AddHttpClient(MailtrapEmailService.HttpClientName, client =>
 });
 
 builder.Services.AddScoped<IEmailService, MailtrapEmailService>();
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddHostedService<EmailQueueWorker>();
 builder.Services.AddSingleton<AttendanceQrService>();
 builder.Services.AddScoped<AttendanceLogService>();
 builder.Services.AddScoped<InternCompletionService>();
@@ -147,6 +159,8 @@ if (app.Environment.IsDevelopment())
 
 // Must sit between UseRouting() and the endpoint middleware.
 app.UseCors(CorsPolicy);
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

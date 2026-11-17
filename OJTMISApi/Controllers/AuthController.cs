@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -22,44 +23,64 @@ namespace OJTMISApi.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly JwtSettings _jwt;
+        private static readonly TimeSpan FailedLoginFloor = TimeSpan.FromMilliseconds(800);
+
+        private readonly JwtTokenService _tokens;
         private readonly ApplicationDbContext _context;
-        private readonly IEmailService _email;
+        private readonly EmailQueue _emailQueue;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             RoleManager<IdentityRole> roleManager,
-            IOptions<JwtSettings> jwt,
+            JwtTokenService tokens,
             ApplicationDbContext context,
-            IEmailService email,
+            EmailQueue emailQueue,
             ILogger<AuthController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _roleManager = roleManager;
-            _jwt = jwt.Value;
+            _tokens = tokens;
             _context = context;
-            _email = email;
+            _emailQueue = emailQueue;
             _logger = logger;
         }
 
         // POST: api/auth/register
         [HttpPost("register")]
+        [EnableRateLimiting(RateLimits.AccountEmail)]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            if (await _userManager.FindByEmailAsync(request.Email) is not null)
+            // The same reply goes out whether the email is unknown, already
+            // has an account, or was accepted, so sign-up cannot be used to
+            // find out who is a hired intern or who has an account.
+            var accepted = Accepted(new
             {
-                return Conflict(new { message = "That email is already registered." });
+                message = "If this email belongs to a hired intern without an account, we sent it a verification link. " +
+                          "After you verify it, HR must also approve the account before you can sign in. " +
+                          "Already have an account? Use Forgot password."
+            });
+
+            // Password rules do not depend on the email, so reporting them is safe.
+            var probe = new ApplicationUser { UserName = request.Email, Email = request.Email };
+            foreach (var validator in _userManager.PasswordValidators)
+            {
+                var check = await validator.ValidateAsync(_userManager, probe, request.Password);
+                if (!check.Succeeded)
+                {
+                    return BadRequest(new { message = string.Join(" ", check.Errors.Select(e => e.Description)) });
+                }
             }
 
-            if (!await InternRecordExistsAsync(request.Email))
+            if (await _userManager.FindByEmailAsync(request.Email) is not null ||
+                !await InternRecordExistsAsync(request.Email))
             {
-                return BadRequest(new { message = "This email is not listed as a hired intern. Ask HR to create your account." });
+                return accepted;
             }
 
             var user = new ApplicationUser
@@ -78,23 +99,15 @@ namespace OJTMISApi.Controllers
             var result = await _userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
             {
-                return BadRequest(new
-                {
-                    message = string.Join(" ", result.Errors.Select(e => e.Description))
-                });
+                _logger.LogWarning("Self-registration failed: {Errors}",
+                    string.Join(" ", result.Errors.Select(e => e.Description)));
+                return accepted;
             }
 
             // Ang bagong account ay Intern lamang. Ang HR Admin ay seed/admin lamang.
             await _userManager.AddToRoleAsync(user, UserRoles.Intern);
 
-            try
-            {
-                await _email.SendVerificationAsync(_userManager, user);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Self-registered account was created but the verification email failed.");
-            }
+            await QueueVerificationAsync(user);
 
             _context.ActivityLogs.Add(new ActivityLog
             {
@@ -112,10 +125,20 @@ namespace OJTMISApi.Controllers
             await _context.SaveChangesAsync();
 
             // No session yet: both verification steps must finish first.
-            return Accepted(new
+            return accepted;
+        }
+
+        /// <summary>Creates the verification token now and sends the mail in the background.</summary>
+        private async Task QueueVerificationAsync(ApplicationUser user)
+        {
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var email = user.Email!;
+            var name = user.FullName;
+            if (!_emailQueue.Enqueue("verification email",
+                    mail => mail.SendEmailConfirmationAsync(email, name, token)))
             {
-                message = "Account created. Open the verification link we emailed you. HR must also approve your account before you can sign in."
-            });
+                _logger.LogWarning("Email queue is full; a verification email was dropped.");
+            }
         }
 
         /// <summary>
@@ -123,6 +146,7 @@ namespace OJTMISApi.Controllers
         /// User side of the two-step verification, from the emailed link.
         /// </summary>
         [HttpPost("confirm-email")]
+        [EnableRateLimiting(RateLimits.SignIn)]
         [AllowAnonymous]
         public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest request)
         {
@@ -151,6 +175,7 @@ namespace OJTMISApi.Controllers
         /// Always answers the same way so it cannot be used to discover accounts.
         /// </summary>
         [HttpPost("resend-confirmation")]
+        [EnableRateLimiting(RateLimits.AccountEmail)]
         [AllowAnonymous]
         public async Task<IActionResult> ResendConfirmation([FromBody] ForgotPasswordRequest request)
         {
@@ -159,14 +184,7 @@ namespace OJTMISApi.Controllers
             var user = await _userManager.FindByEmailAsync(request.Email.Trim());
             if (user is not null && !user.EmailConfirmed && !string.IsNullOrWhiteSpace(user.Email))
             {
-                try
-                {
-                    await _email.SendVerificationAsync(_userManager, user);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not resend a verification email.");
-                }
+                await QueueVerificationAsync(user);
             }
 
             return Ok(new { message = "If that account still needs verification, a new link has been sent." });
@@ -174,21 +192,35 @@ namespace OJTMISApi.Controllers
 
         // POST: api/auth/login
         [HttpPost("login")]
+        [EnableRateLimiting(RateLimits.SignIn)]
         [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
+            // Failed sign-ins all take at least this long, so the reply time
+            // does not reveal whether the email has an account (a real account
+            // also records the failed attempt, which is slower).
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            async Task<ActionResult<AuthResponse>> InvalidAsync()
+            {
+                var remaining = FailedLoginFloor - started.Elapsed;
+                if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
+                return Unauthorized(new { message = "Invalid email or password." });
+            }
+
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user is null)
             {
-                return Unauthorized(new { message = "Invalid email or password." });
+                _userManager.PasswordHasher.VerifyHashedPassword(
+                    TimingDummy.User, TimingDummy.Hash(_userManager.PasswordHasher), request.Password);
+                return await InvalidAsync();
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
             if (!result.Succeeded)
             {
-                return Unauthorized(new { message = "Invalid email or password." });
+                return await InvalidAsync();
             }
 
             // Two-step verification: the user verified the email and HR
@@ -209,7 +241,7 @@ namespace OJTMISApi.Controllers
                     return Unauthorized(new { message = "This email is not linked to a hired intern record." });
                 }
 
-                var endDate = await GetInternEndDateAsync(user);
+                var endDate = await _tokens.GetInternEndDateAsync(user);
                 if (endDate is not null && endDate.Value.Date < DateTime.Now.Date)
                 {
                     return Unauthorized(new { message = "Your internship access has expired." });
@@ -223,6 +255,7 @@ namespace OJTMISApi.Controllers
 
         /// <summary>POST: api/auth/forgot-password</summary>
         [HttpPost("forgot-password")]
+        [EnableRateLimiting(RateLimits.AccountEmail)]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
@@ -235,18 +268,15 @@ namespace OJTMISApi.Controllers
                 return Ok(new { message = generic });
             }
 
-            try
+            // Sent in the background and never reported back: a failure or a
+            // slower reply here would reveal that the email has an account.
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var email = user.Email;
+            var name = user.FullName;
+            if (!_emailQueue.Enqueue("password reset email",
+                    mail => mail.SendPasswordResetLinkAsync(email, name, token)))
             {
-                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                await _email.SendPasswordResetLinkAsync(user.Email, user.FullName, token);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Could not send a password reset email.");
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-                {
-                    message = "The password reset email could not be sent. Try again later."
-                });
+                _logger.LogWarning("Email queue is full; a password reset email was dropped.");
             }
 
             return Ok(new { message = generic });
@@ -254,6 +284,7 @@ namespace OJTMISApi.Controllers
 
         /// <summary>POST: api/auth/reset-password</summary>
         [HttpPost("reset-password")]
+        [EnableRateLimiting(RateLimits.SignIn)]
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
@@ -358,40 +389,10 @@ namespace OJTMISApi.Controllers
 
         private async Task<AuthResponse> IssueTokenAsync(ApplicationUser user)
         {
-            var roles = await _userManager.GetRolesAsync(user);
-
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.Id),
-                new(ClaimTypes.Email, user.Email ?? string.Empty),
-                new(ClaimTypes.Name, user.FullName)
-            };
-            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
-
-            // Default token lifetime, pero para sa interns ay hindi lalampas
-            // sa EndDate ng kanilang internship.
-            var expiresAt = DateTime.UtcNow.AddHours(_jwt.ExpiryHours);
-            if (roles.Contains(UserRoles.Intern))
-            {
-                var endDate = await GetInternEndDateAsync(user);
-                if (endDate is not null)
-                {
-                    var internshipEnd = endDate.Value.Date.AddDays(1).ToUniversalTime();
-                    if (internshipEnd < expiresAt) expiresAt = internshipEnd;
-                }
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.SigningKey));
-            var token = new JwtSecurityToken(
-                issuer: _jwt.Issuer,
-                audience: _jwt.Audience,
-                claims: claims,
-                expires: expiresAt,
-                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
-
+            var (token, expiresAt) = await _tokens.CreateAsync(user);
             return new AuthResponse
             {
-                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                Token = token,
                 ExpiresAt = expiresAt,
                 Profile = await BuildProfileAsync(user)
             };
@@ -408,21 +409,6 @@ namespace OJTMISApi.Controllers
                 .AnyAsync(i => i.Email != null &&
                                i.Email.ToLower() == key &&
                                (i.Status == "Hired" || i.Status == "Completed"));
-        }
-
-        private async Task<DateTime?> GetInternEndDateAsync(ApplicationUser user)
-        {
-            if (string.IsNullOrWhiteSpace(user.Email)) return null;
-
-            var email = user.Email.Trim().ToLower();
-            return await _context.Interns
-                .AsNoTracking()
-                .Where(i => i.Email != null &&
-                            i.Email.ToLower() == email &&
-                            i.EndDate != null)
-                .OrderByDescending(i => i.EndDate)
-                .Select(i => i.EndDate)
-                .FirstOrDefaultAsync();
         }
 
         private async Task<UserProfile> BuildProfileAsync(ApplicationUser user)
@@ -465,6 +451,16 @@ namespace OJTMISApi.Controllers
 
         [Required, StringLength(100, MinimumLength = 8)]
         public string Password { get; set; } = string.Empty;
+    }
+
+    /// <summary>A throwaway password hash used to equalize login timing.</summary>
+    internal static class TimingDummy
+    {
+        public static readonly ApplicationUser User = new() { Id = "timing-dummy" };
+        private static string? _hash;
+
+        public static string Hash(IPasswordHasher<ApplicationUser> hasher) =>
+            _hash ??= hasher.HashPassword(User, Guid.NewGuid().ToString("N"));
     }
 
     public class ConfirmEmailRequest

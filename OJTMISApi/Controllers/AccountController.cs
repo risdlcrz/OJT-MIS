@@ -100,7 +100,9 @@ namespace OJTMISApi.Controllers
 
         /// <summary>POST: api/account/change-password</summary>
         [HttpPost("change-password")]
-        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        public async Task<IActionResult> ChangePassword(
+            [FromBody] ChangePasswordRequest request,
+            [FromServices] JwtTokenService tokens)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
@@ -129,7 +131,16 @@ namespace OJTMISApi.Controllers
                 await _userManager.UpdateAsync(user);
             }
 
-            return Ok(new { message = "Password changed successfully." });
+            // Changing the password rotated the security stamp, which signs out
+            // every other device. Hand this device a fresh token so it stays in.
+            var (token, expiresAt) = await tokens.CreateAsync(user);
+
+            return Ok(new
+            {
+                message = "Password changed successfully. Other devices have been signed out.",
+                token,
+                expiresAt
+            });
         }
 
         /// <summary>

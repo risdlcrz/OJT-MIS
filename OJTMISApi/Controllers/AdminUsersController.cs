@@ -338,7 +338,8 @@ namespace OJTMISApi.Controllers
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new
                 {
-                    message = ex.Message
+                    // Never echo internal error details (they can include mail-provider responses).
+                    message = $"The password reset email could not be sent ({ex.GetType().Name}). Check the server log and try again."
                 });
             }
 

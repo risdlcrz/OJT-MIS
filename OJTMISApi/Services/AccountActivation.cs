@@ -10,7 +10,7 @@ namespace OJTMISApi.Services
     /// <item>HR approval - <see cref="ApplicationUser.IsApproved"/>. Set when
     /// HR creates the account (hiring, User Management, signatories) or when HR
     /// approves a self-registered account.</item>
-    /// <item>User verification - <see cref="IdentityUser.EmailConfirmed"/>.
+    /// <item>User verification - <c>EmailConfirmed</c>.
     /// Set when the user opens the link emailed to them, proving the email
     /// address (first given as an applicant) really belongs to them.</item>
     /// </list>

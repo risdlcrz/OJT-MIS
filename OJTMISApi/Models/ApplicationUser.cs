@@ -29,7 +29,7 @@ namespace OJTMISApi.Models
         /// HR side of the two-step account verification. Accounts HR creates
         /// (hiring, User Management, signatories) are approved at creation;
         /// self-registered accounts wait for HR to approve them. Sign-in needs
-        /// both this flag and <see cref="IdentityUser.EmailConfirmed"/>
+        /// both this flag and <c>EmailConfirmed</c>
         /// (the user's side, set from the emailed activation link).
         /// </summary>
         public bool IsApproved { get; set; }
