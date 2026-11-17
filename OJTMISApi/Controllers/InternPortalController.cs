@@ -92,7 +92,7 @@ namespace OJTMISApi.Controllers
                 .Where(day => day is not null)
                 .ToList();
 
-            var todayRecords = records.Where(x => x.Date.Date == DateTime.Now.Date).ToList();
+            var todayRecords = records.Where(x => x.Date.Date == AppClock.Now.Date).ToList();
 
             return Ok(new
             {
@@ -112,7 +112,7 @@ namespace OJTMISApi.Controllers
                 },
                 hoursRendered = Math.Round(rendered, 2),
                 remainingHours = Math.Round(Math.Max(0, intern.RequiredHours - rendered), 2),
-                today = AttendanceShift.ShapeDay(DateTime.Now.Date, todayRecords),
+                today = AttendanceShift.ShapeDay(AppClock.Now.Date, todayRecords),
                 attendance = days,
                 documents,
                 issuedDocuments,
@@ -148,7 +148,7 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = $"You already have a pending {type} request." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new DocumentRequest
             {
                 InternId = intern.Id,

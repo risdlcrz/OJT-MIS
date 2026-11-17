@@ -29,7 +29,7 @@ namespace OJTMISApi.Services
                 Action = action,
                 Details = string.IsNullOrWhiteSpace(details) ? "Action completed successfully." : details,
                 IsVerified = true,
-                CreatedAt = DateTime.Now
+                CreatedAt = AppClock.Now
             });
         }
 

@@ -104,7 +104,7 @@ namespace OJTMISApi.Controllers
                 return accepted;
             }
 
-            // Ang bagong account ay Intern lamang. Ang HR Admin ay seed/admin lamang.
+            // New sign-ups are always Interns. HR Admin accounts come only from the seed or from HR.
             await _userManager.AddToRoleAsync(user, UserRoles.Intern);
 
             await QueueVerificationAsync(user);
@@ -120,7 +120,7 @@ namespace OJTMISApi.Controllers
                 Action = "Self-registered an intern account",
                 Details = "Signed up; waiting for email verification and HR approval in User Management.",
                 IsVerified = false,
-                CreatedAt = DateTime.Now
+                CreatedAt = AppClock.Now
             });
             await _context.SaveChangesAsync();
 
@@ -231,8 +231,7 @@ namespace OJTMISApi.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { code = blocker.Code, message = blocker.Message });
             }
 
-            // Ang intern access ay nag-expire kapag lumipas na ang EndDate
-            // na nakasaad sa intern record.
+            // Intern access ends after the EndDate on the intern record.
             var loginRoles = await _userManager.GetRolesAsync(user);
             if (loginRoles.Contains(UserRoles.Intern) && !loginRoles.Contains(UserRoles.HRAdmin))
             {
@@ -242,7 +241,7 @@ namespace OJTMISApi.Controllers
                 }
 
                 var endDate = await _tokens.GetInternEndDateAsync(user);
-                if (endDate is not null && endDate.Value.Date < DateTime.Now.Date)
+                if (endDate is not null && endDate.Value.Date < AppClock.Now.Date)
                 {
                     return Unauthorized(new { message = "Your internship access has expired." });
                 }
@@ -333,7 +332,7 @@ namespace OJTMISApi.Controllers
                     Action = "Reset a password from email",
                     Details = "Completed a Forgot Password reset.",
                     IsVerified = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = AppClock.Now
                 });
                 await _context.SaveChangesAsync();
             }
@@ -345,7 +344,7 @@ namespace OJTMISApi.Controllers
             return Ok(new { message = "Password updated. You can sign in with the new password." });
         }
 
-        // GET: api/auth/me - kailangan ng session para ma-load ang profile.
+        // GET: api/auth/me - needs a session to load the profile.
         [HttpGet("me")]
         [Authorize]
         public async Task<ActionResult<UserProfile>> Me()
@@ -376,14 +375,14 @@ namespace OJTMISApi.Controllers
                     Action = "Logged in",
                     Details = "Signed in successfully",
                     IsVerified = true,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = AppClock.Now
                 });
 
                 await _context.SaveChangesAsync();
             }
             catch
             {
-                // Huwag harangan ang login kung bigong maisulat ang audit log.
+                // Do not block the login if the audit log cannot be written.
             }
         }
 

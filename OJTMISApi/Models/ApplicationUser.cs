@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Identity;
 namespace OJTMISApi.Models
 {
     /// <summary>
-    /// Application user. Inherit sa IdentityUser para may built-in na
-    /// password hashing, roles, at security stamp.
+    /// Application user. Built on IdentityUser, which provides password
+    /// hashing, roles, and the security stamp.
     /// </summary>
     public class ApplicationUser : IdentityUser
     {
@@ -14,14 +14,14 @@ namespace OJTMISApi.Models
 
         public string? Office { get; set; }
 
-        /// <summary>Data URL ng profile picture (naka-resize na sa 256x256 JPEG).</summary>
+        /// <summary>Profile picture as a data URL (already resized to a 256x256 JPEG).</summary>
         public string? AvatarUrl { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
         /// <summary>
-        /// Random na password na ibinigay ng HR para sa bagong intern account.
-        /// Binubura kapag nagpalit na ng password ang user.
+        /// Random password given to a new intern account.
+        /// Cleared once the user changes their password.
         /// </summary>
         public string? TemporaryPassword { get; set; }
 
@@ -34,12 +34,12 @@ namespace OJTMISApi.Models
         /// </summary>
         public bool IsApproved { get; set; }
 
-        /// <summary>Pangalan na ipinapakita sa navbar (First + Last).</summary>
+        /// <summary>Name shown in the top bar (First + Last).</summary>
         public string FullName => $"{FirstName} {LastName}".Trim();
     }
 
     /// <summary>
-    /// Mga available na role sa system.
+    /// The roles in the system.
     /// </summary>
     public static class UserRoles
     {

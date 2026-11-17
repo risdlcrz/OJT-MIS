@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace OJTMISApi.Models
 {
     /// <summary>
-    /// Isang applicant ng OJT. Kapag na-hire, ang buong profile na ito
-    /// ay kinopya sa <see cref="Intern"/> (tingnan ang ApplicantsController.Hire).
+    /// An OJT applicant. When hired, this whole profile is copied
+    /// to an <see cref="Intern"/> (see ApplicantsController.Hire).
     /// </summary>
     public class Applicant
     {
@@ -13,7 +13,7 @@ namespace OJTMISApi.Models
         public int Id { get; set; }
 
         /// <summary>
-        /// Auto-generated (A-2026-001) kapag iniwanang blangko sa POST.
+        /// Generated automatically (A-2026-001) when left blank on POST.
         /// </summary>
         [StringLength(20)]
         public string ApplicantNo { get; set; } = string.Empty;
@@ -61,13 +61,13 @@ namespace OJTMISApi.Models
         public string GuardianContact { get; set; } = string.Empty;
 
         /// <summary>
-        /// Anim na requirements, nakastore bilang "1,0,1,0,0,0".
-        /// Basahin gamit ang <see cref="Requirements"/> para sa array.
+        /// Six requirements, stored as "1,0,1,0,0,0".
+        /// Use <see cref="Requirements"/> to read them as an array.
         /// </summary>
         [StringLength(50)]
         public string RequirementsCsv { get; set; } = "0,0,0,0,0,0";
 
-        /// <summary>Array ng 6 booleans para sa mga requirements.</summary>
+        /// <summary>The 6 requirements as an array of booleans.</summary>
         [NotMapped]
         public bool[] Requirements
         {
@@ -92,7 +92,7 @@ namespace OJTMISApi.Models
         [StringLength(500)]
         public string Remarks { get; set; } = string.Empty;
 
-        /// <summary>Id ng intern request na ginamit sa pag-hire.</summary>
+        /// <summary>Id of the intern request used for the hire.</summary>
         public int? RequestNo { get; set; }
 
         [StringLength(200)]
@@ -109,9 +109,9 @@ namespace OJTMISApi.Models
         public bool OrientationConfirmed { get; set; }
 
         /// <summary>
-        /// Object na "orientation" na ginagamit ng SPA
-        /// (date / time / office / confirmed). Kapag nakatakda ng SPA,
-        /// awtomatikong naii-update ang mga flat column sa itaas.
+        /// The "orientation" object used by the web app
+        /// (date / time / office / confirmed). When the app sets it,
+        /// the flat columns above are updated automatically.
         /// </summary>
         [NotMapped]
         public OrientationInfo Orientation
@@ -136,21 +136,21 @@ namespace OJTMISApi.Models
         /* ---- Hiring / OJT dates ---- */
         public DateTime? HireDate { get; set; }
 
-        /// <summary> Bilang ng araw ng OJT na ibibilang sa range.</summary>
+        /// <summary>Number of OJT days to count in the range.</summary>
         [Range(0, 3660)]
         public int DurationDays { get; set; }
 
-        /// <summary>Kung true, hindi binibilang ang tuwing BIYERNETES.</summary>
+        /// <summary>If true, Fridays are not counted.</summary>
         public bool ExcludeFriday { get; set; }
 
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
     }
 
-    /// <summary>Detalye ng orientation para sa Schedule Orientation tab.</summary>
+    /// <summary>Orientation details for the Schedule Orientation tab.</summary>
     public class OrientationInfo
     {
         public string? Date { get; set; }

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace OJTMISApi.Models
 {
@@ -17,24 +17,24 @@ namespace OJTMISApi.Models
         public string School { get; set; } = string.Empty;
 
         /// <summary>
-        /// Id ng intern request na pinanggalingan ng hire na ito.
-        /// Kailangan ito upang mabawasan ang slot ng request.
+        /// Id of the intern request this hire came from.
+        /// Needed to take a slot from that request.
         /// </summary>
         public int? RequestId { get; set; }
 
         /// <summary>
-        /// "Hired" o "Applicant". Ang mga naka-"Hired" ay awtomatikong
-        /// itinuturing na intern at ipinapakita sa Intern List.
+        /// "Hired" or "Applicant". "Hired" records are treated as
+        /// interns and shown in the Intern List.
         /// </summary>
         [Required, StringLength(20)]
         public string Status { get; set; } = "Applicant";
 
         /* ============================================================
-         * Profile na kinopya mula sa Applicant sa oras ng pag-hire.
-         * Lahat ng field dito ay duma-doble sa data ng aplikante.
+         * Profile copied from the Applicant at the time of hiring.
+         * Every field here is a copy of the applicant's data.
          * ============================================================ */
 
-        /// <summary>Id ng Applicant na pinagmulanan ng intern.</summary>
+        /// <summary>Id of the Applicant this intern came from.</summary>
         public int? ApplicantId { get; set; }
 
         [StringLength(20)]
@@ -118,8 +118,8 @@ namespace OJTMISApi.Models
         /// </summary>
         public DateTime? CompletionNotifiedAt { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
     }
 }

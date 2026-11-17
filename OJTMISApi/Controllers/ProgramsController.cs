@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
@@ -71,7 +71,7 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = "A record with the same first field already exists." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new OJTProgram { ProgramCode = f1, ProgramName = f2, CreatedAt = now, UpdatedAt = now };
 
             try
@@ -109,7 +109,7 @@ namespace OJTMISApi.Controllers
 
                 existing.ProgramCode = f1;
                 existing.ProgramName = f2;
-                existing.UpdatedAt = DateTime.Now;
+                existing.UpdatedAt = AppClock.Now;
                 await _context.SaveChangesAsync();
                 return Ok(existing);
             }

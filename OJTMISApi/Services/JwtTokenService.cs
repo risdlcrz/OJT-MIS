@@ -53,15 +53,16 @@ namespace OJTMISApi.Services
             };
             claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-            // Default token lifetime, pero para sa interns ay hindi lalampas
-            // sa EndDate ng kanilang internship.
+            // Default token lifetime, but for interns it never goes past
+            // the EndDate of their internship.
             var expiresAt = DateTime.UtcNow.AddHours(_jwt.ExpiryHours);
             if (roles.Contains(UserRoles.Intern))
             {
                 var endDate = await GetInternEndDateAsync(user);
                 if (endDate is not null)
                 {
-                    var internshipEnd = endDate.Value.Date.AddDays(1).ToUniversalTime();
+                    // EndDate is office-local; midnight after it, as UTC.
+                    var internshipEnd = AppClock.ToUtc(endDate.Value.Date.AddDays(1));
                     if (internshipEnd < expiresAt) expiresAt = internshipEnd;
                 }
             }

@@ -49,8 +49,8 @@
                         :icon="config.emptyIcon || 'far fa-folder-open'"
                         :title="rows.length ? `No ${(config.title || '').toLowerCase()} match your filters` : `No ${(config.title || '').toLowerCase()} yet`"
                         :text="rows.length ? 'Try a different search or status.' : (config.emptyText || '')" />
-            <!-- Ang buong row ay clickable sa Intern List: binubuksan nito
-                 ang intern profile. -->
+            <!-- In the Intern List the whole row is clickable: it opens
+                 the intern profile. -->
             <template v-if="!isLoading">
               <tr
                 v-for="row in visibleRows"
@@ -180,7 +180,7 @@
               <div v-for="col in config.columns" :key="col.prop" class="mb-3">
                 <label :for="`m-${col.prop}`" class="form-label fw-semibold">{{ col.label }}</label>
 
-                <!-- Dropdown ng request: ang mga may natitirang slot lamang. -->
+                <!-- Request dropdown: only requests that still have open slots. -->
                 <select v-if="col.prop === 'requestId'" :id="`m-${col.prop}`" v-model="form.requestId"
                         class="form-select" :class="{ 'is-invalid': submitted && !form.requestId }"
                         :disabled="isSaving || isEditing">
@@ -398,7 +398,7 @@
               </div>
             </div>
 
-            <!-- Permanent issuance history: mga dokumentong na-issue sa intern. -->
+            <!-- Permanent issuance history: documents issued to the intern. -->
             <div class="intern-section">
               <div class="intern-section-head">
                 <h6 class="intern-section-title">
@@ -479,11 +479,12 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Modal, Toast } from 'bootstrap'
+import { go } from '@/utils/navigation'
 import StatusPill from '@/components/StatusPill.vue'
 import TableState from '@/components/TableState.vue'
 import { getApiErrorMessage, hrAttendanceAPI, internRequestsAPI, internsAPI, programsAPI, schoolsAPI, signatoriesAPI, applicantsAPI, dtrAPI } from '@/services/api'
 
-/* page -> module config. Ang hindi nakalist dito ay "not built yet" pa. */
+/* page -> module config. Pages not listed here show "not built yet". */
 const MODULES = {
   'internlist.html': {
     title: 'Intern List', singular: 'Intern', api: internsAPI, hiring: true, needsSchools: true, fromApplicants: true,
@@ -491,7 +492,7 @@ const MODULES = {
     emptyIcon: 'fas fa-user-graduate',
     emptyText: 'Hire an applicant to add them to this list.',
     searchProps: ['fullName', 'email', 'schoolAbbreviation', 'school', 'requestOffice', 'applicantNo'],
-    /* Ang row mismo ang clickable papunta sa intern profile. */
+    /* The row itself is clickable and opens the intern profile. */
     clickableRows: true,
     columns: [
       { prop: 'fullName', label: 'Full Name', max: 200 },
@@ -500,7 +501,7 @@ const MODULES = {
       { prop: 'requestId', label: 'Request ID', type: 'text' },
       { prop: 'status', label: 'Status', max: 20 }
     ],
-    /* Karagdagang column na hango sa profile: hindi ito lumalabas sa form. */
+    /* Extra column taken from the profile: it does not appear in the form. */
     display: [
       { prop: 'fullName', label: 'Intern', clickable: true, secondary: (row) => row.email || 'No email on file' },
       { prop: 'schoolAbbreviation', label: 'School', format: (v, row) => v || row.school || '' },
@@ -508,8 +509,8 @@ const MODULES = {
       { prop: 'requestOffice', label: 'Department', fallback: 'Unassigned' },
       { prop: 'startDate', label: 'Estimated Start', cls: 'col-date', fallback: 'TBD', format: (v) => shortDate(v) },
       { prop: 'endDate', label: 'Estimated End', cls: 'col-date', fallback: 'TBD', format: (v) => shortDate(v) },
-      /* Huling column: ang status ng intern (Active / Completed / atbp.).
-         Ang row mismo ang clickable na papunta sa profile. */
+      /* Last column: the intern's status (Active / Completed / etc.).
+         The row itself is clickable and opens the profile. */
       { prop: 'status', label: 'Status', pill: true }
     ]
   },
@@ -562,10 +563,10 @@ const MODULES = {
   'contact.html': { title: 'Contact Us' }
 }
 
-/* Ang page ay ipinapasa bilang prop (mula sa App.vue) para mag-re-render
-   kapag nagpalit ng module ang user. Kung babasahin ito sa
-   window.location, mananatili ang lumang module dahil nire-reuse
-   ng Vue ang parehong instance. */
+/* The page comes in as a prop (from the router) so the screen updates
+   when the user switches module. Reading it from window.location
+   would keep showing the old module, because Vue reuses the
+   same component instance. */
 const props = defineProps({
   modulePage: { type: String, default: '' }
 })
@@ -574,13 +575,13 @@ const entry = computed(() => MODULES[props.modulePage] || {})
 const config = computed(() => entry.value || {})
 const title = computed(() => entry.value.title || 'Module')
 
-/* Mga column na ipinapakita sa table. Default: lahat ng config.columns.
-   Puwedeng may sariling "display" ang module para magdagdag ng
-   computed column (hal. OJT period) na wala sa form. */
+/* Columns shown in the table. Default: all of config.columns.
+   A module can set its own "display" list to add a
+   computed column (for example, OJT period) that is not in the form. */
 const displayColumns = computed(() => entry.value.display || entry.value.columns || [])
 
-/* Papuntahan sa cell. Kung may "format" ang column, gamitin iyon
-   (hal. petsa, o "#id - Office Name"). */
+/* Value shown in a cell. If the column has a "format", use it
+   (for example, a date, or "#id - Office Name"). */
 function cell(row, col) {
   const value = row[col.prop]
   if (col.format) return col.format(value, row)
@@ -660,7 +661,7 @@ const message = ref('')
 const form = reactive({ id: 0 })
 const isEditing = computed(() => form.id > 0)
 
-/* Generated-document history (issuance record) para sa bukas na intern. */
+/* Generated-document history (issuance record) for the open intern. */
 const viewDocuments = ref([])
 const viewDocumentsLoading = ref(false)
 
@@ -902,9 +903,9 @@ async function save() {
   isSaving.value = true
   const api = config.value.api
 
-  /* Ipagpatuloy ang bawat field na nakalista sa config.columns (hal. fullName,
-     school, programCode) — hindi lang ang pangalan/posisyon ng signatory,
-     kaya't ma-validate ng backend ang tamang required fields. */
+  /* Send every field listed in config.columns (for example fullName,
+     school, programCode), not just a signatory's name and position,
+     so the backend can check the right required fields. */
   const payload = { id: form.id || 0 }
   config.value.columns.forEach((c) => { payload[c.prop] = form[c.prop] ?? '' })
   if ('requestId' in payload) payload.requestId = Number(payload.requestId) || null
@@ -935,8 +936,8 @@ async function save() {
     if (config.value.reloadAfterSave) load()
   } catch (e) {
     const msg = getApiErrorMessage(e, 'Failed to save.')
-    // 409 Conflict - duplicate record. Gamitin ang mensahe ng API kung mayroon,
-    // dahil iba ang field na tinutukoy ng bawat module (name, fullName, atbp.).
+    // 409 Conflict - duplicate record. Use the API's message if there is one,
+    // because each module checks a different field (name, fullName, etc.).
     if (e?.response?.status === 409 || msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('conflict')) {
       formError.value = e?.response?.data?.message
         || `A ${config.value.singular.toLowerCase()} with the same name already exists. Please choose a different one.`
@@ -950,14 +951,14 @@ async function save() {
 }
 
 function confirmDelete(row) {
-  // Intern rows walang `name` field — gamitin ang fullName/applicantNo
-  // (at ang name ng ibang module) bago bumaba sa id.
+  // Intern rows have no `name` field, so use fullName/applicantNo
+  // (and other modules' name) before falling back to the id.
   pending.value = { id: row.id, name: row.name || row.fullName || row.applicantNo || row.id }
   deleteModal.show()
 }
 function closeDelete() { if (!isSaving.value) { deleteModal.hide(); pending.value = { id: null, name: '' } } }
 
-/* Buksan ang intern profile kapag ni-click ang buong row sa Intern List. */
+/* Open the intern profile when a row in the Intern List is clicked. */
 function viewInternDetails(id) {
   if (!config.value?.clickableRows) return
   const row = rows.value.find((item) => Number(item.id) === Number(id))
@@ -970,7 +971,7 @@ function openView(row) {
   loadViewDocuments(row.id)
 }
 
-/* History ng mga nai-issue nang dokumento (ID / COC) mula sa API. */
+/* History of documents already issued (ID / COC), from the API. */
 async function loadViewDocuments(internId) {
   viewDocuments.value = []
   if (!Number.isFinite(Number(internId)) || Number(internId) <= 0) return
@@ -1007,8 +1008,7 @@ function generateCocFromView() {
   if (!row) return
   closeView()
   /* Navigate to COC generation page with the intern pre-selected */
-  window.history.pushState({}, '', `/coc-generate.html?internId=${row.id}`)
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  go(`/coc-generate.html?internId=${row.id}`)
 }
 
 function generateIdFromView() {
@@ -1016,17 +1016,16 @@ function generateIdFromView() {
   if (!row) return
   closeView()
   /* Navigate to ID generation page with the intern pre-selected */
-  window.history.pushState({}, '', `/idgenerate.html?internId=${row.id}`)
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  go(`/idgenerate.html?internId=${row.id}`)
 }
 
-/* Naipapakita ang "Active" kung "Hired" ang naka-imbak na status. */
+/* Show "Active" when the saved status is "Hired". */
 function statusLabel(status) {
   if (!status) return ''
   return status === 'Hired' ? 'Active' : status
 }
 
-/* Hours rendered: galing sa na-recalculate na field, kung mayroon. */
+/* Hours rendered: from the recalculated field, if there is one. */
 function internHours(row) {
   if (row?.hoursRendered !== null && row?.hoursRendered !== undefined) return row.hoursRendered
   return row?.durationDays != null ? row.durationDays * 8 : '-'
@@ -1073,15 +1072,14 @@ async function doDelete() {
 }
 
 function goHome() {
-  window.history.pushState({}, '', '/dashboard.html')
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  go('/dashboard.html')
 }
 
 onMounted(() => {
   formModal = new Modal(formModalEl.value)
   deleteModal = new Modal(deleteModalEl.value)
-  // Toast ang tamang klase para sa `.toast` element — hindi Modal, dahil
-  // walang `.modal-dialog` sa loob nito kaya magta-throw ng querySelector error.
+  // Toast is the right class for the `.toast` element, not Modal, because
+  // it has no `.modal-dialog` inside, so Modal would throw a querySelector error.
   toast = new Toast(toastEl.value, { autohide: false })
   window.addEventListener('ojt:intern-profile', handleInternProfileEvent)
   load().then(openInternFromRoute)
@@ -1093,8 +1091,8 @@ watch(() => props.modulePage, () => {
   load().then(openInternFromRoute)
 })
 
-/* Deep link (hal. mula sa notification): ?internId=12 sa Intern List.
-   Binubuksan ang profile modal ng intern matapos ma-load ang table. */
+/* Deep link (for example, from a notification): ?internId=12 on the Intern List.
+   Opens that intern's profile once the table has loaded. */
 function routeInternId() {
   try {
     const params = new URLSearchParams(window.location.search)
@@ -1113,7 +1111,7 @@ function openInternFromRoute() {
   if (row) openView(row)
 }
 
-/* Notification click habang nasa Intern List page na. */
+/* A notification was clicked while the Intern List is already open. */
 function handleInternProfileEvent() {
   if (isLoading.value) return
   openInternFromRoute()
@@ -1129,7 +1127,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Trailing chevron on clickable Intern List rows: muted by default,
-   orange at mas kita kapag hover. Row hover comes from data-table.css. */
+   orange and stronger on hover. Row hover comes from data-table.css. */
 .intern-chevron {
   color: #b8a99f;
   opacity: 0.45;

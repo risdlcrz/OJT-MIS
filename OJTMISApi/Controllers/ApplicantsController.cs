@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,17 +9,20 @@ using OJTMISApi.Services;
 
 namespace OJTMISApi.Controllers
 {
-    /// <summary>Body ng kahilingan para mag-preview ng start/end date.</summary>
+    /// <summary>Request body to preview the start and end date.</summary>
     public class EstimateDatesRequest
     {
         public string? HireDate { get; set; }
+
+        [Range(1, 3650, ErrorMessage = "Duration must be between 1 and 3650 days.")]
         public int DurationDays { get; set; } = 1;
         public bool ExcludeFriday { get; set; }
     }
 
-    /// <summary>Body ng kahilingan para mag-hire ng applicant.</summary>
+    /// <summary>Request body to hire an applicant.</summary>
     public class HireApplicantRequest
     {
+        [Range(1, int.MaxValue, ErrorMessage = "Please select an intern request.")]
         public int RequestId { get; set; }
         public string? HireDate { get; set; }
         public int DurationDays { get; set; }
@@ -36,18 +40,18 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ApplicantsController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IEmailService _email;
+        private readonly AccountProvisioningService _accounts;
 
         public ApplicantsController(
             ApplicationDbContext context,
             ILogger<ApplicantsController> logger,
             UserManager<ApplicationUser> userManager,
-            IEmailService email)
+            AccountProvisioningService accounts)
         {
             _context = context;
             _logger = logger;
             _userManager = userManager;
-            _email = email;
+            _accounts = accounts;
         }
 
         /// <summary>GET: api/applicants</summary>
@@ -74,7 +78,7 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// POST: api/applicants
-        /// Gumagawa ng applicant no kung wala (2026-001).
+        /// Creates an applicant number if there is none (2026-001).
         /// </summary>
         [HttpPost]
         public async Task<ActionResult<Applicant>> Create([FromBody] Applicant applicant)
@@ -93,8 +97,8 @@ namespace OJTMISApi.Controllers
                 : applicant.ApplicantNo.Trim();
             entity.Id = 0;
             entity.Hired = false;
-            entity.CreatedAt = DateTime.Now;
-            entity.UpdatedAt = DateTime.Now;
+            entity.CreatedAt = AppClock.Now;
+            entity.UpdatedAt = AppClock.Now;
 
             _context.Applicants.Add(entity);
             await _context.SaveChangesAsync();
@@ -131,7 +135,7 @@ namespace OJTMISApi.Controllers
             {
                 existing.ApplicantNo = applicant.ApplicantNo.Trim();
             }
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = AppClock.Now;
 
             var (action, details) = DescribeApplicantChange(
                 applicantName,
@@ -173,8 +177,8 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// POST: api/applicants/estimate-dates
-        /// Para m-preview ang estimated start at end date bago i-save.
-        /// Ito ang tumatanggap ng flag na ExcludeFriday.
+        /// Previews the estimated start and end date before saving.
+        /// This is where the ExcludeFriday flag is used.
         /// </summary>
         [HttpPost("estimate-dates")]
         public ActionResult<object> EstimateDates([FromBody] EstimateDatesRequest request)
@@ -182,11 +186,6 @@ namespace OJTMISApi.Controllers
             if (!DateTime.TryParse(request.HireDate, out var hireDate))
             {
                 return BadRequest(new { message = "Please provide a valid hire date." });
-            }
-
-            if (request.DurationDays < 1)
-            {
-                return BadRequest(new { message = "Duration must be at least 1 day." });
             }
 
             var (start, end) = OjtDateCalculator.Compute(hireDate.Date, request.DurationDays, request.ExcludeFriday);
@@ -204,9 +203,9 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// POST: api/applicants/{id}/hire
-        /// Kinokopya ang buong profile ng applicant sa Intern, kinakalkula
-        /// ang start/end date, kinakain ang isang slot sa request, at
-        /// minarkahan ang applicant bilang Hired.
+        /// Copies the applicant's full profile to a new Intern, works out the
+        /// start and end date, uses up one slot of the request, and marks
+        /// the applicant as Hired.
         /// </summary>
         [HttpPost("{id:int}/hire")]
         public async Task<ActionResult<object>> Hire(int id, [FromBody] HireApplicantRequest request)
@@ -222,11 +221,6 @@ namespace OJTMISApi.Controllers
             if (!DateTime.TryParse(request.HireDate, out var hireDate))
             {
                 return BadRequest(new { message = "Please provide a valid hire date." });
-            }
-
-            if (request.RequestId <= 0)
-            {
-                return BadRequest(new { message = "Please select an intern request." });
             }
 
             var duration = request.DurationDays < 1 ? 1 : request.DurationDays;
@@ -245,7 +239,7 @@ namespace OJTMISApi.Controllers
             var (start, end) = OjtDateCalculator.Compute(hireDate.Date, duration, request.ExcludeFriday);
 
             var fullName = BuildFullName(applicant);
-            var now = DateTime.Now;
+            var now = AppClock.Now;
 
             // Look up the school from the Schools table to ensure exact name match for abbreviation lookup
             var school = await _context.Schools
@@ -260,7 +254,7 @@ namespace OJTMISApi.Controllers
 
             var intern = new Intern
             {
-                // Carry over ng buong profile ng applicant
+                // Copy the applicant's full profile
                 ApplicantId = applicant.Id,
                 ApplicantNo = applicant.ApplicantNo,
                 FirstName = applicant.FirstName,
@@ -299,7 +293,7 @@ namespace OJTMISApi.Controllers
                 UpdatedAt = now
             };
 
-            // Markahan ang applicant bilang Hired at itala ang lahat ng detalye
+            // Mark the applicant as Hired and save all the details
             applicant.Hired = true;
             applicant.Accepted = true;
             applicant.Rejected = false;
@@ -315,7 +309,7 @@ namespace OJTMISApi.Controllers
             applicant.ActionDate = hireDate.Date;
             applicant.UpdatedAt = now;
 
-            // Kainin ang isang slot
+            // Use up one slot
             internRequest.Filled += 1;
             internRequest.UpdatedAt = now;
 
@@ -329,8 +323,8 @@ namespace OJTMISApi.Controllers
                 $"Hired {fullName} and opened an intern record.");
             await _context.SaveChangesAsync();
 
-            // Bigyan ng user account ang bagong intern gamit ang email na
-            // inilagay sa application at isang random na temporary password.
+            // Give the new intern a user account, using the email from the
+            // application and a random temporary password.
             var account = await EnsureInternAccountAsync(applicant);
 
             return Ok(new
@@ -352,9 +346,9 @@ namespace OJTMISApi.Controllers
             string? Warning);
 
         /// <summary>
-        /// Gumagawa ng Intern user account kapag na-hire ang applicant.
-        /// Kung may existing account na ang email, sinisiguro lang na may
-        /// Intern role ito.
+        /// Creates an Intern user account when the applicant is hired.
+        /// If the email already has an account, it only makes sure that
+        /// account has the Intern role.
         /// </summary>
         private async Task<InternAccountResult> EnsureInternAccountAsync(Applicant applicant)
         {
@@ -365,62 +359,39 @@ namespace OJTMISApi.Controllers
                     "The applicant has no valid email, so no user account was created.");
             }
 
-            var existing = await _userManager.FindByEmailAsync(email);
-            if (existing is not null)
+            // Hiring is HR's approval; the intern verifies the applicant email
+            // from the activation link.
+            var result = await _accounts.CreateAsync(
+                email, applicant.FirstName, applicant.LastName, applicant.ApplicantOffice, UserRoles.Intern);
+
+            switch (result.Status)
             {
-                if (!await _userManager.IsInRoleAsync(existing, UserRoles.Intern))
-                {
-                    await _userManager.AddToRoleAsync(existing, UserRoles.Intern);
-                }
+                case ProvisionStatus.AlreadyExists:
+                    var existing = result.User!;
+                    if (!await _userManager.IsInRoleAsync(existing, UserRoles.Intern))
+                    {
+                        await _userManager.AddToRoleAsync(existing, UserRoles.Intern);
+                    }
 
-                // Hiring is HR's approval. The applicant still has to verify
-                // their own email before the account can sign in.
-                if (!existing.IsApproved)
-                {
-                    existing.IsApproved = true;
-                    await _userManager.UpdateAsync(existing);
-                }
+                    if (!existing.IsApproved)
+                    {
+                        existing.IsApproved = true;
+                        await _userManager.UpdateAsync(existing);
+                    }
 
-                return new(false, email, false,
-                    "An account with this email already exists; Intern access was ensured.");
-            }
+                    return new(false, email, false,
+                        "An account with this email already exists; Intern access was ensured.");
 
-            var password = TemporaryPasswordGenerator.Generate();
-            var user = new ApplicationUser
-            {
-                UserName = email,
-                Email = email,
-                FirstName = applicant.FirstName,
-                LastName = applicant.LastName,
-                Office = applicant.ApplicantOffice,
-                // Approved by HR through the hire; the intern verifies the
-                // applicant email from the activation link.
-                IsApproved = true,
-                EmailConfirmed = false
-            };
+                case ProvisionStatus.Created:
+                    return new(true, email, true, null);
 
-            var createResult = await _userManager.CreateAsync(user, password);
-            if (!createResult.Succeeded)
-            {
-                _logger.LogWarning("Could not create intern account for {Email}: {Errors}",
-                    email, string.Join(" ", createResult.Errors.Select(e => e.Description)));
+                case ProvisionStatus.CreatedEmailFailed:
+                    return new(true, email, false,
+                        "The account was created, but the activation email could not be sent. The intern can use Forgot Password, which also verifies the email.");
 
-                return new(false, email, false,
-                    "The intern was hired, but the user account could not be created.");
-            }
-
-            await _userManager.AddToRoleAsync(user, UserRoles.Intern);
-
-            try
-            {
-                await _email.SendActivationAsync(_userManager, user, password);
-                return new(true, email, true, null);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Hired {Email} but the temporary password email failed.", email);
-                return new(true, email, false,
-                    "The account was created, but the activation email could not be sent. The intern can use Forgot Password, which also verifies the email.");
+                default:
+                    return new(false, email, false,
+                        "The intern was hired, but the user account could not be created.");
             }
         }
 
@@ -435,11 +406,11 @@ namespace OJTMISApi.Controllers
 
         private async Task<string> NextApplicantNoAsync()
         {
-            var year = DateTime.Now.Year;
+            var year = AppClock.Now.Year;
             var prefix = $"{year}-";
 
-            // Gamitin ang pinakamataas na numero (hindi ang count), kaya hindi
-            // na-uulit ang numero kahit may naunang mga na-delete na applicant.
+            // Use the highest number (not the count), so a number is never
+            // reused, even after applicants were deleted.
             var nos = await _context.Applicants
                 .Where(a => a.ApplicantNo.StartsWith(prefix))
                 .Select(a => a.ApplicantNo)
@@ -454,7 +425,7 @@ namespace OJTMISApi.Controllers
 
             var next = $"{prefix}{max + 1:D3}";
 
-            // Siguraduhing hindi pa nagagamit (safety kung may butas sa numbering).
+            // Make sure the number is not taken yet (in case of gaps in the numbering).
             while (await _context.Applicants.AnyAsync(a => a.ApplicantNo == next))
             {
                 max++;
@@ -505,7 +476,7 @@ namespace OJTMISApi.Controllers
             return ("Updated an applicant", $"Updated {name}.");
         }
 
-        /// <summary>Kopya ng mga field mula sa DTO papunta sa entity.</summary>
+        /// <summary>Copies the fields from the DTO to the entity.</summary>
         private static void Map(Applicant src, Applicant dst)
         {
             dst.FirstName = src.FirstName?.Trim() ?? string.Empty;
@@ -523,7 +494,7 @@ namespace OJTMISApi.Controllers
             dst.GuardianName = src.GuardianName?.Trim() ?? string.Empty;
             dst.GuardianContact = src.GuardianContact?.Trim() ?? string.Empty;
 
-            // Requirements: pumili sa CSV (mula sa DTO) o sa array.
+            // Requirements: take them from the CSV (from the DTO) or from the array.
             var csv = src.RequirementsCsv;
             if (string.IsNullOrWhiteSpace(csv)) csv = null;
             if (csv is not null) dst.RequirementsCsv = csv;
@@ -537,7 +508,7 @@ namespace OJTMISApi.Controllers
             dst.RequestNoLabel = src.RequestNoLabel?.Trim() ?? string.Empty;
             dst.ActionDate = src.ActionDate;
 
-            // Orientation: pumili sa flat fields o sa "orientation" object.
+            // Orientation: take it from the flat fields or from the "orientation" object.
             if (src.OrientationDate.HasValue) dst.OrientationDate = src.OrientationDate;
             if (!string.IsNullOrWhiteSpace(src.OrientationTime)) dst.OrientationTime = src.OrientationTime.Trim();
             if (!string.IsNullOrWhiteSpace(src.OrientationOffice)) dst.OrientationOffice = src.OrientationOffice.Trim();

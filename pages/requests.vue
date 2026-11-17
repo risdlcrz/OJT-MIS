@@ -255,7 +255,7 @@ const matchedSignatory = computed(() => {
   ) || null
 })
 
-/* Lahat ng datos ay galing sa backend, walang localStorage. */
+/* All data comes from the backend; nothing is kept in localStorage. */
 async function loadRequests() {
     isLoading.value = true
     loadError.value = ''

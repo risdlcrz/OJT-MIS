@@ -94,7 +94,7 @@ namespace OJTMISApi.Controllers
             var name = CertificateName(intern);
             var displayName = DisplayName(intern);
             var signatory = await ResolveSignatoryAsync(input);
-            var issued = input?.DateIssued?.Date ?? DateTime.Today;
+            var issued = input?.DateIssued?.Date ?? AppClock.Today;
 
             var model = new CertificatePdfModel
             {
@@ -179,7 +179,7 @@ namespace OJTMISApi.Controllers
                     SignatoryPosition = model.SignatoryPosition,
                     SignatoryOffice = model.SignatoryOffice,
                     GeneratedBy = User.FindFirstValue(ClaimTypes.Name) ?? "HR Admin",
-                    CreatedAt = DateTime.Now
+                    CreatedAt = AppClock.Now
                 });
 
                 await _context.SaveChangesAsync(HttpContext.RequestAborted);

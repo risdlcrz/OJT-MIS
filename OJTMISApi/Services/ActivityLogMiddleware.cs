@@ -5,9 +5,9 @@ using OJTMISApi.Models;
 namespace OJTMISApi.Services
 {
     /// <summary>
-    /// Dinaragdagan ang ActivityLogs ng isang entry para sa bawat
-    /// authenticated na write request (POST/PUT/PATCH/DELETE). Naka-grupo
-    /// ang mga entry ayon sa role ng user: HR, Supervisor, o Intern.
+    /// Adds one ActivityLogs entry for each signed-in write request
+    /// (POST/PUT/PATCH/DELETE). Entries are grouped by the user's role:
+    /// HR, Supervisor, or Intern.
     /// </summary>
     public class ActivityLogMiddleware
     {
@@ -68,14 +68,14 @@ namespace OJTMISApi.Services
                         ? "Action completed successfully."
                         : "Action was not completed.",
                     IsVerified = context.Response.StatusCode < 400,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = AppClock.Now
                 });
 
                 await db.SaveChangesAsync();
             }
             catch
             {
-                // Huwag hayaang maapektuhan ng audit logging ang request.
+                // Audit logging must never break the request.
             }
         }
 

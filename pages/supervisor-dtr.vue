@@ -85,6 +85,7 @@
 import { computed, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import StatusPill from '@/components/StatusPill.vue'
 import TableState from '@/components/TableState.vue'
+import { replaceUrl } from '@/utils/navigation'
 import { getApiErrorMessage, supervisorAPI } from '@/services/api'
 import { dateKey, formatClock, formatDisplayDate } from '@/utils/datetime'
 import { go, useDepartment } from '@/utils/supervisor'
@@ -136,7 +137,7 @@ const totalHours = computed(() => rows.value.reduce((sum, r) => sum + r.hours, 0
 
 function onInternChange() {
   const url = internId.value ? `/supervisor-dtr.html?internId=${internId.value}` : '/supervisor-dtr.html'
-  window.history.replaceState({}, '', url)
+  replaceUrl(url)
   loadRecords()
 }
 

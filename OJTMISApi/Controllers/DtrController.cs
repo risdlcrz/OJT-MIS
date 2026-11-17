@@ -93,7 +93,7 @@ namespace OJTMISApi.Controllers
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new DailyTimeRecord
             {
                 InternId = item.InternId,
@@ -119,9 +119,8 @@ namespace OJTMISApi.Controllers
                 _context.DailyTimeRecords.Add(entity);
                 await _context.SaveChangesAsync();
 
-                // Kapag nagdagdag ng oras ang record na ito at naabot na ng
-                // intern ang required hours, i-mark siyang Completed at
-                // abisuhan ang HR (one-time).
+                // If this record adds hours and the intern now has the
+                // required hours, mark them Completed and tell HR (once).
                 if (entity.InternId is int completedInternId)
                 {
                     await _completion.CheckAsync(completedInternId);
@@ -157,12 +156,11 @@ namespace OJTMISApi.Controllers
                 existing.Status = string.IsNullOrWhiteSpace(item.Status)
                     ? AttendanceShift.TimeInStatus(existing.ShiftType, item.TimeIn)
                     : item.Status;
-                existing.UpdatedAt = DateTime.Now;
+                existing.UpdatedAt = AppClock.Now;
                 await _context.SaveChangesAsync();
 
-                // Kapag binago ang oras ng DTR at naabot (o lumampas) na ng
-                // intern ang required hours, i-mark siyang Completed at
-                // abisuhan ang HR (one-time).
+                // If the DTR hours changed and the intern now has (or passed)
+                // the required hours, mark them Completed and tell HR (once).
                 if (existing.InternId is int completedInternId)
                 {
                     await _completion.CheckAsync(completedInternId);
@@ -190,9 +188,9 @@ namespace OJTMISApi.Controllers
                 _context.DailyTimeRecords.Remove(entity);
                 await _context.SaveChangesAsync();
 
-                // Nawalan ng oras ang intern dahil sa natanggal na record;
-                // i-refresh ang HoursRendered at tingnan kung may bagong
-                // completion (hal. kapag binura ang maling entry).
+                // The intern lost hours because a record was deleted.
+                // Refresh HoursRendered and check completion again
+                // (for example, after a wrong entry is removed).
                 if (internId is int completedInternId)
                 {
                     await _completion.CheckAsync(completedInternId);

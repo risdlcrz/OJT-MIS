@@ -32,8 +32,8 @@ namespace OJTMISApi.Models
         [StringLength(50, ErrorMessage = "Status cannot exceed 50 characters.")]
         public string Status { get; set; } = AttendanceShift.OnTime;
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
     }
 }

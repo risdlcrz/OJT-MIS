@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OJTMISApi.Data;
@@ -155,7 +155,7 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = $"A school named \"{name}\" already exists." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var newSchool = new School
             {
                 Name = name,
@@ -240,7 +240,7 @@ namespace OJTMISApi.Controllers
                 existing.SeniorHighSchoolStrands = school.SeniorHighSchoolStrands ?? new List<string>();
                 existing.MoaStatus = moaStatus;
                 existing.MoaExpiry = moaExpiry;
-                var now = DateTime.Now;
+                var now = AppClock.Now;
                 existing.UpdatedAt = now;
 
                 await _context.SaveChangesAsync();

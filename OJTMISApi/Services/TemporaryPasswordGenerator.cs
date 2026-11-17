@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 namespace OJTMISApi.Services
 {
-    /// <summary>Gumagawa ng random na temporary password para sa bagong account.</summary>
+    /// <summary>Creates a random temporary password for a new account.</summary>
     public static class TemporaryPasswordGenerator
     {
         public static string Generate()

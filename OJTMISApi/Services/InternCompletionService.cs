@@ -58,7 +58,7 @@ namespace OJTMISApi.Services
             if (intern is null) return false;
 
             var rendered = Math.Round(renderedHours ?? await RenderedHoursAsync(internId, cancellationToken), 2);
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             intern.HoursRendered = rendered;
             intern.UpdatedAt = now;
 

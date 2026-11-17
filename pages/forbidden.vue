@@ -9,7 +9,7 @@
             You do not have access to this page with the current account.
           </p>
           <p v-if="user" class="text-muted small mb-4">
-            Naka-login ka bilang <strong>{{ user.fullName }}</strong>
+            You are signed in as <strong>{{ user.fullName }}</strong>
             <span v-if="user.roles?.length"> ({{ user.roles.join(', ') }})</span>.
           </p>
           <button type="button" class="btn btn-outline-secondary" @click="signOut">
@@ -23,12 +23,12 @@
 
 <script setup>
 import { currentUser, clearSession } from '@/services/api'
+import { go } from '@/utils/navigation'
 
 const user = currentUser()
 
 function signOut() {
   clearSession()
-  window.history.replaceState({}, '', '/login.html')
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  go('/login.html', { replace: true })
 }
 </script>

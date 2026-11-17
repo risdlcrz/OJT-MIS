@@ -1,12 +1,13 @@
 import axios from 'axios'
+import { go } from '@/utils/navigation'
 
 /**
  * Base URL for the OJTMISApi backend.
  *
- * Default ay relative ('/api') dahil ang Vite dev server (vite.config.js)
- * ang nagpo-proxy patungo sa .NET backend. Kaya walang hard-coded na port
- * at walang CORS. Override gamit ang VITE_API_URL kung kailangan ng
- * absolute URL (hal. sa production).
+ * The default is relative ('/api') because the Vite dev server (vite.config.js)
+ * forwards it to the .NET backend. So there is no hard-coded port
+ * and no CORS. Set VITE_API_URL if you need an
+ * absolute URL (for example, in production).
  */
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -34,8 +35,8 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Modules na sinusubaybayan ng notification bell. Kapag may successful na
-// CRUD dito, agad na nagre-refresh ang bell (hindi na hihintayin ang poll).
+// Modules the notification bell watches. After a successful change
+// here, the bell refreshes right away (it does not wait for the poll).
 const NOTIFICATION_MODULES = ['/schools', '/signatories', '/applicants', '/interns', '/internrequests', '/account/profile']
 
 // Normalise API failures so callers can always read a human-readable message.
@@ -53,9 +54,8 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('authToken')
-      window.history.pushState({}, '', '/login.html')
-      window.dispatchEvent(new PopStateEvent('popstate'))
+      clearSession()
+      go('/login.html')
     }
 
     const data = error.response?.data
@@ -67,9 +67,9 @@ apiClient.interceptors.response.use(
       } else if (data.message) {
         message = data.message
       } else if (data.errors) {
-        // ASP.NET Core ValidationProblemDetails shape. Unahin ang mga
-        // partikular na error (hal. "Full Name is required.") bago ang
-        // generic na title na "One or more validation errors occurred."
+        // ASP.NET Core ValidationProblemDetails shape. Show the specific
+        // errors (for example, "Full Name is required.") before the
+        // general title "One or more validation errors occurred."
         message = Object.values(data.errors).flat().join(' ') || data.title || message
       } else if (data.title) {
         message = data.title
@@ -108,8 +108,8 @@ function crud(resource) {
 }
 
 /**
- * Session helpers. Ang token at profile ay ini-store sa localStorage
- * para mabasa ng axios interceptor sa itaas.
+ * Session helpers. The token and profile are kept in localStorage
+ * so the axios interceptor above can read them.
  */
 export const authAPI = {
   login: async (email, password) => {
@@ -147,7 +147,7 @@ export function clearSession() {
   localStorage.removeItem('ojtExpiresAt')
 }
 
-/** Kasalukuyang profile mula sa localStorage. */
+/** The current profile from localStorage. */
 export function currentUser() {
   try {
     return JSON.parse(localStorage.getItem('ojtUser') || 'null')
@@ -156,12 +156,12 @@ export function currentUser() {
   }
 }
 
-/** True kapag may naka-login at HR Admin ang role. */
+/** True when someone is signed in and their role is HR Admin. */
 export function isHRAdmin() {
   return (currentUser()?.roles || []).includes('HRAdmin')
 }
 
-/** True kapag Intern ang role at hindi HR Admin. */
+/** True when the role is Intern and not HR Admin. */
 export function isIntern() {
   const roles = currentUser()?.roles || []
   return roles.includes('Intern') && !roles.includes('HRAdmin')
@@ -183,14 +183,14 @@ export const internsAPI = {
 }
 export const applicantsAPI = {
   ...crud('applicants'),
-  /* Preview ng start/end date bago i-save. */
+  /* Preview the start and end date before saving. */
   estimateDates: async (payload) => (await apiClient.post('/applicants/estimate-dates', payload)).data,
-  /* I-hire ang applicant: kinopya ang profile sa Intern + kinakalkula ang dates. */
+  /* Hire the applicant: copies the profile to an Intern and works out the dates. */
   hire: async (id, payload) => (await apiClient.post(`/applicants/${id}/hire`, payload)).data
 }
 export const internRequestsAPI = {
   ...crud('internrequests'),
-  /* Ang mga request na may natitirang slot lamang. */
+  /* Only the requests that still have open slots. */
   available: async () => (await apiClient.get('/internrequests/available')).data,
   /* Change only the status (e.g. open a supervisor's Pending request). */
   setStatus: async (request, status) =>
@@ -254,7 +254,7 @@ export const accountAPI = {
   }
 }
 
-/** HR Admin only: listahan at pamamahala ng user accounts. */
+/** HR Admin only: list and manage user accounts. */
 export const adminUsersAPI = {
   getAll: async (role = '') =>
     (await apiClient.get('/admin/users', { params: role ? { role } : {} })).data,
@@ -265,7 +265,7 @@ export const adminUsersAPI = {
   availablePeople: async () => (await apiClient.get('/admin/users/available-people')).data
 }
 
-/** HR Admin only: review ng attendance time adjustment requests. */
+/** HR Admin only: review attendance time adjustment requests. */
 export const hrAttendanceAPI = {
   getPending: async () => (await apiClient.get('/HR/AttendanceRequests/Pending')).data,
   approve: async (id) => (await apiClient.post(`/HR/AttendanceRequests/Approve/${id}`)).data,
@@ -287,7 +287,7 @@ export const certificateAPI = {
     (await apiClient.post(`/Certificate/GenerateAndSend/${internId}`, payload, { timeout: 60000 })).data
 }
 
-/** HR Admin only: audit trail ng mga aksyon ng bawat user. */
+/** HR Admin only: audit trail of every user's actions. */
 export const logsAPI = {
   getAll: async ({ category = 'all', search = '', take = 500 } = {}) =>
     (await apiClient.get('/logs', {

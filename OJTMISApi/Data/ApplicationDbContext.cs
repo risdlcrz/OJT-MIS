@@ -60,7 +60,7 @@ namespace OJTMISApi.Data
                           value => value.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.GetHashCode())),
                           value => value.ToList()));
 
-                // Timestamps are assigned by the model/controller (DateTime.Now), not by the
+                // Timestamps are assigned by the model/controller (AppClock.Now), not by the
                 // database, so no provider-specific default value SQL is used. This keeps the
                 // context portable across SQL Server and SQLite.
                 entity.Property(s => s.CreatedAt)
@@ -92,7 +92,7 @@ namespace OJTMISApi.Data
             {
                 entity.Property(i => i.Status).IsRequired().HasMaxLength(20).HasDefaultValue("Applicant");
 
-                // Kapag may request na "Hired" ang intern, dapat valid ang RequestId.
+                // A "Hired" intern with a request must point to a real RequestId.
                 entity.HasOne<InternRequest>()
                       .WithMany()
                       .HasForeignKey(i => i.RequestId)

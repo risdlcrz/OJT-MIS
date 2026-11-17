@@ -148,7 +148,7 @@ namespace OJTMISApi.Services
             y = DrawJustified(c, body, x0, x1, y, 12 * Mm);
 
             // ---- Issued line ----
-            var issued = model.DateIssued ?? DateTime.Today;
+            var issued = model.DateIssued ?? AppClock.Today;
             var issuedText =
                 $"Issued this {Ordinal(issued.Day)} day of {issued.ToString("MMMM", CultureInfo.InvariantCulture)}, " +
                 $"{issued.ToString("yyyy", CultureInfo.InvariantCulture)} at the Commission on Audit, Quezon City, Philippines.";

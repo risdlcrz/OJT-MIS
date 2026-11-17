@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace OJTMISApi.Models
 {
@@ -16,9 +16,9 @@ namespace OJTMISApi.Models
         [StringLength(200, ErrorMessage = "Program Name cannot exceed 200 characters.")]
         public string ProgramName { get; set; } = string.Empty;
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
     }
 }
 

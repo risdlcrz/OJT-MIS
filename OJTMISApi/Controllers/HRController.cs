@@ -246,7 +246,7 @@ namespace OJTMISApi.Controllers
                 Action = action,
                 Details = $"{action} for {internName}.",
                 IsVerified = true,
-                CreatedAt = DateTime.Now
+                CreatedAt = AppClock.Now
             });
 
             // Permanent record tied to the intern's profile with the finalized
@@ -275,7 +275,7 @@ namespace OJTMISApi.Controllers
                 SignatoryPosition = Trim(input.SignatoryPosition),
                 SignatoryOffice = Trim(input.SignatoryOffice),
                 GeneratedBy = user?.FullName ?? User.Identity?.Name ?? "HR Admin",
-                CreatedAt = DateTime.Now
+                CreatedAt = AppClock.Now
             });
 
             await _context.SaveChangesAsync();

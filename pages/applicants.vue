@@ -773,12 +773,12 @@
                                 <label class="form-check-label" for="hireExcludeFriday">
                                     <strong>Exclude Fridays</strong> from the day count
                                     <span class="text-muted d-block small">
-                                        I-on kapag hindi dapat kasama ang tuwing Biyernes.
+                                        Turn this on if Fridays should not be counted.
                                     </span>
                                 </label>
                             </div>
 
-                            <!-- Preview ng computed dates, bago i-save -->
+                            <!-- Preview of the computed dates, before saving -->
                             <div class="card bg-light border-0">
                                 <div class="card-body py-3">
                                     <h6 class="text-uppercase text-muted small mb-2">
@@ -799,8 +799,8 @@
                                         </div>
                                     </div>
                                     <div v-else class="text-muted small fst-italic">
-                                        Pumili ng hire date at duration para makita ang
-                                        tinatantyang start at end date.
+                                        Pick a hire date and duration to see the
+                                        estimated start and end date.
                                     </div>
                                 </div>
                             </div>
@@ -1127,6 +1127,7 @@
 
 
 <script setup>
+import { replaceUrl } from '@/utils/navigation'
 import {
     onMounted,
     onBeforeUnmount,
@@ -1214,8 +1215,8 @@ function onSchoolChange() {
 const activeTab = ref('list')
 
 
-/* Sinusundan ng tab ang URL: "#schedule" ay bubukas sa Schedule Orientation.
-   Ginagamit ito ng sidebar links. */
+/* The tab follows the URL: "#schedule" opens Schedule Orientation.
+   The sidebar links use this. */
 function readTabFromUrl() {
     activeTab.value =
         window.location.hash === '#schedule' ? 'schedule' : 'list'
@@ -1228,10 +1229,10 @@ function setTab(tab) {
         window.location.pathname +
         (tab === 'schedule' ? '#schedule' : '')
 
-    window.history.replaceState(null, '', url)
+    replaceUrl(url)
 
-    /* replaceState hindi nagti-trigger ng hashchange; ipaalam sa sidebar
-       (BaseLayout) para mag-update ang highlight at breadcrumb. */
+    /* replaceUrl does not fire hashchange; tell the sidebar (BaseLayout)
+       so its highlight and breadcrumb update. */
     window.dispatchEvent(new HashChangeEvent('hashchange'))
 }
 
@@ -1277,7 +1278,7 @@ const isHireModalOpen = ref(false)
 
 const hireApplicantNo = ref(null)
 
-/** Id ng request na na-assign sa Schedule Orientation. */
+/** Id of the request assigned in Schedule Orientation. */
 const hireRequestNo = ref('')
 
 const hireRequestLabel = computed(() => {
@@ -1291,19 +1292,19 @@ const hireRequestLabel = computed(() => {
 
 const hireDate = ref('')
 
-/** Haba ng OJT sa working days. */
+/** Length of the OJT in working days. */
 const hireDuration = ref(60)
 
-/** Kapag totoo, hindi binibilang ang Biyernes sa pagkakalkula. */
+/** When true, Fridays are not counted. */
 const hireExcludeFriday = ref(true)
 
-/** Resulta ng /api/applicants/estimate-dates para sa live preview. */
+/** Result of /api/applicants/estimate-dates for the live preview. */
 const hireEstimate = ref(null)
 
 const hireError = ref('')
 const isHiring = ref(false)
 
-/** Mga intern request na may natitirang slot lamang. */
+/** Only the intern requests that still have open slots. */
 const availableRequests = ref([])
 
 const PSGC = 'https://psgc.gitlab.io/api'
@@ -1452,7 +1453,7 @@ function closeAllModals() {
 }
 
 
-/* Lahat ng datos ay galing sa backend, walang localStorage. */
+/* All data comes from the backend; nothing is kept in localStorage. */
 async function loadApplicants() {
     try {
         applicants.value = await applicantsAPI.getAll()
@@ -1475,9 +1476,9 @@ async function loadSchools() {
 
 
 /**
- * I-save ang isang applicant sa backend (upsert: POST kung wala pa,
- * PUT kung may id na). Tinatanggap ang buong object para hindi na
- * kailangang ide-deserialize ang bawat field.
+ * Save one applicant to the backend (POST if new,
+ * PUT if it already has an id). Takes the whole object so each
+ * field does not need to be handled one by one.
  * Returns the saved record on success.
  */
 async function persist(applicant) {
@@ -1487,9 +1488,9 @@ async function persist(applicant) {
         ? await applicantsAPI.update(applicant.id, applicant)
         : await applicantsAPI.create(applicant)
 
-    // Ipalit sa table ang nai-save na record.
-    // Sa create (walang id), idagdag ang bagong record.
-    // Sa update, palitan ang existing record by reference o id.
+    // Put the saved record into the table.
+    // On create (no id), add the new record.
+    // On update, replace the existing record by reference or id.
     if (!applicant.id) {
         applicants.value.push(saved)
     } else {
@@ -1536,9 +1537,9 @@ function statusInfo(applicant) {
     }
 
     if (applicant.accepted) {
-        /* Nasa orientation flow na: "For orientation" hangga't hindi pa
-           na-mark na done (orientation.confirmed), at "For hiring"
-           pagkatapos nito, para muling handa sa Hire. */
+        /* Already in the orientation flow: "For orientation" until it is
+           marked done (orientation.confirmed), then "For hiring",
+           so the applicant is ready to be hired. */
         return applicant.orientation && applicant.orientation.confirmed
             ? {
                 label: 'For hiring',
@@ -1628,8 +1629,8 @@ async function saveApplicant() {
         return
     }
 
-    /* Ang applicant no ay ginagawa ng backend para hindi mag-clash
-       kahit may na-delete na applicant. */
+    /* The backend creates the applicant number, so numbers never
+       clash, even after applicants are deleted. */
     const applicant = {
         applicantNo: '',
 
@@ -1767,7 +1768,7 @@ async function openHire(applicant, presetData = {}) {
 
     isHireModalOpen.value = true
 
-    // Ang dropdown ay galing sa backend: yung may natitirang slot lamang.
+    // The dropdown comes from the backend: only requests with open slots.
     try {
         availableRequests.value = await internRequestsAPI.available()
     } catch (error) {
@@ -1797,8 +1798,8 @@ function onHireDatePicked(e) {
 
 
 /**
- * Hinihingi sa backend ang tinatantyang start at end date.
- * Dito nakikita kung paano naaapektuhan ng "Exclude Fridays" ang bilang.
+ * Asks the backend for the estimated start and end date.
+ * This shows how "Exclude Fridays" changes the count.
  * Duration is converted from hours to working days (hours / 8).
  */
 async function refreshHireEstimate() {
@@ -1822,7 +1823,7 @@ async function refreshHireEstimate() {
     }
 }
 
-// Muling kalkulahin kapag nagbago ang duration o ang Friday toggle.
+// Recalculate when the duration or the Friday toggle changes.
 watch([hireDuration, hireExcludeFriday], () => {
     if (isHireModalOpen.value) refreshHireEstimate()
 })
@@ -1853,8 +1854,8 @@ async function submitHire() {
     isHiring.value = true
 
     try {
-        // Ang backend ang gumagawa ng conversion: profile -> Intern profile,
-        // kinakalkula ang start/end date, at kinakain ang slot sa request.
+        // The backend does the conversion: profile -> Intern profile,
+        // works out the start/end date, and uses up a slot of the request.
         // Convert hours to working days (8 hours per day)
         const durationDays = Math.ceil((Number(hireDuration.value) || 1) / 8)
         const result = await applicantsAPI.hire(applicant.id, {
@@ -1911,8 +1912,8 @@ function deleteApplicant(applicant) {
 
     closeActionPanels()
 
-    // Optimistic: alisin agad ang row sa listahan habang nagpo-process ang
-    // backend delete. Ibalik lang ito (kasabay ng alert) kung mabigo.
+    // Optimistic: remove the row from the list right away while the
+    // backend deletes it. Put it back (with an alert) only if that fails.
     const index = applicants.value.findIndex((a) => a.id === applicant.id)
     if (index === -1) return
 

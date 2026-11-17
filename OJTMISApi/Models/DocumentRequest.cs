@@ -24,8 +24,8 @@ namespace OJTMISApi.Models
         [StringLength(500)]
         public string? Notes { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
     }
 }

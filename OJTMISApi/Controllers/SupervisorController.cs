@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -23,17 +24,20 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AttendanceAdjustmentReviewService _review;
+        private readonly DepartmentScopeService _scopes;
         private readonly ILogger<SupervisorController> _logger;
 
         public SupervisorController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             AttendanceAdjustmentReviewService review,
+            DepartmentScopeService scopes,
             ILogger<SupervisorController> logger)
         {
             _context = context;
             _userManager = userManager;
             _review = review;
+            _scopes = scopes;
             _logger = logger;
         }
 
@@ -477,7 +481,7 @@ namespace OJTMISApi.Controllers
 
             if (upcomingOnly)
             {
-                var today = DateTime.Today;
+                var today = AppClock.Today;
                 query = query.Where(a => a.OrientationDate >= today);
             }
 
@@ -599,15 +603,10 @@ namespace OJTMISApi.Controllers
         /// hired against it.
         /// </summary>
         [HttpPost("slots")]
-        public async Task<ActionResult<object>> RequestSlots([FromBody] SlotRequestInput? input)
+        public async Task<ActionResult<object>> RequestSlots([FromBody] SlotRequestInput input)
         {
             var scope = await ResolveDepartmentScopeAsync();
             if (scope is null) return MissingDepartment();
-
-            if (input is null || input.Count < 1 || input.Count > 9999)
-            {
-                return BadRequest(new { message = "Slots must be between 1 and 9999." });
-            }
 
             var skills = (input.Skills ?? string.Empty).Trim();
             if (skills.Length == 0)
@@ -624,7 +623,7 @@ namespace OJTMISApi.Controllers
                 .Select(s => (int?)s.Id)
                 .FirstOrDefaultAsync();
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new InternRequest
             {
                 OfficeCode = officeCode,
@@ -666,15 +665,10 @@ namespace OJTMISApi.Controllers
         /// HR can open a Pending request.
         /// </summary>
         [HttpPut("slots/{id:int}")]
-        public async Task<ActionResult<object>> UpdateSlots(int id, [FromBody] SlotRequestInput? input)
+        public async Task<ActionResult<object>> UpdateSlots(int id, [FromBody] SlotRequestInput input)
         {
             var scope = await ResolveDepartmentScopeAsync();
             if (scope is null) return MissingDepartment();
-
-            if (input is null || input.Count < 1 || input.Count > 9999)
-            {
-                return BadRequest(new { message = "Slots must be between 1 and 9999." });
-            }
 
             var request = await _context.InternRequests.FirstOrDefaultAsync(r => r.Id == id);
             if (request is null || !scope.RequestIds.Contains(request.Id))
@@ -709,7 +703,7 @@ namespace OJTMISApi.Controllers
 
             request.Description = Truncate((input.Description ?? string.Empty).Trim(), 1000);
             request.Count = input.Count;
-            request.UpdatedAt = DateTime.Now;
+            request.UpdatedAt = AppClock.Now;
 
             ActivityLogWriter.Add(
                 _context,
@@ -783,118 +777,21 @@ namespace OJTMISApi.Controllers
             value.Length <= max ? value : value[..max];
 
         /* ------------------------------------------------------------------
-         * Department scope
+         * Department scope (rules live in Services/DepartmentScope.cs)
          * ---------------------------------------------------------------- */
 
-        private sealed record DepartmentScope(
-            string Department,
-            IReadOnlyList<string> OfficeKeys,
-            IReadOnlyList<int> RequestIds);
+        private Task<DepartmentScope?> ResolveDepartmentScopeAsync() =>
+            _scopes.ResolveAsync(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-        private async Task<DepartmentScope?> ResolveDepartmentScopeAsync()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(userId)) return null;
+        private static IQueryable<Intern> ApplyInternScope(IQueryable<Intern> query, DepartmentScope scope) =>
+            DepartmentScopeRules.ApplyInternScope(query, scope);
 
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user is null) return null;
+        private static IQueryable<Applicant> ApplyApplicantScope(IQueryable<Applicant> query, DepartmentScope scope) =>
+            DepartmentScopeRules.ApplyApplicantScope(query, scope);
 
-            // A linked signatory record is the authoritative department
-            // assignment. User.Office is the fallback for supervisors whose
-            // account existed before the signatory link was added.
-            var signatoryDepartment = await _context.Signatories
-                .AsNoTracking()
-                .Where(s => s.UserId == userId &&
-                            s.Department != null &&
-                            s.Department != "")
-                .OrderBy(s => s.Id)
-                .Select(s => s.Department)
-                .FirstOrDefaultAsync();
+        private static bool IsInternInScope(Intern? intern, DepartmentScope scope) =>
+            DepartmentScopeRules.IsInternInScope(intern, scope);
 
-            var department = !string.IsNullOrWhiteSpace(signatoryDepartment)
-                ? signatoryDepartment!.Trim()
-                : user.Office?.Trim();
-
-            if (string.IsNullOrWhiteSpace(department)) return null;
-
-            // The directory stores a department name for some accounts and a
-            // code for others. Expand the department into both forms using the
-            // intern request records so matching works either way.
-            var allRequests = await _context.InternRequests
-                .AsNoTracking()
-                .Select(r => new { r.Id, r.OfficeCode, r.OfficeName })
-                .ToListAsync();
-
-            var matchingRequests = allRequests
-                .Where(r =>
-                    string.Equals(r.OfficeCode, department, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(r.OfficeName, department, StringComparison.OrdinalIgnoreCase) ||
-                    (!string.IsNullOrWhiteSpace(r.OfficeName) &&
-                     r.OfficeName.Contains(department, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrWhiteSpace(r.OfficeCode) &&
-                     department.Contains(r.OfficeCode, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-
-            var officeKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { department };
-            foreach (var request in matchingRequests)
-            {
-                if (!string.IsNullOrWhiteSpace(request.OfficeCode)) officeKeys.Add(request.OfficeCode.Trim());
-                if (!string.IsNullOrWhiteSpace(request.OfficeName)) officeKeys.Add(request.OfficeName.Trim());
-            }
-
-            return new DepartmentScope(
-                department,
-                officeKeys.ToList(),
-                matchingRequests.Select(r => r.Id).Distinct().ToList());
-        }
-
-        private static IQueryable<Intern> ApplyInternScope(IQueryable<Intern> query, DepartmentScope scope)
-        {
-            var offices = scope.OfficeKeys.Select(key => key.ToLowerInvariant()).Distinct().ToList();
-            var requestIds = scope.RequestIds;
-
-            if (requestIds.Count == 0)
-            {
-                return query.Where(i =>
-                    i.ApplicantOffice != null && offices.Contains(i.ApplicantOffice.Trim().ToLower()));
-            }
-
-            return query.Where(i =>
-                (i.ApplicantOffice != null && offices.Contains(i.ApplicantOffice.Trim().ToLower())) ||
-                (i.RequestId != null && requestIds.Contains(i.RequestId.Value)));
-        }
-
-        private static IQueryable<Applicant> ApplyApplicantScope(IQueryable<Applicant> query, DepartmentScope scope)
-        {
-            var offices = scope.OfficeKeys.Select(key => key.ToLowerInvariant()).Distinct().ToList();
-            var requestIds = scope.RequestIds;
-
-            if (requestIds.Count == 0)
-            {
-                return query.Where(a =>
-                    (a.ApplicantOffice != null && offices.Contains(a.ApplicantOffice.Trim().ToLower())) ||
-                    (a.OrientationOffice != null && offices.Contains(a.OrientationOffice.Trim().ToLower())));
-            }
-
-            return query.Where(a =>
-                (a.ApplicantOffice != null && offices.Contains(a.ApplicantOffice.Trim().ToLower())) ||
-                (a.OrientationOffice != null && offices.Contains(a.OrientationOffice.Trim().ToLower())) ||
-                (a.RequestNo != null && requestIds.Contains(a.RequestNo.Value)));
-        }
-
-        private static bool IsInternInScope(Intern? intern, DepartmentScope scope)
-        {
-            if (intern is null) return false;
-
-            if (!string.IsNullOrWhiteSpace(intern.ApplicantOffice) &&
-                scope.OfficeKeys.Any(key =>
-                    string.Equals(key, intern.ApplicantOffice.Trim(), StringComparison.OrdinalIgnoreCase)))
-            {
-                return true;
-            }
-
-            return intern.RequestId is int requestId && scope.RequestIds.Contains(requestId);
-        }
 
         private ObjectResult MissingDepartment() =>
             StatusCode(StatusCodes.Status403Forbidden, new
@@ -934,10 +831,13 @@ namespace OJTMISApi.Controllers
     /// <summary>Body for supervisor slot requests and slot adjustments.</summary>
     public sealed class SlotRequestInput
     {
+        [Range(1, 9999, ErrorMessage = "Slots must be between 1 and 9999.")]
         public int Count { get; set; }
 
+        [StringLength(500, ErrorMessage = "Skills needed / workplan cannot exceed 500 characters.")]
         public string? Skills { get; set; }
 
+        [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
         public string? Description { get; set; }
 
         /// <summary>Optional on update: "Closed", or "Open" to reopen a closed request.</summary>

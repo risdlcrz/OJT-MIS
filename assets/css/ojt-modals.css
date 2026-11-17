@@ -1,19 +1,19 @@
 /* =====================================================================
    OJT-MIS global modal / overlay stacking layer.
 
-   Bakit may hiwalay na file na ito?
-   Ang dating z-index ng bawat pahina ay magkabila-lapis at nakikipag-
-   labanan: .main-sidebar = 1050, #modalInternRequest = 1050,
+   Why is this a separate file?
+   Each page used to set its own z-index, and they fought each other:
+   .main-sidebar = 1050, #modalInternRequest = 1050,
    .modal-backdrop = 1040, .sidebar-backdrop = 1040,
-   #changePasswordModal = 1060. Kaya napupunat ang modal sa likod ng
-   transparent na backdrop at hindi na ma-click.
+   #changePasswordModal = 1060. So a modal could end up behind the
+   see-through backdrop and could not be clicked.
 
-   Isinusunod ng layering dito mula ibaba hanggang ibaba ng screen:
+   The layers below go from bottom to top:
      1000  app chrome (header, sidebar)
      1040  mobile nav backdrop
-     1050  modal backdrop   <-- DITO dapat nakaabutang likod ng panel
-     1060  modal panel      <-- DITO dapat nakaabotang likod ng backdrop
-     1070  dropdown / popover sa loob ng modal
+     1050  modal backdrop   <-- must stay behind the panel
+     1060  modal panel      <-- must stay in front of the backdrop
+     1070  dropdown / popover inside a modal
      1090  toast / notification
    ===================================================================== */
 
@@ -25,47 +25,47 @@
   --ojt-z-toast: 1090;
 }
 
-/* Backdrop: lagi na nasa baba ng modal panel. */
+/* Backdrop: always below the modal panel. */
 .modal-backdrop,
 .modal-backdrop.fade,
 .modal-backdrop.show {
   z-index: var(--ojt-z-backdrop) !important;
 }
 
-/* Modal panel: lagi na nasa taas ng kanyang backdrop. */
+/* Modal panel: always above its backdrop. */
 .modal,
 .modal.fade,
 .modal.show {
   z-index: var(--ojt-z-modal) !important;
 }
 
-/* Dropdown sa loob ng modal para hindi nahuhulog sa panel. */
+/* Dropdowns inside a modal, so they do not fall behind the panel. */
 .modal .dropdown-menu,
 .modal .popover {
   z-index: var(--ojt-z-modal-popover) !important;
 }
 
-/* Toast/pnotification ay nasa ibabaw ng lahat. */
+/* Toasts and notifications sit above everything. */
 .toast-container,
 .toast {
   z-index: var(--ojt-z-toast) !important;
 }
 
-/* Backdrop ng mobile navigation (hindi ito modal). */
+/* Backdrop of the mobile navigation (this is not a modal). */
 .sidebar-backdrop {
   z-index: var(--ojt-z-nav-backdrop) !important;
 }
 
-/* Ang dating bawat-pahina na hard-coded na z-index ay dapat na
-   hindi na makapagpigil sa global na layering sa itaas. */
+/* Old per-page hard-coded z-index values must not override
+   the global layering above. */
 #modalInternRequest,
 #changePasswordModal,
 #changeDisplayNameModal {
   z-index: var(--ojt-z-modal) !important;
 }
 
-/* Siguradong naka-plya ang panel kapag bukas, at hindi na naka-clip
-   ng isang ancestor na may overflow: hidden. */
+/* Make sure an open panel is shown and is not clipped
+   by a parent with overflow: hidden. */
 .modal.show,
 .modal.fade.show {
   display: block !important;

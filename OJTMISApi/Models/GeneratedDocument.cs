@@ -96,6 +96,6 @@ namespace OJTMISApi.Models
         public string GeneratedBy { get; set; } = string.Empty;
 
         /// <summary>When the record was saved (issuance time).</summary>
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
     }
 }

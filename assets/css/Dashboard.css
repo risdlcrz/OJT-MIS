@@ -306,7 +306,7 @@ body {
     will-change: transform;
 }
 
-/* Animated cue: may dagdag pang nilalaman sa ibaba */
+/* Animated hint: there is more content below */
 .ojt-scroll-cue {
     position: absolute;
     bottom: 26px;
@@ -624,7 +624,7 @@ body {
     transform: translateY(-4px);
 }
 
-/* Text sa loob ng light glass cards: itim para madaling basahin. */
+/* Text inside the light glass cards: black so it is easy to read. */
 .ojt-info h3 {
     color: #b35c05;
 }
@@ -648,7 +648,7 @@ body {
     color: #7a3f04;
 }
 
-/* Nakasama sa transition ang reveal animation (opacity/transform). */
+/* The reveal animation (opacity/transform) is part of the transition. */
 .ojt-info {
     transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.25s ease;
 }

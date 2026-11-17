@@ -3,9 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace OJTMISApi.Models
 {
     /// <summary>
-    /// Isang notification na ipinapakita sa bell menu ng top navbar.
-    /// Awtomatikong ginagawa ng <see cref="Services.NotificationInterceptor"/>
-    /// tuwing may CRUD na nangyari sa monitored modules.
+    /// A notification shown in the bell menu of the top bar.
+    /// Created automatically by <see cref="Services.NotificationInterceptor"/>
+    /// whenever a record in a watched module is created, changed, or deleted.
     /// </summary>
     public class Notification
     {
@@ -43,6 +43,6 @@ namespace OJTMISApi.Models
 
         public bool IsRead { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
     }
 }

@@ -1,15 +1,15 @@
 namespace OJTMISApi.Services
 {
     /// <summary>
-    /// Nagkakalkula ng tinatantyang (estimated) start at end date ng OJT
-    /// batay sa petsa ng pag-hire, haba ng OJT, at kung
-    /// ekskluibo ang Biyernes o hindi.
+    /// Works out the estimated start and end date of the OJT from the
+    /// hire date, the length of the OJT, and whether Fridays are
+    /// excluded.
     /// </summary>
     public static class OjtDateCalculator
     {
         /// <summary>
-        /// Ang unang "working day" ay ang hire date mismo kung working day
-        /// ito, kung hindi ay ang susunod na working day.
+        /// The first working day is the hire date itself if it is a working
+        /// day; otherwise it is the next working day.
         /// </summary>
         public static DateTime GetStartDate(DateTime hireDate, bool excludeFriday)
         {
@@ -19,23 +19,23 @@ namespace OJTMISApi.Services
             while (!IsWorkingDay(date, excludeFriday))
             {
                 date = date.AddDays(1);
-                if (++guard > 14) break;   // safety laban sa edge case
+                if (++guard > 14) break;   // safety stop for edge cases
             }
 
             return date;
         }
 
         /// <summary>
-        /// Binibilang ang <paramref name="durationDays"/> working day mula sa
-        /// start date (inclusive). Ang return value ay ang huling araw
-        /// na nabibilang.
+        /// Counts <paramref name="durationDays"/> working days from the
+        /// start date (the start date counts). Returns the last day
+        /// that was counted.
         /// </summary>
         public static DateTime GetEndDate(DateTime startDate, int durationDays, bool excludeFriday)
         {
             if (durationDays < 1) durationDays = 1;
 
             var date = startDate;
-            var counted = 1;   // ang start date mismo ay unang araw
+            var counted = 1;   // the start date itself is day one
             var guard = 0;
 
             while (counted < durationDays)
@@ -53,8 +53,8 @@ namespace OJTMISApi.Services
         }
 
         /// <summary>
-        /// Isang araw lang ang working day kapag hindi Biyernes, o kapag
-        /// hindi naka-"excludeFriday".
+        /// A day is a working day unless it is a Friday and
+        /// "excludeFriday" is on.
         /// </summary>
         public static bool IsWorkingDay(DateTime date, bool excludeFriday)
         {
@@ -66,7 +66,7 @@ namespace OJTMISApi.Services
             return true;
         }
 
-        /// <summary>Kinakalkula ang start at end date nang sabay.</summary>
+        /// <summary>Works out the start and end date together.</summary>
         public static (DateTime Start, DateTime End) Compute(
             DateTime hireDate, int durationDays, bool excludeFriday)
         {

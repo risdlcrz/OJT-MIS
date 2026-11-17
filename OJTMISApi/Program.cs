@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OJTMISApi;
 using OJTMISApi.Controllers;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
@@ -10,6 +11,15 @@ using System.Net.Http.Headers;
 using OJTMISApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Every stored date/time is office-local (Philippine) time, independent of
+// the server's own time zone. See AppClock.
+AppClock.Configure(builder.Configuration["App:TimeZone"]);
+
+// `dotnet OJTMISApi.dll --migrate` applies pending migrations, seeds roles and
+// the admin account, then exits. Use it in deployments where
+// Database:MigrateOnStartup is off.
+var migrateOnly = args.Contains("--migrate", StringComparer.OrdinalIgnoreCase);
 
 // ---------------------------------------------------------------------
 // Database
@@ -113,11 +123,66 @@ builder.Services.AddSingleton<AttendanceQrService>();
 builder.Services.AddScoped<AttendanceLogService>();
 builder.Services.AddScoped<InternCompletionService>();
 builder.Services.AddScoped<AttendanceAdjustmentReviewService>();
+builder.Services.AddScoped<DepartmentScopeService>();
+builder.Services.AddScoped<AccountProvisioningService>();
 
 // ---------------------------------------------------------------------
 // Services
 // ---------------------------------------------------------------------
 builder.Services.AddControllers();
+
+// Errors: every failure reply is JSON with a `message` the Vue client shows.
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        var problem = context.ProblemDetails;
+        if (problem is Microsoft.AspNetCore.Mvc.ValidationProblemDetails validation && validation.Errors.Count > 0)
+        {
+            // Field errors such as "Full Name is required." are what the user needs to see.
+            problem.Extensions["message"] = string.Join(" ", validation.Errors.Values.SelectMany(v => v).Distinct());
+        }
+        else if (!problem.Extensions.ContainsKey("message"))
+        {
+            problem.Extensions["message"] = problem.Status switch
+            {
+                StatusCodes.Status401Unauthorized => "Your session has ended. Please sign in again.",
+                StatusCodes.Status403Forbidden => "You do not have permission to do that.",
+                StatusCodes.Status404NotFound => "The requested item or page was not found.",
+                StatusCodes.Status405MethodNotAllowed => "That action is not supported here.",
+                StatusCodes.Status415UnsupportedMediaType => "The request format is not supported.",
+                _ => problem.Title ?? "The request could not be completed."
+            };
+        }
+    };
+});
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// HTTPS: browsers are told to use HTTPS only (HSTS) outside Development.
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(180);
+    options.IncludeSubDomains = false;
+});
+
+// Behind a reverse proxy (IIS / nginx / a cloud load balancer) the real
+// client IP and scheme arrive in X-Forwarded-* headers. Only trust them
+// when ReverseProxy:Enabled is set, otherwise anyone could spoof their IP
+// past the rate limiter.
+var behindProxy = builder.Configuration.GetValue<bool>("ReverseProxy:Enabled");
+if (behindProxy)
+{
+    builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+            Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+        foreach (var proxy in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? Array.Empty<string>())
+        {
+            if (System.Net.IPAddress.TryParse(proxy, out var ip)) options.KnownProxies.Add(ip);
+        }
+    });
+}
 
 // Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -147,6 +212,16 @@ var app = builder.Build();
 // ---------------------------------------------------------------------
 // Pipeline
 // ---------------------------------------------------------------------
+if (behindProxy)
+{
+    app.UseForwardedHeaders();
+}
+
+// Unhandled exceptions and empty error replies (401/403/404) become JSON
+// ProblemDetails with a readable `message`.
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -156,6 +231,23 @@ if (app.Environment.IsDevelopment())
         options.DocumentTitle = "OJTMIS API";
     });
 }
+else
+{
+    // In Development the Vite proxy talks plain HTTP to the API, so these
+    // only apply to real deployments.
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+// Basic hardening headers for every API reply.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
 
 // Must sit between UseRouting() and the endpoint middleware.
 app.UseCors(CorsPolicy);
@@ -170,15 +262,34 @@ app.UseMiddleware<ActivityLogMiddleware>();
 app.MapControllers();
 
 // ---------------------------------------------------------------------
-// Database schema: apply any pending EF Core migrations before serving
-// requests, so a fresh/empty database becomes usable automatically.
+// Database schema. Development applies pending migrations automatically so
+// a fresh database just works. Elsewhere (Database:MigrateOnStartup=false by
+// default) the schema is upgraded once, deliberately, with `--migrate`, so
+// several app instances never race to migrate the same database, and the app
+// refuses to start against an out-of-date schema.
 // ---------------------------------------------------------------------
-await ApplyMigrationsAsync(app);
+var migrateOnStartup = app.Configuration.GetValue<bool?>("Database:MigrateOnStartup")
+                       ?? app.Environment.IsDevelopment();
+
+if (migrateOnly || migrateOnStartup)
+{
+    await ApplyMigrationsAsync(app);
+}
+else
+{
+    await EnsureSchemaIsCurrentAsync(app);
+}
 
 // ---------------------------------------------------------------------
-// Seed: roles + default HR Admin account.
+// Seed: roles + default HR Admin account (idempotent).
 // ---------------------------------------------------------------------
 await SeedAsync(app);
+
+if (migrateOnly)
+{
+    Console.WriteLine("Database migrated and seeded. Exiting (--migrate).");
+    return;
+}
 
 // Pre-flight port check. Binding failures inside Kestrel surface as a deeply
 // wrapped IOException with a 40-line stack trace, so detect the busy port up
@@ -272,10 +383,33 @@ static async Task ApplyMigrationsAsync(WebApplication app)
         Console.Error.WriteLine();
         Console.Error.WriteLine(" Check the 'DefaultConnection' connection string and");
         Console.Error.WriteLine(" that the target database exists and is reachable.");
+        Console.Error.WriteLine(" On your own machine, set it in the local secret store:");
+        Console.Error.WriteLine("     dotnet user-secrets set \"ConnectionStrings:DefaultConnection\" \"Server=...;Database=...;Integrated Security=True;TrustServerCertificate=True\" --project OJTMISApi");
         Console.Error.WriteLine("===========================================================");
         Console.Error.WriteLine();
         Environment.Exit(1);
     }
+}
+
+static async Task EnsureSchemaIsCurrentAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+    if (pending.Count == 0) return;
+
+    Console.Error.WriteLine();
+    Console.Error.WriteLine("===========================================================");
+    Console.Error.WriteLine($" ERROR: The database is missing {pending.Count} migration(s):");
+    foreach (var name in pending) Console.Error.WriteLine($"     {name}");
+    Console.Error.WriteLine();
+    Console.Error.WriteLine(" Upgrade it once, then start the app normally:");
+    Console.Error.WriteLine("     dotnet OJTMISApi.dll --migrate");
+    Console.Error.WriteLine(" (or set Database__MigrateOnStartup=true for a single-instance setup)");
+    Console.Error.WriteLine("===========================================================");
+    Console.Error.WriteLine();
+    Environment.Exit(1);
 }
 
 static async Task SeedAsync(WebApplication app)

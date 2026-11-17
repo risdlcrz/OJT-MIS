@@ -3,9 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace OJTMISApi.Models
 {
     /// <summary>
-    /// Isang audit entry para sa bawat aksyon na ginawa ng isang user.
-    /// Ang Category ay HR, Supervisor, o Intern batay sa role noong ginawa
-    /// ang aksyon.
+    /// One audit entry for each action a user takes.
+    /// Category is HR, Supervisor, or Intern, based on the user's role
+    /// at the time.
     /// </summary>
     public class ActivityLog
     {
@@ -37,9 +37,9 @@ namespace OJTMISApi.Models
         [StringLength(500)]
         public string? Details { get; set; }
 
-        /// <summary>True kapag matagumpay na naisagawa ang aksyon.</summary>
+        /// <summary>True when the action succeeded.</summary>
         public bool IsVerified { get; set; } = true;
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
     }
 }

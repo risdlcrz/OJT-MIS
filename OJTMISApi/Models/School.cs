@@ -36,8 +36,8 @@ namespace OJTMISApi.Models
         /// </summary>
         public DateTime? MoaExpiry { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
     }
 }

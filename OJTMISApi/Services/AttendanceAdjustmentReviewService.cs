@@ -72,7 +72,7 @@ namespace OJTMISApi.Services
                     new { message = $"This request has already been {request.Status.ToLowerInvariant()}." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var label = AttendanceAdjustmentField.Label(request.TargetField);
 
             if (approve)
@@ -116,8 +116,8 @@ namespace OJTMISApi.Services
             if (approve && log is not null)
             {
                 dailyHours = await CalculateDailyHoursAsync(request.InternId, log.Date);
-                // Kapag ang approval na ito ang nagpaabot sa intern sa required
-                // hours, i-mark siyang Completed at abisuhan ang HR (one-time).
+                // If this approval brings the intern to the required hours,
+                // mark them Completed and tell HR (once).
                 completed = await _completion.CheckAsync(request.InternId);
             }
 

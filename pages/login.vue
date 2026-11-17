@@ -152,6 +152,8 @@ import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
 import loginBackground from '../assets/images/login-bg.jpg'
 import { authAPI, getApiErrorMessage } from '@/services/api'
+import { hasValidSession } from '@/router'
+import { go, replaceUrl } from '@/utils/navigation'
 
 const mode = ref('login')
 const email = ref('')
@@ -226,7 +228,7 @@ async function confirmFromLink(confirmEmail, token) {
         needsVerification.value = true
     } finally {
         isBusy.value = false
-        window.history.replaceState({}, '', '/login.html')
+        replaceUrl('/login.html')
     }
 }
 
@@ -272,7 +274,7 @@ async function submit() {
             password.value = ''
             newPassword.value = ''
             confirmPassword.value = ''
-            window.history.replaceState({}, '', '/login.html')
+            replaceUrl('/login.html')
             return
         }
 
@@ -292,8 +294,7 @@ async function submit() {
 
         await authAPI.login(email.value, password.value)
 
-        window.history.pushState({}, '', '/dashboard.html')
-        window.dispatchEvent(new PopStateEvent('popstate'))
+        await go('/dashboard.html')
     } catch (error) {
         needsVerification.value = error?.response?.data?.code === 'email_unconfirmed'
         errorMessage.value = getApiErrorMessage(error, 'Unable to sign in. Please try again.')
@@ -302,7 +303,7 @@ async function submit() {
     }
 }
 
-/* Kung may session na, huwag nang ipakita ang login form. */
+/* If there is already a session, skip the login form. */
 onMounted(() => {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('token')
@@ -319,9 +320,9 @@ onMounted(() => {
         return
     }
 
-    if (localStorage.getItem('authToken')) {
-        window.history.replaceState({}, '', '/dashboard.html')
-        window.dispatchEvent(new PopStateEvent('popstate'))
+    /* Already signed in with a session that has not expired: skip the form. */
+    if (hasValidSession()) {
+        go('/dashboard.html', { replace: true })
     }
 })
 </script>

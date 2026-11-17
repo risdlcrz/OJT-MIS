@@ -117,7 +117,9 @@ namespace OJTMISApi.Controllers
 
         /// <summary>POST: api/admin/users</summary>
         [HttpPost]
-        public async Task<ActionResult<AdminUserDto>> Create([FromBody] CreateAdminUserRequest request)
+        public async Task<ActionResult<AdminUserDto>> Create(
+            [FromBody] CreateAdminUserRequest request,
+            [FromServices] AccountProvisioningService accounts)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
@@ -132,61 +134,23 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = "HR cannot set a password directly. A temporary password is emailed to the user." });
             }
 
-            var email = request.Email.Trim();
+            var result = await accounts.CreateAsync(
+                request.Email, request.FirstName, request.LastName, request.Office, role,
+                rollbackIfEmailFails: true);
 
-            if (await _userManager.FindByEmailAsync(email) is not null)
+            return result.Status switch
             {
-                return Conflict(new { message = "That email is already registered." });
-            }
-
-            var password = TemporaryPasswordGenerator.Generate();
-            var user = new ApplicationUser
-            {
-                UserName = email,
-                Email = email,
-                FirstName = request.FirstName.Trim(),
-                LastName = request.LastName.Trim(),
-                Office = string.IsNullOrWhiteSpace(request.Office) ? null : request.Office.Trim(),
-                // HR created it (approved); the user still has to verify the email.
-                IsApproved = true,
-                EmailConfirmed = false
+                ProvisionStatus.Created =>
+                    Created($"/api/admin/users/{result.User!.Id}", ToDto(result.User, new[] { role })),
+                ProvisionStatus.AlreadyExists =>
+                    Conflict(new { message = "That email is already registered." }),
+                ProvisionStatus.RolledBack =>
+                    StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                    {
+                        message = "The account was not created because the activation email could not be sent."
+                    }),
+                _ => BadRequest(new { message = result.Error ?? "The account could not be created." })
             };
-
-            var createResult = await _userManager.CreateAsync(user, password);
-            if (!createResult.Succeeded)
-            {
-                return BadRequest(new
-                {
-                    message = string.Join(" ", createResult.Errors.Select(e => e.Description))
-                });
-            }
-
-            var roleResult = await _userManager.AddToRoleAsync(user, role);
-            if (!roleResult.Succeeded)
-            {
-                // Huwag mag-iwan ng account na walang role kung nabigo ang role assignment.
-                await _userManager.DeleteAsync(user);
-
-                return BadRequest(new
-                {
-                    message = string.Join(" ", roleResult.Errors.Select(e => e.Description))
-                });
-            }
-
-            try
-            {
-                await _email.SendActivationAsync(_userManager, user, password);
-            }
-            catch (Exception)
-            {
-                await _userManager.DeleteAsync(user);
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-                {
-                    message = "The account was not created because the temporary password email could not be sent."
-                });
-            }
-
-            return Created($"/api/admin/users/{user.Id}", ToDto(user, new[] { role }));
         }
 
         /// <summary>PUT: api/admin/users/{id}</summary>
@@ -249,8 +213,8 @@ namespace OJTMISApi.Controllers
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (!currentRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
             {
-                // Idagdag muna ang bagong role bago tanggalin ang luma, para
-                // hindi maiwang walang role ang account kung may error.
+                // Add the new role before removing the old one, so the account
+                // is never left without a role if something fails.
                 var addResult = await _userManager.AddToRoleAsync(user, role);
                 if (!addResult.Succeeded)
                 {

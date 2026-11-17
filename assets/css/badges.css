@@ -1,10 +1,10 @@
 /* =====================================================================
    Status badge colors.
 
-   Ang mga table ay gumagamit ng Bootstrap 4 na "badge-*" na klase
-   (badge-success, badge-info, ...) ngunit naka-Bootstrap 5 ang app,
-   kung saan ang .badge ay walang background kaya puro puting text lang
-   ang lumalabas. Dito muna tinutukoy ang kulay para sa lahat ng page.
+   The tables use the Bootstrap 4 "badge-*" classes
+   (badge-success, badge-info, ...) but the app runs Bootstrap 5,
+   where .badge has no background, so only white text would show.
+   This file sets the colors for every page.
    ===================================================================== */
 
 .badge-primary { background-color: #0d6efd; color: #fff; }

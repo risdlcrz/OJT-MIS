@@ -7,8 +7,8 @@ using OJTMISApi.Models;
 namespace OJTMISApi.Services
 {
     /// <summary>
-    /// Awtomatikong gumagawa ng notification kapag may Create, Update, o
-    /// Delete sa Requests, Signatories, Schools, Applicants, at Interns.
+    /// Creates a notification automatically when a Request, Signatory,
+    /// School, Applicant, or Intern is created, updated, or deleted.
     /// </summary>
     public sealed class NotificationInterceptor : SaveChangesInterceptor
     {
@@ -54,7 +54,7 @@ namespace OJTMISApi.Services
 
             var userName = httpContext?.User.FindFirstValue(ClaimTypes.Name);
             var by = string.IsNullOrWhiteSpace(userName) ? string.Empty : $" by {userName}";
-            var now = DateTime.Now;
+            var now = AppClock.Now;
 
             foreach (var entry in entries)
             {
@@ -75,13 +75,13 @@ namespace OJTMISApi.Services
                 });
             }
 
-            // Isama agad sa parehong SaveChanges ang mga bagong notification.
+            // Save the new notifications in the same SaveChanges call.
             context.ChangeTracker.DetectChanges();
         }
 
         /// <summary>
-        /// Kapag ang nag-CRD ang intern mismo (hal. document request sa portal),
-        /// ang tamang destinasyon ay ang intern page, hindi ang HR page.
+        /// When the intern made the change themselves (for example, a document
+        /// request in the portal), link to the intern page, not the HR page.
         /// </summary>
         private static bool ActingUserIsIntern(HttpContext? httpContext) =>
             httpContext?.User.IsInRole(UserRoles.Intern) ?? false;

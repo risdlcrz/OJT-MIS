@@ -37,7 +37,7 @@
       </div>
     </div>
 
-    <!-- Mga dokumentong nai-issue na (permanenteng record ng issuance). -->
+    <!-- Documents already issued (permanent issuance record). -->
     <div class="card shadow-sm">
       <div class="card-header">
         <h3 class="card-title mb-0">Issued documents</h3>

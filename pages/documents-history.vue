@@ -256,6 +256,7 @@
 import { computed, onMounted, ref } from 'vue'
 import StatusPill from '@/components/StatusPill.vue'
 import TableState from '@/components/TableState.vue'
+import { go } from '@/utils/navigation'
 import { getApiErrorMessage, hrAttendanceAPI } from '@/services/api'
 import { DOC_TYPES } from '@/utils/documents'
 
@@ -348,8 +349,7 @@ function formatHours(value) {
 
 function openGenerator(page, internId = null) {
   const queryString = internId ? `?internId=${internId}` : ''
-  window.history.pushState({}, '', `/${page}${queryString}`)
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  go(`/${page}${queryString}`)
 }
 
 function openProfile(doc) {

@@ -121,8 +121,8 @@ async function loadStats() {
     ])
     activeInterns.value = interns.length
     internRequests.value = requests.length
-    // Bilangin lamang ang mga hindi pa nahihire para tumugma ito sa
-    // Applicants table (tingnan ang displayApplicants sa applicants.vue).
+    // Count only applicants not yet hired, so this matches the
+    // Applicants table (see displayApplicants in applicants.vue).
     internApplicants.value = applicants.filter(a => !a.hired).length
 
     const open = requests.filter(r => (r.status || '').toLowerCase() === 'open')

@@ -528,7 +528,7 @@ namespace OJTMISApi.Services
             var folder = Path.Combine(_environment.ContentRootPath, "App_Data", "outbox");
             Directory.CreateDirectory(folder);
 
-            var baseName = $"{DateTime.Now:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+            var baseName = $"{AppClock.Now:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
             var html = message.HtmlBody ?? $"<pre>{WebUtility.HtmlEncode(message.TextBody)}</pre>";
             var file = Path.Combine(folder, baseName + ".html");
 

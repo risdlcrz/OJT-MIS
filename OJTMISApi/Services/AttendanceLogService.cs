@@ -57,7 +57,7 @@ namespace OJTMISApi.Services
                 });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var today = now.Date;
             var tomorrow = today.AddDays(1);
             var dayRecords = await _context.DailyTimeRecords
@@ -157,8 +157,8 @@ namespace OJTMISApi.Services
 
             var rendered = await _completion.RenderedHoursAsync(intern.Id);
 
-            // Kapag naabot na ang required hours, markahan ang intern na
-            // Completed at padalhan ng one-time notification ang HR.
+            // When the required hours are reached, mark the intern
+            // Completed and send HR a one-time notification.
             await _completion.CheckAsync(intern.Id, rendered);
 
             var saved = await _context.DailyTimeRecords

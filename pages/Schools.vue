@@ -950,8 +950,8 @@ async function confirmDelete() {
 onMounted(() => {
   formModal = new Modal(formModalEl.value)
   deleteModal = new Modal(deleteModalEl.value)
-  // Toast, hindi Modal — walang `.modal-dialog` ang `.toast` kaya magta-throw
-  // ng "'querySelector' called on an object that does not implement interface Element."
+  // Toast, not Modal: the `.toast` has no `.modal-dialog`, so Modal would throw
+  // "'querySelector' called on an object that does not implement interface Element."
   toast = new Toast(document.getElementById('schoolToast'), { autohide: false })
   toastEl.value = document.getElementById('schoolToast')
 

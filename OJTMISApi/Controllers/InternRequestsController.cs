@@ -35,9 +35,9 @@ namespace OJTMISApi.Controllers
 
         /// <summary>
         /// GET: api/internrequests/available
-        /// Para sa dropdown ng "hire". Kasama lamang ang mga request na
-        /// Open AT may natitirang slot. Kapag wala nang slot, hindi na ito
-        /// lumalabas para hindi ma-pili ng HR.
+        /// For the "hire" dropdown. Only includes requests that are
+        /// Open AND still have slots. A request with no slots left is
+        /// hidden so HR cannot pick it.
         /// </summary>
         [HttpGet("available")]
         public async Task<ActionResult<IEnumerable<InternRequest>>> GetAvailable()
@@ -66,7 +66,7 @@ namespace OJTMISApi.Controllers
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new InternRequest
             {
                 OfficeCode = request.OfficeCode?.Trim() ?? string.Empty,
@@ -109,7 +109,7 @@ namespace OJTMISApi.Controllers
             existing.Description = request.Description?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(request.Status)) existing.Status = request.Status.Trim();
             existing.SignatoryId = request.SignatoryId;
-            existing.UpdatedAt = DateTime.Now;
+            existing.UpdatedAt = AppClock.Now;
 
             await _context.SaveChangesAsync();
             return Ok(existing);

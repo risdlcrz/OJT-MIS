@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace OJTMISApi.Models
 {
     /// <summary>
-    /// Isang intern request (bakante) na maaaring kunin ng HR upang
-    /// mag-hire ng intern. Ang <see cref="Count"/> ay kabuuang slot,
-    /// at <see cref="Filled"/> ay dami nang na-hire.
+    /// An intern request (open slots) that HR can hire interns against.
+    /// <see cref="Count"/> is the total number of slots and
+    /// <see cref="Filled"/> is how many were already hired.
     /// </summary>
     public class InternRequest
     {
@@ -33,9 +33,9 @@ namespace OJTMISApi.Models
         [StringLength(20)]
         public string Status { get; set; } = "Open";
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = AppClock.Now;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = AppClock.Now;
 
         /// <summary>Optional signatory assigned to this request.</summary>
         public int? SignatoryId { get; set; }
@@ -43,11 +43,11 @@ namespace OJTMISApi.Models
         [ForeignKey(nameof(SignatoryId))]
         public Signatory? Signatory { get; set; }
 
-        /// <summary>Pera pang natitirang slot. Zero = walang bakante na.</summary>
+        /// <summary>Slots still open. Zero means none are left.</summary>
         [NotMapped]
         public int Remaining => Math.Max(0, Count - Filled);
 
-        /// <summary>True kapag may pang paano pang slot.</summary>
+        /// <summary>True when the request is Open and still has slots.</summary>
         [NotMapped]
         public bool HasSlots => Status.Equals("Open", StringComparison.OrdinalIgnoreCase) && Remaining > 0;
     }

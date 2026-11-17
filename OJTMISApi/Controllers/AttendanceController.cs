@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -61,15 +62,8 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = "Choose AM Time In, AM Time Out, PM Time In, or PM Time Out." });
             }
 
-            var reason = (request.Reason ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(reason))
-            {
-                return BadRequest(new { message = "Reason is required." });
-            }
-            if (reason.Length > 500)
-            {
-                return BadRequest(new { message = "Reason cannot exceed 500 characters." });
-            }
+            // Required / max 500 characters are enforced by AttendanceAdjustmentInput.
+            var reason = request.Reason.Trim();
 
             var log = await _context.DailyTimeRecords
                 .FirstOrDefaultAsync(x => x.Id == request.AttendanceLogId && x.InternId == intern.Id);
@@ -99,7 +93,7 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = $"A pending {fieldLabel} request already exists for this attendance log." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new AttendanceAdjustmentRequest
             {
                 AttendanceLogId = log.Id,
@@ -277,6 +271,8 @@ namespace OJTMISApi.Controllers
         /// <summary>Accepted so older clients keep working.</summary>
         public string? TargetShift { get; set; }
 
+        [Required(ErrorMessage = "Reason is required.")]
+        [StringLength(500, ErrorMessage = "Reason cannot exceed 500 characters.")]
         public string Reason { get; set; } = string.Empty;
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,18 +17,18 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<InternsController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IEmailService _email;
+        private readonly AccountProvisioningService _accounts;
 
         public InternsController(
             ApplicationDbContext context,
             ILogger<InternsController> logger,
             UserManager<ApplicationUser> userManager,
-            IEmailService email)
+            AccountProvisioningService accounts)
         {
             _context = context;
             _logger = logger;
             _userManager = userManager;
-            _email = email;
+            _accounts = accounts;
         }
 
         /// <summary>GET: api/interns</summary>
@@ -191,7 +191,7 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = $"The school '{f2}' does not exist in the schools list. Please add it first." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var status = string.IsNullOrWhiteSpace(item.Status) ? "Applicant" : item.Status.Trim();
             var entity = new Intern
             {
@@ -206,7 +206,7 @@ namespace OJTMISApi.Controllers
 
             try
             {
-                // Kailangan ng request na may slot bago mag-hire.
+                // Hiring needs a request that still has a slot.
                 if (status == "Hired")
                 {
                     if (item.RequestId is null)
@@ -233,7 +233,7 @@ namespace OJTMISApi.Controllers
                 _context.Interns.Add(entity);
                 await _context.SaveChangesAsync();
 
-                // Awtomatikong ilista sa User Management bilang unverified.
+                // List the intern in User Management right away (unverified).
                 await ProvisionAccountAsync(entity);
 
                 return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
@@ -279,7 +279,7 @@ namespace OJTMISApi.Controllers
                 existing.FullName = f1;
                 existing.School = school?.Name ?? f2;
                 existing.Email = item.Email?.Trim() ?? existing.Email;
-                existing.UpdatedAt = DateTime.Now;
+                existing.UpdatedAt = AppClock.Now;
                 await _context.SaveChangesAsync();
 
                 await ProvisionAccountAsync(existing);
@@ -293,43 +293,19 @@ namespace OJTMISApi.Controllers
         }
 
         /// <summary>
-        /// Gumagawa ng unverified na Intern account kung wala pa, para
-        /// agad na lumabas sa User Management.
+        /// Creates an unverified Intern account if there is none yet, so it
+        /// shows up in User Management right away.
         /// </summary>
         private async Task ProvisionAccountAsync(Intern intern)
         {
-            var email = intern.Email?.Trim();
-            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) return;
-
             try
             {
-                if (await _userManager.FindByEmailAsync(email) is not null) return;
-
-                var user = new ApplicationUser
-                {
-                    UserName = email,
-                    Email = email,
-                    FirstName = string.IsNullOrWhiteSpace(intern.FirstName) ? intern.FullName : intern.FirstName,
-                    LastName = intern.LastName ?? string.Empty,
-                    Office = intern.ApplicantOffice,
-                    IsApproved = true,
-                    EmailConfirmed = false
-                };
-
-                var password = TemporaryPasswordGenerator.Generate();
-                var result = await _userManager.CreateAsync(user, password);
-                if (result.Succeeded)
-                {
-                    await _userManager.AddToRoleAsync(user, UserRoles.Intern);
-                    try
-                    {
-                        await _email.SendActivationAsync(_userManager, user, password);
-                    }
-                    catch (Exception mailEx)
-                    {
-                        _logger.LogWarning(mailEx, "Intern account for {Email} was created but the password email failed.", email);
-                    }
-                }
+                await _accounts.CreateAsync(
+                    intern.Email,
+                    string.IsNullOrWhiteSpace(intern.FirstName) ? intern.FullName : intern.FirstName,
+                    intern.LastName ?? string.Empty,
+                    intern.ApplicantOffice,
+                    UserRoles.Intern);
             }
             catch (Exception ex)
             {
@@ -373,7 +349,7 @@ namespace OJTMISApi.Controllers
 
             var replaced = !string.IsNullOrEmpty(intern.AttendanceQrToken);
             intern.AttendanceQrToken = qr.NewToken();
-            intern.AttendanceQrIssuedAt = DateTime.Now;
+            intern.AttendanceQrIssuedAt = AppClock.Now;
 
             ActivityLogWriter.Add(
                 _context,
@@ -400,19 +376,19 @@ namespace OJTMISApi.Controllers
 
                 _context.Interns.Remove(entity);
 
-                // Ibalik ang slot kung may kinuha siya na request.
+                // Give the slot back if the intern used one from a request.
                 if (entity.RequestId is not null)
                 {
                     var request = await _context.InternRequests.FirstOrDefaultAsync(r => r.Id == entity.RequestId.Value);
                     if (request is not null)
                     {
                         request.Filled = Math.Max(0, request.Filled - 1);
-                        request.UpdatedAt = DateTime.Now;
+                        request.UpdatedAt = AppClock.Now;
                     }
                 }
 
-                // I-delete din ang kaugnay na Applicant record para hindi ito
-                // manatiling "Hired" na walang intern (invisible sa dalawang table).
+                // Also delete the linked Applicant record, so it does not stay
+                // "Hired" with no intern (it would not show in either table).
                 if (entity.ApplicantId is not null)
                 {
                     var applicant = await _context.Applicants.FindAsync(entity.ApplicantId.Value);

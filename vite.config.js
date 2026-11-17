@@ -13,9 +13,9 @@ export default defineConfig({
         }
     },
     server: {
-        // Ipinapasa ang /api papunta sa .NET backend. Kaya hindi na kailangan
-        // ng hard-coded na port sa src/services/api.js at walang CORS problem.
-        // Dapat match ang port ng OJTMISApi (Properties/launchSettings.json).
+        // Forwards /api to the .NET backend. So src/services/api.js needs no
+        // hard-coded port, and there are no CORS problems.
+        // The port must match OJTMISApi (Properties/launchSettings.json).
         proxy: {
             '/api': {
                 target: process.env.OJT_API_URL || 'http://localhost:5198',

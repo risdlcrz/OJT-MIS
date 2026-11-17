@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,18 +17,18 @@ namespace OJTMISApi.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SignatoriesController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IEmailService _email;
+        private readonly AccountProvisioningService _accounts;
 
         public SignatoriesController(
             ApplicationDbContext context,
             ILogger<SignatoriesController> logger,
             UserManager<ApplicationUser> userManager,
-            IEmailService email)
+            AccountProvisioningService accounts)
         {
             _context = context;
             _logger = logger;
             _userManager = userManager;
-            _email = email;
+            _accounts = accounts;
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace OJTMISApi.Controllers
                 return Conflict(new { message = "That user account is already linked to another signatory." });
             }
 
-            var now = DateTime.Now;
+            var now = AppClock.Now;
             var entity = new Signatory
             {
                 Name = f1,
@@ -158,8 +158,8 @@ namespace OJTMISApi.Controllers
                 _context.Signatories.Add(entity);
                 await _context.SaveChangesAsync();
 
-                // Awtomatikong gumawa ng unverified account para makita agad
-                // sa User Management at mabigyan ng access ng HR.
+                // Create an unverified account right away, so it shows up in
+                // User Management and HR can give it access.
                 await ProvisionAccountAsync(entity);
                 await _context.SaveChangesAsync();
 
@@ -214,7 +214,7 @@ namespace OJTMISApi.Controllers
                 existing.Email = email;
                 existing.UserId = userId;
                 existing.ApprovalScope = scope;
-                existing.UpdatedAt = DateTime.Now;
+                existing.UpdatedAt = AppClock.Now;
                 await _context.SaveChangesAsync();
 
                 await ProvisionAccountAsync(existing);
@@ -284,33 +284,18 @@ namespace OJTMISApi.Controllers
                                signatory.Position.Contains("HR", StringComparison.OrdinalIgnoreCase) ||
                                signatory.Department.Contains("Human Resource", StringComparison.OrdinalIgnoreCase);
 
-                    user = new ApplicationUser
-                    {
-                        UserName = email,
-                        Email = email,
-                        FirstName = firstName,
-                        LastName = lastName,
-                        Office = string.IsNullOrWhiteSpace(signatory.Department) ? null : signatory.Department,
-                        IsApproved = true,
-                        EmailConfirmed = false
-                    };
-
-                    var password = TemporaryPasswordGenerator.Generate();
-                    var result = await _userManager.CreateAsync(user, password);
-                    if (!result.Succeeded)
+                    var result = await _accounts.CreateAsync(
+                        email,
+                        firstName,
+                        lastName,
+                        signatory.Department,
+                        isHr ? UserRoles.HRAdmin : UserRoles.Supervisor);
+                    if (result.User is null)
                     {
                         return;
                     }
 
-                    await _userManager.AddToRoleAsync(user, isHr ? UserRoles.HRAdmin : UserRoles.Supervisor);
-                    try
-                    {
-                        await _email.SendActivationAsync(_userManager, user, password);
-                    }
-                    catch (Exception mailEx)
-                    {
-                        _logger.LogWarning(mailEx, "Signatory account for {Email} was created but the password email failed.", email);
-                    }
+                    user = result.User;
                 }
                 catch (Exception ex)
                 {

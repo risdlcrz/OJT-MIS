@@ -123,8 +123,8 @@ namespace OJTMISApi.Controllers
                 });
             }
 
-            // Hindi na kailangang ipakita ang temporary password pagkatapos
-            // magpalit ng sariling password ang user.
+            // The temporary password is no longer needed once the user
+            // has set their own password.
             if (!string.IsNullOrEmpty(user.TemporaryPassword))
             {
                 user.TemporaryPassword = null;
@@ -159,7 +159,7 @@ namespace OJTMISApi.Controllers
                     : "Your account profile was successfully updated.",
                 Module = "Account",
                 IsRead = false,
-                CreatedAt = DateTime.Now
+                CreatedAt = AppClock.Now
             });
 
             await _context.SaveChangesAsync();

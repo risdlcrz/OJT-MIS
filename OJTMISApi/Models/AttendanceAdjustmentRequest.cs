@@ -97,7 +97,7 @@ namespace OJTMISApi.Models
         [Required, StringLength(20)]
         public string Status { get; set; } = AttendanceAdjustmentStatus.Pending;
 
-        public DateTime RequestedAt { get; set; } = DateTime.Now;
+        public DateTime RequestedAt { get; set; } = AppClock.Now;
 
         [StringLength(450)]
         public string? ReviewedBy { get; set; }
