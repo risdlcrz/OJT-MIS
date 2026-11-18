@@ -458,7 +458,7 @@
               <div class="idgen-qr-block">
                 <div class="idgen-qr-frame">
                   <img v-if="qrDataUrl" :src="qrDataUrl" alt="ID verification QR code" />
-                  <div v-else class="idgen-qr-empty">QR</div>
+                  <div v-else class="idgen-qr-empty" aria-hidden="true"></div>
                 </div>
               </div>
 
@@ -701,7 +701,20 @@ async function applyIntern(intern) {
 
 const defaultQrValue = computed(() => (autoQr.value ? attendanceToken.value : ''))
 
-const qrPayload = computed(() => (autoQr.value ? defaultQrValue.value : qrValue.value.trim()))
+/* Until an attendance code is issued (on Generate ID), the card still shows a
+   scannable QR built from the intern's ID details. It identifies the card but
+   is not accepted by the attendance scanner, which needs the signed code. */
+const verificationQrValue = computed(() => {
+  const idNumber = String(form.idNumber || '').trim()
+  if (!idNumber) return ''
+  const name = String(form.fullName || '').trim()
+  return name ? `OJT-MIS ID No. ${idNumber} | ${name}` : `OJT-MIS ID No. ${idNumber}`
+})
+
+const qrPayload = computed(() => {
+  const value = autoQr.value ? defaultQrValue.value : qrValue.value.trim()
+  return value || verificationQrValue.value
+})
 
 /* Keep the editable QR text in sync while auto-generation is enabled. */
 watch(
@@ -731,7 +744,7 @@ async function renderQr(value) {
   try {
     const dataUrl = await QRCode.toDataURL(value, {
       margin: 0,
-      width: 320,
+      width: 600,
       errorCorrectionLevel: 'M',
       color: { dark: '#201714', light: '#FFFFFF' }
     })
