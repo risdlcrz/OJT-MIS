@@ -18,15 +18,6 @@
         </button>
         <button
           type="button"
-          class="btn btn-outline-primary"
-          :disabled="!selectedInternId || sending"
-          title="Open ID generation with this intern selected"
-          @click="openIdGenerator"
-        >
-          <i class="far fa-id-card me-1"></i> Generate ID
-        </button>
-        <button
-          type="button"
           class="btn btn-primary"
           :disabled="!selectedInternId || sending"
           :aria-busy="sending"
@@ -216,7 +207,19 @@
               </div>
               <div class="mb-0">
                 <label for="cocgenSignOffice" class="form-label">Division / Office</label>
-                <input id="cocgenSignOffice" v-model="form.signatoryOffice" type="text" class="form-control" />
+                <select id="cocgenSignOffice" v-model="form.signatoryOffice" class="form-select">
+                  <option value="">Select Division / Office</option>
+                  <option
+                    v-if="form.signatoryOffice && !officeOptions.includes(form.signatoryOffice)"
+                    :value="form.signatoryOffice"
+                  >
+                    {{ form.signatoryOffice }}
+                  </option>
+                  <option v-for="office in officeOptions" :key="office" :value="office">
+                    {{ office }}
+                  </option>
+                </select>
+                <p class="form-text mb-0">Auto-selected from the intern's assigned office; change it if needed.</p>
               </div>
             </details>
           </div>
@@ -279,8 +282,9 @@ import '../assets/css/coc-generate.css'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import coaLogo from '../assets/images/logo.png'
 import { getApiErrorMessage, certificateAPI, hrAttendanceAPI, signatoriesAPI } from '@/services/api'
-import { go } from '@/utils/navigation'
 import { DOC_TYPES, issuedOn, useIssuanceHistory } from '@/utils/documents'
+/* Same shared office list that feeds the Signatories module dropdown. */
+import { matchOffice, officeOptions, resolveOffice } from '@/utils/offices'
 
 const dialog = inject('dialog', null)
 const { showConfirm } = dialog || {}
@@ -446,6 +450,11 @@ function applyIntern(intern) {
   form.fullName = certificateName(intern)
   form.schoolName = intern.schoolName || intern.school || ''
   form.office = intern.applicantOffice || ''
+  /* Auto-select the intern's assigned office in the Division / Office
+     dropdown; it stays editable and the signatory's office is kept when
+     the intern's office is not in the list. */
+  form.signatoryOffice =
+    matchOffice(intern.applicantOffice) || matchOffice(intern.requestOffice) || form.signatoryOffice
   form.hoursLabel = formatHours(intern.hoursRendered)
   form.requiredHours = intern.requiredHours || 0
   form.dateStarted = toDateInput(intern.startDate)
@@ -458,7 +467,7 @@ function applySignatory() {
   if (!person) return
   form.signatoryName = (person.name || '').toUpperCase()
   form.signatoryPosition = person.position || ''
-  form.signatoryOffice = person.department || ''
+  form.signatoryOffice = resolveOffice(person.department)
 }
 
 function openInternSearch() {
@@ -509,16 +518,6 @@ async function loadSignatories() {
   } catch {
     signatories.value = []
   }
-}
-
-function openIdGenerator() {
-  const internId = Number(selectedInternId.value)
-  if (!Number.isFinite(internId) || internId <= 0) {
-    error.value = 'Select an intern first so the ID can be linked to their profile.'
-    return
-  }
-
-  go(`/idgenerate.html?internId=${internId}`)
 }
 
 function resetForm() {

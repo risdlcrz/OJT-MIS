@@ -384,13 +384,32 @@
   overflow: visible;
 }
 
+/* Foldable layout: front (left) and back (right) touch edge-to-edge with no
+   gap, so the printed pair is cut along the outer border and folded down the
+   shared vertical edge into a back-to-back badge. */
 .idgen-cards {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: center;
-  gap: clamp(0.6rem, 1vw, 0.9rem);
+  gap: 0;
   width: 100%;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12));
+}
+
+.idgen-cards .idgen-card {
+  box-shadow: none;
+}
+
+/* Single fold line where the two halves meet: the front drops its inner
+   (right) border and the back draws its inner (left) edge as a dashed guide.
+   box-sizing keeps each half at exactly 88 mm. */
+.idgen-cards .idgen-card--front {
+  border-right: 0;
+}
+
+.idgen-cards .idgen-card--back {
+  border-left: 1px dashed #888;
 }
 
 .idgen-card-wrap {
@@ -899,14 +918,17 @@
 }
 
 /* ---------------------------- PRINT ---------------------------- */
-/* One A4 sheet holds front and back side by side (88 + 8 + 88 = 184 mm).
+/* One landscape A4 sheet (297 x 210 mm) holds the foldable badge: front and
+   back flush side by side, 88 + 88 = 176 mm wide by 125 mm tall, with zero
+   gap at the centre fold. Cut along the outer border, then fold down the
+   centre line so the halves sit back to back.
    The page margin stays 0 so the browser does not reserve space for its
    title/URL header and footer. The 10 mm quiet zone is recreated as padding
    on the print container, which keeps the cards inside the printer's
    non-printable edge. Print at 100% / Default scale with headers & footers off
    if the browser adds them anyway. */
 @page {
-  size: A4 portrait;
+  size: A4 landscape;
   margin: 0;
 }
 
@@ -994,13 +1016,15 @@
     overflow: visible !important;
   }
 
-  /* Front and back stay on one row: 184 mm inside the 190 mm usable width. */
+  /* Front and back stay on one row, touching: 176 mm inside the 277 mm
+     usable landscape width. No gap, margin, or padding between the halves. */
   .idgen-cards {
     display: flex !important;
     flex-wrap: nowrap !important;
     align-items: flex-start !important;
     justify-content: center !important;
-    gap: 8mm !important;
+    gap: 0 !important;
+    filter: none !important;
     width: auto !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -1028,8 +1052,27 @@
     background: #fff !important;
     box-shadow: none !important;
     transform: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .idgen-card *,
+  .idgen-card *::before,
+  .idgen-card *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Solid outer cutting border; the shared inner edge is a single dashed
+     fold line (front's right border removed, back's left border dashed). */
+  .idgen-card--front {
+    border-right: 0 !important;
+  }
+
+  .idgen-card--back {
+    border-left: 1px dashed #000 !important;
   }
 
   /* Never add a trailing break after the last badge. */

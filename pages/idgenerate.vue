@@ -4,7 +4,8 @@
       <div>
         <h2 class="idgen-title">ID Generation</h2>
         <p class="idgen-subtitle">
-          Customize the student trainee details, then print the front and back on separate 88&nbsp;mm &times; 125&nbsp;mm cards.
+          Customize the student trainee details, then print the foldable badge: front and back sit side by side,
+          so cut along the outer border and fold down the center line.
         </p>
       </div>
 
@@ -312,14 +313,19 @@
 
               <div class="mb-0">
                 <label for="idgenSignatoryOffice" class="form-label">Office / Division</label>
-                <input
-                  id="idgenSignatoryOffice"
-                  v-model="form.signatoryOffice"
-                  type="text"
-                  class="form-control"
-                  maxlength="60"
-                  placeholder="HRMO-HRDMID"
-                />
+                <select id="idgenSignatoryOffice" v-model="form.signatoryOffice" class="form-select">
+                  <option value="">Select Office / Division</option>
+                  <option
+                    v-if="form.signatoryOffice && !officeOptions.includes(form.signatoryOffice)"
+                    :value="form.signatoryOffice"
+                  >
+                    {{ form.signatoryOffice }}
+                  </option>
+                  <option v-for="office in officeOptions" :key="office" :value="office">
+                    {{ office }}
+                  </option>
+                </select>
+                <p class="idgen-hint mb-0 mt-1">Auto-selected from the intern's assigned office; change it if needed.</p>
               </div>
             </details>
 
@@ -395,7 +401,7 @@
           <div>
             <span class="idgen-preview-eyebrow">Live Preview</span>
             <p class="idgen-preview-note mb-0">
-              <i class="fas fa-ruler-combined me-1"></i> 88 mm &times; 125 mm &middot; front and back print on separate pages
+              <i class="fas fa-ruler-combined me-1"></i> 176 mm &times; 125 mm foldable &middot; A4 landscape &middot; fold on the dashed center line
             </p>
           </div>
         </div>
@@ -521,14 +527,10 @@
 import '../assets/css/idgenerate.css'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import QRCode from 'qrcode'
-import officesData from '../assets/json/offices.json'
 import { getApiErrorMessage, hrAttendanceAPI, internsAPI } from '@/services/api'
 import { DOC_TYPES, issuedOn, useIssuanceHistory } from '@/utils/documents'
-
 /* Same shared office list that feeds the Signatories module dropdown. */
-const officeOptions = [
-  ...new Set((officesData.offices || []).map((office) => office.name).filter(Boolean))
-]
+import { matchOffice, officeOptions } from '@/utils/offices'
 
 const defaultForm = {
   fullName: 'LOVELY ROSE L. ANDAYA',
@@ -544,7 +546,7 @@ const defaultForm = {
   emergencyNumber: '0906 921 1834',
   signatoryName: 'RODULFO A. DUZON, JR',
   signatoryPosition: 'Administrative Officer V',
-  signatoryOffice: 'HRMO-HRDMID'
+  signatoryOffice: 'HRMO - Human Resource Management Office'
 }
 
 const form = reactive({ ...defaultForm })
@@ -678,6 +680,10 @@ async function applyIntern(intern) {
   Object.assign(form, defaultForm)
   form.fullName = intern.fullName || form.fullName
   form.office = intern.applicantOffice || intern.requestOffice || form.office
+  /* Auto-select the intern's assigned office in the Office / Division
+     dropdown; it stays editable and the default is kept when no match. */
+  form.signatoryOffice =
+    matchOffice(intern.applicantOffice) || matchOffice(intern.requestOffice) || form.signatoryOffice
   form.idNumber = intern.applicantNo || String(intern.id)
   form.dateStarted = toDateInput(intern.startDate) || form.dateStarted
   form.validUntil = toDateInput(intern.endDate) || form.validUntil
