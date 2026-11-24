@@ -101,7 +101,8 @@ const categoryTabs = [
   { value: 'all', label: 'All' },
   { value: 'HR', label: 'HR' },
   { value: 'Supervisor', label: 'Supervisor' },
-  { value: 'Intern', label: 'Intern' }
+  { value: 'Intern', label: 'Intern' },
+  { value: 'Security', label: 'Security' }
 ]
 
 const filteredLogs = computed(() => {
@@ -125,6 +126,7 @@ function countFor(value) {
 function categoryBadgeClass(value) {
   if (value === 'HR') return 'text-bg-warning'
   if (value === 'Supervisor') return 'text-bg-info'
+  if (value === 'Security') return 'text-bg-danger'
   return 'text-bg-secondary'
 }
 

@@ -26,6 +26,13 @@ namespace OJTMISApi.Services
     {
         public const string SecurityStampClaim = "sstamp";
 
+        /// <summary>
+        /// HttpContext.Items key set when a token belongs to a locked account.
+        /// The JwtBearer OnChallenge event (Program.cs) turns it into a 403 with
+        /// the lock reason instead of a plain 401.
+        /// </summary>
+        public const string LockedMessageItem = "ojt:account-locked";
+
         private readonly UserManager<ApplicationUser> _users;
         private readonly ApplicationDbContext _context;
         private readonly JwtSettings _jwt;
@@ -112,9 +119,22 @@ namespace OJTMISApi.Services
 
             var users = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
             var user = await users.FindByIdAsync(userId);
-            if (user is null ||
-                !string.Equals(user.SecurityStamp, stamp, StringComparison.Ordinal) ||
-                await users.IsLockedOutAsync(user) ||
+            if (user is null)
+            {
+                context.Fail("Session is no longer valid.");
+                return;
+            }
+
+            // Checked before the security stamp (which the lock rotates), so the
+            // signed-out user is told the account is locked, and why.
+            if (AccountLockService.IsLocked(user))
+            {
+                context.HttpContext.Items[LockedMessageItem] = AccountLockService.SessionLockedMessage(user);
+                context.Fail("Account is locked.");
+                return;
+            }
+
+            if (!string.Equals(user.SecurityStamp, stamp, StringComparison.Ordinal) ||
                 AccountActivation.Blocker(user) is not null)
             {
                 context.Fail("Session is no longer valid.");

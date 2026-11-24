@@ -88,13 +88,11 @@ namespace OJTMISApi.Controllers
             }
             catch (Exception ex)
             {
-                var inner = ex.InnerException?.Message;
-                var detail = $"Error: {ex.Message}" + (inner != null ? $"\nInner: {inner}" : "");
-                _logger.LogError(ex, "Error retrieving schools. Detail: {Detail}", detail);
-                Console.WriteLine($"[SchoolsController.GetAll] ERROR: {detail}");
+                // Full exception (with any SQL error) goes to the server log only.
+                _logger.LogError(ex, "Error retrieving schools.");
                 return Problem(
                     title: "Internal Server Error",
-                    detail: detail,
+                    detail: "An unexpected error occurred while retrieving schools.",
                     statusCode: StatusCodes.Status500InternalServerError);
             }
         }

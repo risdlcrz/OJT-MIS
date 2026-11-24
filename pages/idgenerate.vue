@@ -168,7 +168,7 @@
                     <label class="btn btn-sm btn-outline-primary mb-0">
                       <i class="fas fa-camera me-1"></i>
                       {{ photoUrl ? 'Change Photo' : 'Upload Photo' }}
-                      <input type="file" accept="image/*" class="d-none" @change="handlePhotoChange" />
+                      <input type="file" :accept="photoAccept" class="d-none" @change="handlePhotoChange" />
                     </label>
                     <button
                       v-if="photoUrl"
@@ -179,7 +179,7 @@
                       Remove
                     </button>
                   </div>
-                  <p class="idgen-hint mb-0">JPG or PNG, up to 5 MB. Cropped to a square photo box.</p>
+                  <p class="idgen-hint mb-0">{{ photoHint }}. Cropped to a square photo box.</p>
                   <p v-if="photoError" class="text-danger small mb-0 mt-1">{{ photoError }}</p>
                 </div>
               </div>
@@ -345,7 +345,7 @@
                     <label class="btn btn-sm btn-outline-primary mb-0">
                       <i class="fas fa-pen-nib me-1"></i>
                       {{ signatureUrl ? 'Change Signature' : 'Upload Signature' }}
-                      <input type="file" accept="image/*" class="d-none" @change="handleSignatureChange" />
+                      <input type="file" :accept="signatureAccept" class="d-none" @change="handleSignatureChange" />
                     </label>
                     <button
                       v-if="signatureUrl"
@@ -356,7 +356,7 @@
                       Remove
                     </button>
                   </div>
-                  <p class="idgen-hint mb-0">Optional PNG or JPG, up to 2 MB. A signature line is printed when empty.</p>
+                  <p class="idgen-hint mb-0">Optional. {{ signatureHint }}. A signature line is printed when empty.</p>
                   <p v-if="signatureError" class="text-danger small mb-0 mt-1">{{ signatureError }}</p>
                 </div>
               </div>
@@ -529,6 +529,13 @@ import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } fr
 import QRCode from 'qrcode'
 import { getApiErrorMessage, hrAttendanceAPI, internsAPI } from '@/services/api'
 import { DOC_TYPES, issuedOn, useIssuanceHistory } from '@/utils/documents'
+import {
+  acceptAttribute,
+  DEFAULT_UPLOAD_POLICY,
+  describeUploadRule,
+  loadUploadPolicy,
+  validateUploadFiles
+} from '@/utils/uploads'
 /* Same shared office list that feeds the Signatories module dropdown. */
 import { matchOffice, officeOptions } from '@/utils/offices'
 
@@ -848,20 +855,28 @@ async function fitImage(file, maxWidth, maxHeight) {
   return canvas.toDataURL('image/png')
 }
 
-function validateImage(file, maxBytes) {
-  if (!file) return 'No file selected.'
-  if (!file.type.startsWith('image/')) return 'Please choose an image file.'
-  if (file.size > maxBytes) return `Image must be ${Math.round(maxBytes / (1024 * 1024))} MB or smaller.`
-  return ''
-}
+/* Photo and signature limits, shared with the API (src/utils/uploads.js).
+   These images are only drawn into the printed card; they are never uploaded. */
+const photoRule = ref(DEFAULT_UPLOAD_POLICY.idPhoto)
+const signatureRule = ref(DEFAULT_UPLOAD_POLICY.idSignature)
+const photoAccept = computed(() => acceptAttribute(photoRule.value))
+const signatureAccept = computed(() => acceptAttribute(signatureRule.value))
+const photoHint = computed(() => describeUploadRule(photoRule.value))
+const signatureHint = computed(() => describeUploadRule(signatureRule.value))
+
+loadUploadPolicy().then((policy) => {
+  photoRule.value = policy.idPhoto || DEFAULT_UPLOAD_POLICY.idPhoto
+  signatureRule.value = policy.idSignature || DEFAULT_UPLOAD_POLICY.idSignature
+})
 
 async function handlePhotoChange(event) {
   const input = event.target
-  const file = input.files?.[0]
+  const files = Array.from(input.files || [])
+  const file = files[0]
   input.value = ''
   photoError.value = ''
 
-  const problem = validateImage(file, 5 * 1024 * 1024)
+  const problem = await validateUploadFiles(files, photoRule.value)
   if (problem) {
     photoError.value = problem
     return
@@ -870,17 +885,18 @@ async function handlePhotoChange(event) {
   try {
     photoUrl.value = await cropImage(file, 490, 490)
   } catch (error) {
-    photoError.value = error.message || 'Could not read that image.'
+    photoError.value = getApiErrorMessage(error, 'Could not read that image.')
   }
 }
 
 async function handleSignatureChange(event) {
   const input = event.target
-  const file = input.files?.[0]
+  const files = Array.from(input.files || [])
+  const file = files[0]
   input.value = ''
   signatureError.value = ''
 
-  const problem = validateImage(file, 2 * 1024 * 1024)
+  const problem = await validateUploadFiles(files, signatureRule.value)
   if (problem) {
     signatureError.value = problem
     return
@@ -889,7 +905,7 @@ async function handleSignatureChange(event) {
   try {
     signatureUrl.value = await fitImage(file, 600, 240)
   } catch (error) {
-    signatureError.value = error.message || 'Could not read that image.'
+    signatureError.value = getApiErrorMessage(error, 'Could not read that image.')
   }
 }
 

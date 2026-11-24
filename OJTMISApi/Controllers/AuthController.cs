@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OJTMISApi.Data;
@@ -28,6 +29,8 @@ namespace OJTMISApi.Controllers
         private readonly JwtTokenService _tokens;
         private readonly ApplicationDbContext _context;
         private readonly EmailQueue _emailQueue;
+        private readonly AccountLockService _locks;
+        private readonly IMemoryCache _cache;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
@@ -37,6 +40,8 @@ namespace OJTMISApi.Controllers
             JwtTokenService tokens,
             ApplicationDbContext context,
             EmailQueue emailQueue,
+            AccountLockService locks,
+            IMemoryCache cache,
             ILogger<AuthController> logger)
         {
             _userManager = userManager;
@@ -45,6 +50,8 @@ namespace OJTMISApi.Controllers
             _tokens = tokens;
             _context = context;
             _emailQueue = emailQueue;
+            _locks = locks;
+            _cache = cache;
             _logger = logger;
         }
 
@@ -209,15 +216,48 @@ namespace OJTMISApi.Controllers
                 return Unauthorized(new { message = "Invalid email or password." });
             }
 
+            async Task<ActionResult<AuthResponse>> LockedAsync()
+            {
+                var remaining = FailedLoginFloor - started.Elapsed;
+                if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = AccountLockService.LockedCode,
+                    message = AccountLockService.SignInLockedMessage
+                });
+            }
+
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user is null)
             {
                 _userManager.PasswordHasher.VerifyHashedPassword(
                     TimingDummy.User, TimingDummy.Hash(_userManager.PasswordHasher), request.Password);
-                return await InvalidAsync();
+
+                // Unknown emails "lock" after the same number of tries as real
+                // accounts, so the locked reply does not reveal which emails
+                // have an account.
+                return RecordUnknownEmailFailure(request.Email) >= AccountLockService.MaxFailedSignInAttempts
+                    ? await LockedAsync()
+                    : await InvalidAsync();
             }
 
+            // Already locked: refused even with the right password. Identity
+            // does not check the password of a locked account at all.
+            if (AccountLockService.IsLocked(user))
+            {
+                return await LockedAsync();
+            }
+
+            // Counts the failure (Identity's AccessFailedCount) and resets the
+            // counter after a correct password.
             var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            if (result.IsLockedOut)
+            {
+                // This attempt was the 5th failure: make the lock HR-only and alert HR.
+                await _locks.LockAfterFailedSignInsAsync(user, HttpContext.Connection.RemoteIpAddress?.ToString());
+                return await LockedAsync();
+            }
+
             if (!result.Succeeded)
             {
                 return await InvalidAsync();
@@ -262,7 +302,9 @@ namespace OJTMISApi.Controllers
 
             const string generic = "If that email is registered, a password reset link has been sent.";
             var user = await _userManager.FindByEmailAsync(request.Email.Trim());
-            if (user is null || string.IsNullOrWhiteSpace(user.Email))
+            // Locked accounts get no reset link (same reply, so nothing is
+            // revealed): a new password would not unlock them anyway.
+            if (user is null || string.IsNullOrWhiteSpace(user.Email) || AccountLockService.IsLocked(user))
             {
                 return Ok(new { message = generic });
             }
@@ -298,6 +340,22 @@ namespace OJTMISApi.Controllers
             if (user is null)
             {
                 return BadRequest(new { message = "This reset link is invalid or has expired." });
+            }
+
+            // Holding a reset link proves the inbox, not that HR lifted the lock.
+            // The token is checked first so only its owner learns the account is locked.
+            if (AccountLockService.IsLocked(user) &&
+                await _userManager.VerifyUserTokenAsync(
+                    user,
+                    _userManager.Options.Tokens.PasswordResetTokenProvider,
+                    UserManager<ApplicationUser>.ResetPasswordTokenPurpose,
+                    request.Token))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = AccountLockService.LockedCode,
+                    message = AccountLockService.SignInLockedMessage
+                });
             }
 
             var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
@@ -342,6 +400,18 @@ namespace OJTMISApi.Controllers
             }
 
             return Ok(new { message = "Password updated. You can sign in with the new password." });
+        }
+
+        /// <summary>
+        /// Counts failed sign-ins for an email with no account, for 1 hour.
+        /// In memory only: these are not real accounts.
+        /// </summary>
+        private int RecordUnknownEmailFailure(string email)
+        {
+            var key = $"login-unknown:{email.Trim().ToLowerInvariant()}";
+            var count = _cache.TryGetValue(key, out int seen) ? seen + 1 : 1;
+            _cache.Set(key, count, TimeSpan.FromHours(1));
+            return count;
         }
 
         // GET: api/auth/me - needs a session to load the profile.

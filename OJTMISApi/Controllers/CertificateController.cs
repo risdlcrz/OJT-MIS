@@ -121,10 +121,10 @@ namespace OJTMISApi.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Could not render the Certificate of Completion for intern {InternId}.", internId);
-                return Problem(
-                    title: "Certificate rendering failed",
-                    detail: "The certificate could not be rendered. Please try again.",
-                    statusCode: StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    message = "The certificate could not be created. Please try again."
+                });
             }
 
             var fileName = $"Certificate-of-Completion-{Slug(name)}.pdf";
@@ -142,10 +142,10 @@ namespace OJTMISApi.Controllers
                     "Could not email the Certificate of Completion for intern {InternId} to {Email}.",
                     internId,
                     recipient);
-                return Problem(
-                    title: "Email delivery failed",
-                    detail: "The certificate was generated but could not be emailed. Please check the mail configuration and try again.",
-                    statusCode: StatusCodes.Status502BadGateway);
+                return StatusCode(StatusCodes.Status502BadGateway, new
+                {
+                    message = "The certificate was created but could not be emailed. Please try again later."
+                });
             }
 
             try

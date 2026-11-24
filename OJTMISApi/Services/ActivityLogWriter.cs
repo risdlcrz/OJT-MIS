@@ -9,6 +9,9 @@ namespace OJTMISApi.Services
     /// </summary>
     public static class ActivityLogWriter
     {
+        /// <summary>Log category for security events (account locks), shown as its own tab in Logs.</summary>
+        public const string SecurityCategory = "Security";
+
         public static void Add(
             ApplicationDbContext db,
             ClaimsPrincipal principal,

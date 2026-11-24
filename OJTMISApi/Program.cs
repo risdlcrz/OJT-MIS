@@ -21,6 +21,17 @@ AppClock.Configure(builder.Configuration["App:TimeZone"]);
 // Database:MigrateOnStartup is off.
 var migrateOnly = args.Contains("--migrate", StringComparer.OrdinalIgnoreCase);
 
+// `dotnet OJTMISApi.dll --unlock someone@example.com` lifts an account lock
+// and exits. The recovery path when every HR admin is locked out (for example
+// the only admin, after someone guessed at its password 5 times).
+var unlockIndex = Array.FindIndex(args, a => string.Equals(a, "--unlock", StringComparison.OrdinalIgnoreCase));
+var unlockEmail = unlockIndex >= 0 && unlockIndex + 1 < args.Length ? args[unlockIndex + 1] : null;
+if (unlockIndex >= 0 && string.IsNullOrWhiteSpace(unlockEmail))
+{
+    Console.Error.WriteLine("Usage: dotnet OJTMISApi.dll --unlock <email>");
+    return;
+}
+
 // ---------------------------------------------------------------------
 // Database
 // ---------------------------------------------------------------------
@@ -63,6 +74,13 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
     options.User.RequireUniqueEmail = true;
+
+    // 5 failed sign-ins lock the account. AuthController then turns the
+    // lockout into one only HR can lift (AccountLockService); the long span
+    // keeps it locked even if that follow-up write fails.
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = AccountLockService.MaxFailedSignInAttempts;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromDays(365 * 100);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
@@ -90,11 +108,39 @@ builder.Services.AddAuthentication(options =>
     // lockout, or lost approval ends existing sessions immediately.
     options.Events = new JwtBearerEvents
     {
-        OnTokenValidated = JwtTokenService.ValidateAsync
+        OnTokenValidated = JwtTokenService.ValidateAsync,
+
+        // A token rejected because the account is locked gets 403 with the
+        // lock reason, so the client can sign the user out and say why,
+        // instead of the generic "session ended" 401.
+        OnChallenge = async context =>
+        {
+            if (context.HttpContext.Items[JwtTokenService.LockedMessageItem] is not string lockedMessage) return;
+
+            context.HandleResponse();
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                code = AccountLockService.LockedCode,
+                message = lockedMessage,
+                // Tells the client this is the caller's own session (not an
+                // HR action refused for someone else's locked account).
+                signedOut = true
+            });
+        }
     };
 });
 
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<AccountLockService>();
+builder.Services.AddMemoryCache();
+
+builder.Services.AddOptions<UploadOptions>()
+    .Bind(builder.Configuration.GetSection(UploadOptions.SectionName))
+    .Validate(options => options.IsValid(),
+        "Uploads: every rule (Avatar, IdPhoto, IdSignature) needs MaxBytes, MaxFiles, AllowedContentTypes " +
+        "(image/jpeg, image/png or image/webp) and AllowedExtensions (starting with '.').")
+    .ValidateOnStart();
 builder.Services.AddAuthRateLimits();
 
 builder.Services.AddAuthorization();
@@ -131,16 +177,39 @@ builder.Services.AddScoped<AccountProvisioningService>();
 // ---------------------------------------------------------------------
 builder.Services.AddControllers();
 
-// Errors: every failure reply is JSON with a `message` the Vue client shows.
+// Errors: every failure reply is JSON with a short `message` the Vue client
+// shows. Exception text, SQL errors and stack traces only go to the server
+// log (GlobalExceptionHandler), never into a reply.
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
     {
         var problem = context.ProblemDetails;
+
+        // Server errors: never pass on whatever text a controller or the
+        // framework put in `detail`; give a reference id that matches the log.
+        if (problem.Status >= 500)
+        {
+            problem.Detail = null;
+            problem.Title = "Server error";
+            problem.Extensions.Remove("exception");
+            problem.Extensions["message"] = SafeErrors.Server;
+            problem.Extensions["reference"] = System.Diagnostics.Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+            return;
+        }
+
         if (problem is Microsoft.AspNetCore.Mvc.ValidationProblemDetails validation && validation.Errors.Count > 0)
         {
-            // Field errors such as "Full Name is required." are what the user needs to see.
-            problem.Extensions["message"] = string.Join(" ", validation.Errors.Values.SelectMany(v => v).Distinct());
+            // Field errors such as "Full Name is required." are what the user
+            // needs to see; JSON-reader errors (type names, paths) are not.
+            problem.Extensions["message"] = SafeErrors.ValidationMessage(validation.Errors);
+            foreach (var key in validation.Errors.Keys.ToList())
+            {
+                validation.Errors[key] = validation.Errors[key]
+                    .Select(m => SafeErrors.IsTechnical(key, m) ? SafeErrors.InvalidFormat : m)
+                    .Distinct()
+                    .ToArray();
+            }
         }
         else if (!problem.Extensions.ContainsKey("message"))
         {
@@ -288,6 +357,28 @@ await SeedAsync(app);
 if (migrateOnly)
 {
     Console.WriteLine("Database migrated and seeded. Exiting (--migrate).");
+    return;
+}
+
+if (unlockEmail is not null)
+{
+    using var scope = app.Services.CreateScope();
+    var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var locks = scope.ServiceProvider.GetRequiredService<AccountLockService>();
+    var target = await users.FindByEmailAsync(unlockEmail.Trim());
+    if (target is null)
+    {
+        Console.Error.WriteLine($"No account uses the email {unlockEmail}.");
+    }
+    else if (await locks.UnlockAsync(target))
+    {
+        app.Logger.LogWarning("SECURITY: account {UserId} ({Email}) unlocked from the command line.", target.Id, target.Email);
+        Console.WriteLine($"Unlocked {target.Email}. Exiting (--unlock).");
+    }
+    else
+    {
+        Console.Error.WriteLine($"Could not unlock {target.Email}. See the log above.");
+    }
     return;
 }
 

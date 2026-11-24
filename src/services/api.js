@@ -39,7 +39,54 @@ apiClient.interceptors.request.use(
 // here, the bell refreshes right away (it does not wait for the poll).
 const NOTIFICATION_MODULES = ['/schools', '/signatories', '/applicants', '/interns', '/internrequests', '/account/profile']
 
-// Normalise API failures so callers can always read a human-readable message.
+/* Short, non-technical messages. Raw server text, stack traces and axios
+   internals ("Request failed with status code 500") are never shown. */
+const GENERIC_ERROR = 'Something went wrong. Please try again.'
+const SERVER_ERROR = 'Something went wrong on our side. Please try again. If it keeps happening, contact an administrator.'
+const NETWORK_ERROR = 'Cannot reach the server. Check your connection and try again.'
+const TIMEOUT_ERROR = 'The server took too long to respond. Please try again.'
+const TOO_LARGE_ERROR = 'The upload is too large. Choose a smaller file.'
+const RATE_LIMIT_ERROR = 'Too many attempts. Please wait a moment and try again.'
+
+/* sessionStorage key: why the user was signed out, shown once on the login page. */
+export const SIGN_OUT_REASON_KEY = 'ojtSignOutReason'
+
+/* Anything that reads like code, SQL, a path or a stack frame. */
+const TECHNICAL_PATTERN =
+  /exception|stack ?trace|\bat [\w$.<>]+\(|\bSystem\.|\bMicrosoft\.|\bSqlClient|\bSQL Server|LineNumber|BytePosition|Path: \$|<\/?[a-z!][^>]*>|[a-z]:\\|\.cs:line|\.js:\d+|is not a function|Cannot read propert|undefined|status code \d{3}/i
+/* SQL keywords only in capitals, so "Select an office" is still shown. */
+const SQL_PATTERN = /\b(SELECT .+ FROM|INSERT INTO|UPDATE \S+ SET|DELETE FROM|FOREIGN KEY|constraint "|CONSTRAINT)\b/
+
+/** The text when it is short, human and safe to show; otherwise ''. */
+export function safeMessage(text) {
+  if (typeof text !== 'string') return ''
+  const trimmed = text.trim()
+  if (!trimmed || trimmed.length > 300 || TECHNICAL_PATTERN.test(trimmed) || SQL_PATTERN.test(trimmed)) return ''
+  return trimmed
+}
+
+function messageFor(error) {
+  if (!error.response) {
+    return error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' ? TIMEOUT_ERROR : NETWORK_ERROR
+  }
+
+  const { status, data } = error.response
+  // JSON replies from the API carry a vetted `message`. Plain-text or HTML
+  // bodies (a proxy error page, a crash dump) are never shown.
+  const body = data && typeof data === 'object' ? data : null
+
+  const fromApi =
+    safeMessage(body?.message) ||
+    (body?.errors ? safeMessage(Object.values(body.errors).flat().join(' ')) : '')
+  if (fromApi) return fromApi
+
+  if (status === 413) return TOO_LARGE_ERROR
+  if (status === 429) return RATE_LIMIT_ERROR
+  if (status >= 500) return SERVER_ERROR
+  return safeMessage(body?.title) || GENERIC_ERROR
+}
+
+// Normalise API failures so callers can always read a short, safe message.
 apiClient.interceptors.response.use(
   (response) => {
     const method = (response.config.method || '').toLowerCase()
@@ -53,27 +100,20 @@ apiClient.interceptors.response.use(
     return response
   },
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const data = error.response?.data
+    const message = messageFor(error)
+
+    if (status === 401) {
       clearSession()
       go('/login.html')
-    }
-
-    const data = error.response?.data
-    let message = error.message || 'Request failed.'
-
-    if (data) {
-      if (typeof data === 'string') {
-        message = data
-      } else if (data.message) {
-        message = data.message
-      } else if (data.errors) {
-        // ASP.NET Core ValidationProblemDetails shape. Show the specific
-        // errors (for example, "Full Name is required.") before the
-        // general title "One or more validation errors occurred."
-        message = Object.values(data.errors).flat().join(' ') || data.title || message
-      } else if (data.title) {
-        message = data.title
-      }
+    } else if (status === 403 && data?.code === 'account_locked' && data?.signedOut) {
+      // This user's own account was locked: end the session and tell them why
+      // on the login page. (A 403 about someone else's locked account, sent to
+      // HR, has no `signedOut` and keeps HR signed in.)
+      clearSession()
+      sessionStorage.setItem(SIGN_OUT_REASON_KEY, message)
+      go('/login.html')
     }
 
     return Promise.reject(Object.assign(error, { userMessage: message }))
@@ -81,16 +121,17 @@ apiClient.interceptors.response.use(
 )
 
 /**
- * Extracts a readable message from anything thrown by the API layer.
+ * A short, user-facing message for anything thrown by the API layer or by
+ * page code. Technical text never reaches the screen; the fallback is used
+ * instead.
  * @param {unknown} error
  * @param {string} fallback
  * @returns {string}
  */
-export function getApiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+export function getApiErrorMessage(error, fallback = GENERIC_ERROR) {
   if (error?.userMessage) return error.userMessage
-  if (error?.response?.data?.message) return error.response.data.message
-  if (error?.message) return error.message
-  return fallback
+  if (error?.isAxiosError) return fallback
+  return safeMessage(error?.message) || fallback
 }
 
 /**
@@ -262,7 +303,16 @@ export const adminUsersAPI = {
   update: async (id, payload) => (await apiClient.put(`/admin/users/${id}`, payload)).data,
   sendPasswordReset: async (id) => (await apiClient.post(`/admin/users/${id}/password-reset`)).data,
   approve: async (id) => (await apiClient.post(`/admin/users/${id}/approve`)).data,
+  /* Sign-in refused and open sessions end. A reason is required. */
+  lock: async (id, reason) => (await apiClient.post(`/admin/users/${id}/lock`, { reason })).data,
+  /* Lifts the lock and clears the failed sign-in counter. */
+  unlock: async (id) => (await apiClient.post(`/admin/users/${id}/unlock`)).data,
   availablePeople: async () => (await apiClient.get('/admin/users/available-people')).data
+}
+
+/** Upload limits shared with the API (see src/utils/uploads.js). */
+export const uploadsAPI = {
+  policy: async () => (await apiClient.get('/uploads/policy')).data
 }
 
 /** HR Admin only: review attendance time adjustment requests. */

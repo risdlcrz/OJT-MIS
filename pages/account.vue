@@ -44,7 +44,7 @@
                   <input
                     ref="avatarInput"
                     type="file"
-                    accept="image/*"
+                    :accept="avatarAccept"
                     class="d-none"
                     :disabled="isSavingProfile"
                     @change="handleAvatarChange"
@@ -62,7 +62,7 @@
               </div>
 
               <p class="text-muted small mt-3 mb-0">
-                JPG or PNG, up to 5 MB. The photo is resized to 256&times;256.
+                {{ avatarHint }}. The photo is resized to 256&times;256.
               </p>
             </div>
           </div>
@@ -334,7 +334,7 @@
                   <th scope="col">Role</th>
                   <th scope="col">Office</th>
                   <th scope="col" style="width: 130px;">Created</th>
-                  <th scope="col" class="text-center" style="width: 90px;">Actions</th>
+                  <th scope="col" class="text-center" style="width: 150px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -365,6 +365,23 @@
                     >
                       Pending HR approval
                     </span>
+                    <span
+                      v-if="user.isLocked"
+                      class="badge text-bg-dark ms-1"
+                      :title="lockTitle(user)"
+                    >
+                      <i class="fas fa-lock me-1"></i>Locked
+                    </span>
+                    <span
+                      v-else-if="user.failedSignInAttempts > 0"
+                      class="badge text-bg-light text-dark border ms-1"
+                      :title="`Failed sign-ins since the last successful one. The account locks at ${MAX_FAILED_SIGN_INS}.`"
+                    >
+                      {{ user.failedSignInAttempts }}/{{ MAX_FAILED_SIGN_INS }} failed sign-ins
+                    </span>
+                    <div v-if="user.isLocked && user.lockReason" class="small text-muted mt-1 user-lock-reason">
+                      {{ user.lockReason }}
+                    </div>
                   </td>
                   <td>
                     <span
@@ -402,11 +419,31 @@
                     <button
                       type="button"
                       class="btn btn-sm btn-outline-secondary ms-1"
-                      title="Email a password reset link"
-                      :disabled="isSavingUser || resettingUserId === user.id"
+                      :title="user.isLocked ? 'Unlock the account before sending a reset link' : 'Email a password reset link'"
+                      :disabled="isSavingUser || user.isLocked || resettingUserId === user.id"
                       @click="sendPasswordReset(user)"
                     >
                       <i class="fas fa-key"></i>
+                    </button>
+                    <button
+                      v-if="user.isLocked"
+                      type="button"
+                      class="btn btn-sm btn-outline-success ms-1"
+                      title="Unlock this account"
+                      :disabled="isSavingUser || lockingUserId === user.id"
+                      @click="unlockUser(user)"
+                    >
+                      <i class="fas fa-lock-open"></i>
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      class="btn btn-sm btn-outline-danger ms-1"
+                      :title="isCurrentUser(user) ? 'You cannot lock your own account' : 'Lock this account'"
+                      :disabled="isSavingUser || isCurrentUser(user) || lockingUserId === user.id"
+                      @click="openLockUser(user)"
+                    >
+                      <i class="fas fa-lock"></i>
                     </button>
                   </td>
                 </tr>
@@ -575,6 +612,67 @@
       </div>
     </div>
 
+    <!-- Lock account modal -->
+    <div
+      ref="lockModalEl"
+      id="accountLockModal"
+      class="modal fade"
+      tabindex="-1"
+      aria-labelledby="accountLockModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form novalidate @submit.prevent="confirmLockUser">
+            <div class="modal-header">
+              <h5 id="accountLockModalLabel" class="modal-title">Lock Account</h5>
+              <button
+                type="button"
+                class="btn-close"
+                aria-label="Close"
+                :disabled="Boolean(lockingUserId)"
+                @click="closeLockModal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <p class="mb-3">
+                <strong>{{ lockTarget?.fullName || lockTarget?.email }}</strong> will not be able to sign in, and any open
+                session ends on its next action. They will be told to contact an administrator.
+              </p>
+              <div v-if="lockFormError" class="alert alert-danger py-2">{{ lockFormError }}</div>
+              <label for="lockReason" class="form-label fw-semibold">Reason</label>
+              <textarea
+                id="lockReason"
+                v-model="lockReason"
+                class="form-control"
+                :class="{ 'is-invalid': lockSubmitted && lockReason.trim().length < 3 }"
+                rows="3"
+                maxlength="500"
+                :disabled="Boolean(lockingUserId)"
+                placeholder="For example: Left the agency, or suspected unauthorized access."
+              ></textarea>
+              <div class="invalid-feedback">Enter a reason (at least 3 characters).</div>
+              <div class="form-text">The user sees this reason if they are signed in when the lock takes effect.</div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-danger" :disabled="Boolean(lockingUserId)">
+                <span v-if="lockingUserId" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                Lock Account
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="Boolean(lockingUserId)"
+                @click="closeLockModal"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- Notification toast -->
     <div class="toast-container position-fixed top-0 end-0 p-3">
       <div
@@ -611,6 +709,16 @@ import {
   isHRAdmin,
   saveProfile as persistProfile
 } from '@/services/api'
+import {
+  acceptAttribute,
+  DEFAULT_UPLOAD_POLICY,
+  describeUploadRule,
+  loadUploadPolicy,
+  validateUploadFiles
+} from '@/utils/uploads'
+
+/* Must match AccountLockService.MaxFailedSignInAttempts in the API. */
+const MAX_FAILED_SIGN_INS = 5
 
 const roleOptions = ['HRAdmin', 'Supervisor', 'Intern']
 const officeOptions = [
@@ -840,27 +948,29 @@ function resizeImage(file, size) {
   })
 }
 
+/* Profile picture limits, shared with the API (src/utils/uploads.js). */
+const avatarRule = ref(DEFAULT_UPLOAD_POLICY.avatar)
+const avatarAccept = computed(() => acceptAttribute(avatarRule.value))
+const avatarHint = computed(() => describeUploadRule(avatarRule.value))
+
 async function handleAvatarChange(event) {
   const input = event.target
-  const file = input.files?.[0]
+  const files = Array.from(input.files || [])
   input.value = ''
 
-  if (!file) return
+  if (files.length === 0) return
 
-  if (!file.type.startsWith('image/')) {
-    showToast('Please choose an image file.', 'danger')
+  const problem = await validateUploadFiles(files, avatarRule.value)
+  if (problem) {
+    showToast(problem, 'danger')
     return
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('Image must be 5 MB or smaller.', 'danger')
-    return
-  }
-
+  const file = files[0]
   try {
     profileForm.avatarUrl = await resizeImage(file, 256)
   } catch (error) {
-    showToast(error.message || 'Could not read that image.', 'danger')
+    showToast(getApiErrorMessage(error, 'Could not read that image.'), 'danger')
   }
 }
 
@@ -1021,6 +1131,81 @@ async function approveUser(user) {
     approvingUserId.value = ''
   }
 }
+/* ---- Lock / unlock ---- */
+const lockModalEl = ref(null)
+let lockModal = null
+const lockingUserId = ref('')
+const lockTarget = ref(null)
+const lockReason = ref('')
+const lockSubmitted = ref(false)
+const lockFormError = ref('')
+const signedInUserId = currentUser()?.id || ''
+
+function isCurrentUser(user) {
+  return Boolean(user?.id) && user.id === signedInUserId
+}
+
+function lockTitle(user) {
+  const by = user.lockedByName ? ` by ${user.lockedByName}` : ''
+  const when = user.lockedAt ? ` on ${formatDate(user.lockedAt)}` : ''
+  return `Locked${by}${when}. Sign-in is refused until an HR admin unlocks it.`
+}
+
+function replaceUser(updated) {
+  users.value = users.value.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+}
+
+function openLockUser(user) {
+  if (!user?.id || isCurrentUser(user)) return
+  lockTarget.value = user
+  lockReason.value = ''
+  lockSubmitted.value = false
+  lockFormError.value = ''
+  lockModal.show()
+}
+
+function closeLockModal() {
+  if (lockingUserId.value) return
+  lockModal.hide()
+  removeModalBackdrops()
+}
+
+async function confirmLockUser() {
+  lockSubmitted.value = true
+  lockFormError.value = ''
+  const user = lockTarget.value
+  const reason = lockReason.value.trim()
+  if (!user || reason.length < 3 || lockingUserId.value) return
+
+  lockingUserId.value = user.id
+  try {
+    replaceUser(await adminUsersAPI.lock(user.id, reason))
+    lockingUserId.value = ''
+    closeLockModal()
+    showToast(`${user.email} is locked. Their open sessions end on the next action.`, 'warning')
+  } catch (error) {
+    lockFormError.value = getApiErrorMessage(error, 'Could not lock this account.')
+  } finally {
+    lockingUserId.value = ''
+  }
+}
+
+async function unlockUser(user) {
+  if (!user?.id || lockingUserId.value) return
+  const message = `Unlock the account of ${user.fullName || user.email}? They can sign in again with their current password.`
+  if (!window.confirm(message)) return
+
+  lockingUserId.value = user.id
+  try {
+    replaceUser(await adminUsersAPI.unlock(user.id))
+    showToast(`${user.email} is unlocked and can sign in again.`)
+  } catch (error) {
+    showToast(getApiErrorMessage(error, 'Could not unlock this account.'), 'danger')
+  } finally {
+    lockingUserId.value = ''
+  }
+}
+
 const userSubmitted = ref(false)
 const userFormError = ref('')
 const availablePeople = ref([])
@@ -1195,6 +1380,10 @@ async function saveUser() {
    ============================================================ */
 onMounted(() => {
   userModal = new Modal(userModalEl.value)
+  lockModal = new Modal(lockModalEl.value)
+  loadUploadPolicy().then((policy) => {
+    avatarRule.value = policy.avatar || DEFAULT_UPLOAD_POLICY.avatar
+  })
   toast = new Toast(document.getElementById('accountToast'), { autohide: false })
   toastEl.value = document.getElementById('accountToast')
 
@@ -1205,6 +1394,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   userModal?.dispose()
+  lockModal?.dispose()
   toast?.dispose()
   window.removeEventListener('hashchange', readTabFromUrl)
   window.clearTimeout(notificationTimeout.value)
@@ -1212,6 +1402,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.user-lock-reason {
+  max-width: 260px;
+  white-space: normal;
+}
+
 .account-avatar {
   display: flex;
   align-items: center;

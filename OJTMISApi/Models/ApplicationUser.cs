@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 
 namespace OJTMISApi.Models
@@ -33,6 +34,26 @@ namespace OJTMISApi.Models
         /// (the user's side, set from the emailed activation link).
         /// </summary>
         public bool IsApproved { get; set; }
+
+        // ---- Account lock (see AccountLockService) ----------------------
+        // Enforcement uses Identity's own LockoutEnd, so SignInManager and
+        // the per-request token check agree on who is locked. These fields
+        // record who locked it, when and why, for HR and the audit trail.
+
+        /// <summary>Office-local time the account was locked; null when not locked.</summary>
+        public DateTime? LockedAt { get; set; }
+
+        /// <summary>HR admin who locked it; null when the system locked it after failed sign-ins.</summary>
+        [StringLength(450)]
+        public string? LockedByUserId { get; set; }
+
+        /// <summary>Display name of whoever locked it (an HR admin, or "System").</summary>
+        [StringLength(200)]
+        public string? LockedByName { get; set; }
+
+        /// <summary>Why the account was locked. Shown to HR and to the locked user's open sessions.</summary>
+        [StringLength(500)]
+        public string? LockReason { get; set; }
 
         /// <summary>Name shown in the top bar (First + Last).</summary>
         public string FullName => $"{FirstName} {LastName}".Trim();

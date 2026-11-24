@@ -19,15 +19,21 @@ namespace OJTMISApi.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly IEmailService _email;
+        private readonly AccountLockService _locks;
+        private readonly ILogger<AdminUsersController> _logger;
 
         public AdminUsersController(
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
-            IEmailService email)
+            IEmailService email,
+            AccountLockService locks,
+            ILogger<AdminUsersController> logger)
         {
             _userManager = userManager;
             _context = context;
             _email = email;
+            _locks = locks;
+            _logger = logger;
         }
 
         /// <summary>GET: api/admin/users?role=Intern</summary>
@@ -293,6 +299,11 @@ namespace OJTMISApi.Controllers
                 return BadRequest(new { message = "This account has no email address to send a reset link to." });
             }
 
+            if (AccountLockService.IsLocked(user))
+            {
+                return LockedAccount(user, "Unlock the account before sending a password reset link.");
+            }
+
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             try
             {
@@ -300,10 +311,11 @@ namespace OJTMISApi.Controllers
             }
             catch (Exception ex)
             {
+                // Mail-provider errors stay in the server log.
+                _logger.LogError(ex, "Could not email a password reset link to user {UserId}.", user.Id);
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new
                 {
-                    // Never echo internal error details (they can include mail-provider responses).
-                    message = $"The password reset email could not be sent ({ex.GetType().Name}). Check the server log and try again."
+                    message = "The password reset email could not be sent. Please try again later."
                 });
             }
 
@@ -317,6 +329,103 @@ namespace OJTMISApi.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"A password reset link was emailed to {user.Email}." });
+        }
+
+        /// <summary>
+        /// POST: api/admin/users/{id}/lock
+        /// Locks an account: sign-in is refused and open sessions end on their
+        /// next request. HR cannot lock their own account.
+        /// </summary>
+        [HttpPost("{id}/lock")]
+        public async Task<ActionResult<AdminUserDto>> Lock(string id, [FromBody] LockUserRequest request)
+        {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            var user = await _userManager.FindByIdAsync(id);
+            if (user is null)
+            {
+                return NotFound(new { message = $"User with id {id} was not found." });
+            }
+
+            if (user.Id == User.FindFirstValue(ClaimTypes.NameIdentifier))
+            {
+                return BadRequest(new { message = "You cannot lock your own account." });
+            }
+
+            if (AccountLockService.IsLocked(user))
+            {
+                return Conflict(new { message = $"{user.Email} is already locked." });
+            }
+
+            var reason = request.Reason.Trim();
+            if (!await _locks.LockByAdminAsync(user, reason, User))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = SafeErrors.Server });
+            }
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/admin/users/{id}/lock",
+                "Locked a user account",
+                $"Locked the account of {user.Email}. Reason: {reason}");
+            await _context.SaveChangesAsync();
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(ToDto(user, roles));
+        }
+
+        /// <summary>
+        /// POST: api/admin/users/{id}/unlock
+        /// Lifts a lock (by HR or after 5 failed sign-ins) and clears the
+        /// failed-attempt counter. Sessions from before the lock stay ended.
+        /// </summary>
+        [HttpPost("{id}/unlock")]
+        public async Task<ActionResult<AdminUserDto>> Unlock(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user is null)
+            {
+                return NotFound(new { message = $"User with id {id} was not found." });
+            }
+
+            if (!AccountLockService.IsLocked(user) && user.LockedAt is null)
+            {
+                return Conflict(new { message = $"{user.Email} is not locked." });
+            }
+
+            var previousReason = user.LockReason;
+            if (!await _locks.UnlockAsync(user))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = SafeErrors.Server });
+            }
+
+            ActivityLogWriter.Add(
+                _context,
+                User,
+                "POST",
+                $"/api/admin/users/{id}/unlock",
+                "Unlocked a user account",
+                string.IsNullOrWhiteSpace(previousReason)
+                    ? $"Unlocked the account of {user.Email}."
+                    : $"Unlocked the account of {user.Email} (was locked: {previousReason}).");
+            await _context.SaveChangesAsync();
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(ToDto(user, roles));
+        }
+
+        /// <summary>403 for an HR action that a locked account may not receive.</summary>
+        private ObjectResult LockedAccount(ApplicationUser user, string action)
+        {
+            var reason = string.IsNullOrWhiteSpace(user.LockReason) ? "No reason recorded." : user.LockReason.Trim();
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                code = AccountLockService.LockedCode,
+                message = $"{user.Email} is locked. Reason: {reason} {action}",
+                lockReason = user.LockReason
+            });
         }
 
         private static AdminUserDto ToDto(ApplicationUser user, IEnumerable<string> roles)
@@ -333,7 +442,12 @@ namespace OJTMISApi.Controllers
                 EmailConfirmed = user.EmailConfirmed,
                 IsApproved = user.IsApproved,
                 Roles = roles.ToArray(),
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                IsLocked = AccountLockService.IsLocked(user),
+                LockedAt = user.LockedAt,
+                LockedByName = user.LockedByName,
+                LockReason = user.LockReason,
+                FailedSignInAttempts = user.AccessFailedCount
             };
         }
 
@@ -364,6 +478,23 @@ namespace OJTMISApi.Controllers
         public bool IsApproved { get; set; }
         public string[] Roles { get; set; } = Array.Empty<string>();
         public DateTime CreatedAt { get; set; }
+
+        public bool IsLocked { get; set; }
+        public DateTime? LockedAt { get; set; }
+
+        /// <summary>HR admin who locked the account, or "System" after 5 failed sign-ins.</summary>
+        public string? LockedByName { get; set; }
+        public string? LockReason { get; set; }
+
+        /// <summary>Failed sign-ins since the last successful one (the account locks at 5).</summary>
+        public int FailedSignInAttempts { get; set; }
+    }
+
+    public class LockUserRequest
+    {
+        [Required(ErrorMessage = "Enter a reason for locking this account.")]
+        [StringLength(500, MinimumLength = 3, ErrorMessage = "The reason must be 3 to 500 characters.")]
+        public string Reason { get; set; } = string.Empty;
     }
 
     public class CreateAdminUserRequest

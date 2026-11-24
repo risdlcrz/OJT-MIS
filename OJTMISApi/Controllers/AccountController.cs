@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using OJTMISApi.Data;
 using OJTMISApi.Models;
 using OJTMISApi.Services;
@@ -14,17 +15,18 @@ namespace OJTMISApi.Controllers
     [Produces("application/json")]
     public class AccountController : ControllerBase
     {
-        // A 256x256 JPEG data URL is well under this. The cap only stops
-        // oversized payloads from reaching the database.
-        private const int MaxAvatarLength = 700_000;
-
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly UploadOptions _uploads;
 
-        public AccountController(UserManager<ApplicationUser> userManager, ApplicationDbContext context)
+        public AccountController(
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context,
+            IOptions<UploadOptions> uploads)
         {
             _userManager = userManager;
             _context = context;
+            _uploads = uploads.Value;
         }
 
         /// <summary>GET: api/account/profile</summary>
@@ -39,17 +41,25 @@ namespace OJTMISApi.Controllers
 
         /// <summary>PUT: api/account/profile</summary>
         [HttpPut("profile")]
+        [UploadRequestLimit(nameof(UploadOptions.Avatar))]
         public async Task<ActionResult<AccountProfile>> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            if (request.AvatarUrl is { Length: > MaxAvatarLength })
-            {
-                return BadRequest(new { message = "Avatar image is too large. Please choose a smaller image." });
-            }
-
             var user = await _userManager.GetUserAsync(User);
             if (user is null) return Unauthorized(new { message = "Session is no longer valid." });
+
+            // The client resizes the photo to a JPEG data URL; the server checks
+            // type, size and the image's own bytes. An unchanged avatar is not
+            // re-checked, so a photo saved before these rules never blocks a
+            // name or office edit.
+            var submittedAvatar = string.IsNullOrWhiteSpace(request.AvatarUrl) ? null : request.AvatarUrl.Trim();
+            if (submittedAvatar is not null &&
+                !string.Equals(submittedAvatar, user.AvatarUrl, StringComparison.Ordinal) &&
+                UploadValidator.ValidateDataUrl(submittedAvatar, _uploads.Avatar) is { } avatarError)
+            {
+                return BadRequest(new { message = avatarError });
+            }
 
             var email = request.Email.Trim();
 

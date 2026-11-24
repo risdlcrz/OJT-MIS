@@ -151,7 +151,7 @@ import '../assets/css/themeCSS.css'
 import '../assets/css/myCSS.css'
 import '../assets/css/Login.css'
 import loginBackground from '../assets/images/login-bg.jpg'
-import { authAPI, getApiErrorMessage } from '@/services/api'
+import { authAPI, getApiErrorMessage, SIGN_OUT_REASON_KEY } from '@/services/api'
 import { hasValidSession } from '@/router'
 import { go, replaceUrl } from '@/utils/navigation'
 
@@ -317,6 +317,14 @@ onMounted(() => {
 
     if (params.get('mode') === 'confirm' && token && resetEmail) {
         confirmFromLink(resetEmail, token)
+        return
+    }
+
+    /* Signed out because the account was locked: say why, once. */
+    const signOutReason = sessionStorage.getItem(SIGN_OUT_REASON_KEY)
+    if (signOutReason) {
+        sessionStorage.removeItem(SIGN_OUT_REASON_KEY)
+        errorMessage.value = signOutReason
         return
     }
 

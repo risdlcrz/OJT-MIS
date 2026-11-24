@@ -7,24 +7,21 @@ namespace OJTMISApi.Services
 {
     /// <summary>
     /// Turns any unhandled exception into a JSON ProblemDetails reply with a
-    /// <c>message</c> field (which the Vue client shows), instead of an empty
-    /// 500 or a stack trace. Exception details are only included in
-    /// Development; production replies carry a reference id that matches the
-    /// server log entry.
+    /// short <c>message</c> field (which the Vue client shows), instead of an
+    /// empty 500 or a stack trace. The exception, its SQL error and stack
+    /// trace are written only to the server log, in every environment; the
+    /// reply carries a reference id that matches that log entry.
     /// </summary>
     public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         private readonly IProblemDetailsService _problems;
-        private readonly IHostEnvironment _env;
         private readonly ILogger<GlobalExceptionHandler> _logger;
 
         public GlobalExceptionHandler(
             IProblemDetailsService problems,
-            IHostEnvironment env,
             ILogger<GlobalExceptionHandler> logger)
         {
             _problems = problems;
-            _env = env;
             _logger = logger;
         }
 
@@ -47,8 +44,7 @@ namespace OJTMISApi.Services
                     "The change could not be saved because it conflicts with existing data. Check for duplicates and try again."),
                 BadHttpRequestException bad => (bad.StatusCode, "Bad request",
                     "The request could not be read. Check the form and try again."),
-                _ => (StatusCodes.Status500InternalServerError, "Internal Server Error",
-                    $"Something went wrong on the server. If it keeps happening, report reference {reference}.")
+                _ => (StatusCodes.Status500InternalServerError, "Server error", SafeErrors.Server)
             };
 
             if (status >= 500)
@@ -66,7 +62,9 @@ namespace OJTMISApi.Services
             {
                 Status = status,
                 Title = title,
-                Detail = _env.IsDevelopment() ? exception.ToString() : null,
+                // Never the exception text: it can hold SQL, file paths and
+                // stack frames. Developers read the log, matched by reference.
+                Detail = null,
                 Instance = http.Request.Path
             };
             problem.Extensions["message"] = message;
